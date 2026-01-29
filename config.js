@@ -15,3 +15,11 @@ window.CT_CONFIG = {
   // Title length limits
   TITLE_MAX: 80,
 };
+
+
+// --- Remote Database (Google Sheets via Apps Script) ---
+window.CT_CONFIG.REMOTE_DB = {
+  enabled: false, // set true after Apps Script is deployed
+  appsScriptUrl: "", // paste your deployed Web App URL here
+  apiKey: "" // optional shared secret; set in Apps Script + here
+};

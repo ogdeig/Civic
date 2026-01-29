@@ -10,59 +10,17 @@
 <meta name="description" content="Browse approved Facebook posts (Support)."/>
 </head>
 <body data-page="fb_support">
-<div class="topbar">
-  <div class="brand">
-    <a href="./index.html" style="display:flex;align-items:center;gap:14px;text-decoration:none;"><span style="display:flex;align-items:center;gap:14px;"><img src="./assets/logo.png" alt="Civic Threat Productions"/></span>
-    <div class="title">
-      <strong>CIVIC THREAT PRODUCTIONS</strong>
-      <span>Debate & Discuss</span>
-    </div></a>
-
-    <div class="nav">
-      <div class="dropdown">
-        <button class="btn ghost" type="button" data-dd-toggle="1">Platforms ▾</button>
-        <div class="dropdown-menu">
-          <div class="dd-group">
-            <div class="dd-title">Facebook</div>
-            <a class="dd-item" href="./facebook.html"><div><b>Support</b></div><small>•</small></a>
-            <a class="dd-item" href="./facebook-maga.html"><div><b>MAGA / Debate</b></div><small></small></a>
-          </div>
-          <div class="dd-group">
-            <div class="dd-title">Coming next</div>
-            <div class="dd-item" style="opacity:.8"><div>X / Instagram / Truth Social</div><small>soon</small></div>
-          </div>
-        </div>
-      </div>
-
-      <a class="btn ghost" href="./submit.html">Submit</a>
+<div class="topbar"> <div class="brand"> <a href="./index.html" style="display:flex;align-items:center;gap:14px;text-decoration:none;"><span style="display:flex;align-items:center;gap:14px;"><img src="./assets/logo.png" alt="Civic Threat"/></span> <div class="title"> <strong>CIVIC THREAT</strong> <span>Debate &amp; Discuss</span> </div></a> <div class="nav"> <div class="dropdown"> <button class="btn ghost" type="button" data-dd-toggle="1">Platforms ▾</button> <div class="dropdown-menu"> <div class="dd-group"> <div class="dd-title">Facebook</div> <a class="dd-item" href="./facebook.html"><div><b>Support</b></div><small>•</small></a> <a class="dd-item" href="./facebook-maga.html"><div><b>MAGA / Debate</b></div><small></small></a> </div> <div class="dd-group"> <div class="dd-title">Coming next</div> <div class="dd-item" style="opacity:.8"><div>X / Instagram / Truth Social</div><small>soon</small></div> </div> </div> </div> <a class="btn ghost" href="./submit.html">Submit</a>
+</div> </div>
 </div>
-  </div>
+<div class="utility"> <div class="utility-inner"> <div style="flex: 1 1 280px; min-width:240px;"> <div style="font-weight:1000; font-size:16px; letter-spacing:.3px;">Facebook</div> <div style="color:rgba(255,255,255,.78); font-size:12px; font-weight:900; margin-top:4px;">Support • </div> </div> <div class="searchwrap"> <label for="search">Search</label> <input id="search" type="text" placeholder="Search title, tags, notes, URL, or submitter..."/> </div> <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;"> <span class="badge">Approved: <b id="countApproved">0</b></span> <span class="badge">Pending: <b id="countPending">0</b></span> </div> </div>
 </div>
-<div class="utility">
-  <div class="utility-inner">
-    <div style="flex: 1 1 280px; min-width:240px;">
-      <div style="font-weight:1000; font-size:16px; letter-spacing:.3px;">Facebook</div>
-      <div style="color:rgba(255,255,255,.78); font-size:12px; font-weight:900; margin-top:4px;">Support • Newest first.</div>
-    </div>
-    <div class="searchwrap">
-          <label for="search">Search</label>
-          <input id="search" type="text" placeholder="Search title, tags, notes, URL, or submitter..."/>
-        </div>
-    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-      <span class="badge">Approved: <b id="countApproved">0</b></span>
-        <span class="badge">Pending: <b id="countPending">0</b></span>
-    </div>
-  </div>
-</div>
-<div class="container">
-  <div class="panel">
-    <div class="h1">Browse</div>
-    <div class="p">Submit posts for review. Approved posts appear here.</div>
-</div>
-  <div id="postGrid" class="grid"></div>
+<div class="container"> <div class="panel"> <div class="h1">Browse</div> <div class="p">Submit posts for review. Approved posts appear here.</div>
+</div> <div id="postGrid" class="grid"></div>
 </div>
 <script src="./config.js"></script>
 <script src="./auth.js"></script>
+<script src="./data-api.js"></script>
 <script src="./app.js"></script>
 </body>
 </html>

@@ -1,9 +1,9 @@
 
 :root{
   --bg:#000000;
-  --panel:#05070c;
-  --card:#070a11;
-  --line: rgba(255,255,255,.08);
+  --panel:#02040a;
+  --card:#030613;
+  --line: rgba(255,255,255,.07);
   --text:#ffffff;
   --muted: rgba(255,255,255,.70);
 

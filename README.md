@@ -1,7 +1,7 @@
 # Civic Threat Productions — Facebook Dashboard (v3)
 
 Sleek black theme with red topbar + blue buttons (logo vibe).
-Local-only prototype (browser localStorage) for Live Studio.
+Local-only site (browser localStorage) for Live Studio.
 
 ## Default Admin Login
 - Username: `admin`
