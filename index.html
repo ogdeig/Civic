@@ -9,14 +9,14 @@
 <title>Civic Threat • Dashboard</title>
 <meta name="description" content="Browse public Facebook posts in one sleek dashboard. Submit posts for review."/>
 </head>
-<body>
+<body data-page="home">
 <div class="topbar">
   <div class="brand">
-    <img src="./assets/logo.png" alt="Civic Threat"/>
+    <a href="./index.html" style="display:flex;align-items:center;gap:14px;text-decoration:none;"><span style="display:flex;align-items:center;gap:14px;"><img src="./assets/logo.png" alt="Civic Threat"/></span>
     <div class="title">
       <strong>CIVIC THREAT</strong>
-      <span>Public post dashboard</span>
-    </div>
+      <span>Debate & Discuss</span>
+    </div></a>
 
     <div class="nav">
       <div class="dropdown">
@@ -39,28 +39,49 @@
   </div>
 </div>
 
+
 <div class="container">
   <div class="panel" style="padding:24px;">
-    <div style="display:grid; gap:16px;">
-      <div>
-        <div class="h1" style="font-size:22px;">Browse. Compare. Discuss.</div>
+    <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:flex-start;">
+      <div style="max-width:820px;">
+        <div class="h1" style="font-size:22px;">Debate &amp; Discuss.</div>
         <div class="p">
-          Curated public posts in one place. Submit posts for review and they’ll appear after approval.
+          Browse public Facebook posts in one place. Submit posts for review — approved items appear in the feeds.
         </div>
       </div>
-
       <div style="display:flex; gap:12px; flex-wrap:wrap;">
-        <a class="btn blue" href="./facebook.html">Facebook • Support</a>
-        <a class="btn ghost" href="./facebook-maga.html">Facebook • MAGA / Debate</a>
-        <a class="btn ghost" href="./submit.html">Submit a Post</a>
+        <a class="btn blue" href="./submit.html">Submit a Post</a>
+        <a class="btn ghost" href="./facebook.html">Facebook Support</a>
+        <a class="btn ghost" href="./facebook-maga.html">Facebook MAGA</a>
       </div>
+    </div>
 
-      <div class="notice">
-        <b>Tip:</b> Paste the <b>Facebook embed code</b> for best results.
+    <div class="hr"></div>
+
+    <div style="display:grid; gap:14px;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap;">
+        <div>
+          <div style="font-weight:1000; font-size:16px; letter-spacing:.3px;">Facebook • Support</div>
+          <div class="small">Newest first • Top 3 previews</div>
+        </div>
+        <a class="btn ghost" href="./facebook.html">View all</a>
       </div>
+      <div id="homeSupport" class="grid"></div>
+
+      <div class="hr"></div>
+
+      <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap;">
+        <div>
+          <div style="font-weight:1000; font-size:16px; letter-spacing:.3px;">Facebook • MAGA / Debate</div>
+          <div class="small">Newest first • Top 3 previews</div>
+        </div>
+        <a class="btn ghost" href="./facebook-maga.html">View all</a>
+      </div>
+      <div id="homeMaga" class="grid"></div>
     </div>
   </div>
 </div>
+
 
 <script src="./config.js"></script>
 <script src="./auth.js"></script>

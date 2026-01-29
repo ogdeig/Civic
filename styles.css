@@ -1,9 +1,9 @@
 
 :root{
   --bg:#000000;
-  --panel:#0b0f16;
-  --card:#0f1624;
-  --line: rgba(255,255,255,.10);
+  --panel:#05070c;
+  --card:#070a11;
+  --line: rgba(255,255,255,.08);
   --text:#ffffff;
   --muted: rgba(255,255,255,.70);
 
@@ -371,3 +371,6 @@ textarea{ min-height: 92px; resize: vertical; }
 }
 
 .card:hover{ transform: translateY(-2px); border-color: rgba(255,255,255,.18); }
+
+.fbframe.small{ height: 360px; }
+@media (max-width:420px){ .fbframe.small{ height: 520px; } }

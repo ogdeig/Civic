@@ -135,7 +135,7 @@ function initCookieBar(){
   wrap.innerHTML = `
     <div class="box">
       <p>
-        We use local storage for on-device moderation. Embedded Facebook content may set its own cookies.
+        We may store site preferences and (in this prototype) submissions locally in your browser. Embedded Facebook content may set its own cookies.
         <a href="./cookies.html" style="text-decoration:underline">Learn more</a>.
       </p>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
@@ -558,20 +558,74 @@ async function initAdminLogin(){
   });
 }
 
+
+/* Home */
+async function initHome(){
+  await ensureSeed();
+  renderHomePreviews();
+}
+
+function renderHomePreviews(){
+  const approved = getList(LS.approved, []).filter(p => p.platform === "facebook");
+  const support = approved.filter(p => p.category === "support").sort((a,b)=> (b.addedAt||"").localeCompare(a.addedAt||"")).slice(0,3);
+  const maga = approved.filter(p => p.category === "maga").sort((a,b)=> (b.addedAt||"").localeCompare(a.addedAt||"")).slice(0,3);
+
+  function renderList(list, mountId){
+    const mount = el(mountId);
+    if(!mount) return;
+    mount.innerHTML = "";
+    if(!list.length){
+      mount.innerHTML = `<div class="notice">No approved posts yet.</div>`;
+      return;
+    }
+    for(const p of list){
+      const iframeSrc = fbPluginSrc(p.fbUrl);
+      const when = p.addedAt ? new Date(p.addedAt).toLocaleString() : "";
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML = `
+        <div class="card-head">
+          <div class="title">
+            <h3>${escapeHtml(p.title || "Facebook Post")}</h3>
+            <div class="meta">${escapeHtml(when)}</div>
+          </div>
+          <div>
+            <a class="btn blue" href="${escapeHtml(p.fbUrl)}" target="_blank" rel="noopener">Open</a>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="embed">
+            <iframe class="fbframe small" src="${escapeHtml(iframeSrc)}" scrolling="no" allow="encrypted-media; picture-in-picture; clipboard-write"></iframe>
+          </div>
+          <div class="card-foot">
+            ${formatSubmittedBy(p.submittedBy)}
+            <span class="small">Preview</span>
+          </div>
+        </div>
+      `;
+      mount.appendChild(card);
+    }
+  }
+
+  renderList(support, "#homeSupport");
+  renderList(maga, "#homeMaga");
+}
+
+
 /* Router */
 document.addEventListener("DOMContentLoaded", async ()=>{
+  // Always initialize core UI
+  try{ initDropdowns(); }catch{}
+  try{ initCookieBar(); }catch{}
+  try{ mountFooter(); }catch{}
+
   const page = document.body.getAttribute("data-page");
 
-  try{
-    const adminBadge = document.querySelector("[data-admin-badge]");
-    if(adminBadge){
-      adminBadge.textContent = isLoggedIn() ? "Admin: ON" : "Admin: OFF";
-    }
-  }catch{}
-
+  if(page === "home") await initHome();
   if(page === "fb_support") await initBrowse("support");
   if(page === "fb_maga") await initBrowse("maga");
   if(page === "submit") await initSubmit();
   if(page === "review") await initReview();
   if(page === "admin_login") await initAdminLogin();
+
 });
