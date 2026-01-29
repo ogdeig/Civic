@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#d1001f"/>
+<link rel="icon" href="./assets/logo.png"/>
+<link rel="stylesheet" href="./styles.css"/>
+<title>Submit • Civic Threat</title>
+<meta name="description" content="Submit a Facebook embed for review."/>
+</head>
+<body data-page="submit">
+<div class="topbar">
+  <div class="brand">
+    <img src="./assets/logo.png" alt="Civic Threat Productions"/>
+    <div class="title">
+      <strong>CIVIC THREAT PRODUCTIONS</strong>
+      <span>Facebook dashboard • sleek prototype</span>
+    </div>
+
+    <div class="nav">
+      <div class="dropdown">
+        <button class="btn ghost" type="button" data-dd-toggle="1">Platforms ▾</button>
+        <div class="dropdown-menu">
+          <div class="dd-group">
+            <div class="dd-title">Facebook</div>
+            <a class="dd-item" href="./facebook.html"><div><b>Support</b></div><small></small></a>
+            <a class="dd-item" href="./facebook-maga.html"><div><b>MAGA / Debate</b></div><small></small></a>
+          </div>
+          <div class="dd-group">
+            <div class="dd-title">Coming next</div>
+            <div class="dd-item" style="opacity:.8"><div>X / Instagram / Truth Social</div><small>soon</small></div>
+          </div>
+        </div>
+      </div>
+
+      <a class="btn ghost" href="./submit.html">Submit</a>
+</div>
+  </div>
+</div>
+<div class="utility">
+  <div class="utility-inner">
+    <div style="flex: 1 1 280px; min-width:240px;">
+      <div style="font-weight:1000; font-size:16px; letter-spacing:.3px;">Submit a Facebook Post</div>
+      <div style="color:rgba(255,255,255,.78); font-size:12px; font-weight:900; margin-top:4px;">Paste the embed code (recommended) or the URL. Optional: add your username.</div>
+    </div>
+    
+    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+      
+    </div>
+  </div>
+</div>
+<div class="container">
+  <div class="panel">
+    <div class="h1">Submission</div>
+    <div class="p">We review submissions before publishing. Your username is optional.</div>
+    <div id="storageWarn" class="notice warn hidden" style="margin-top:14px">
+  Storage is blocked in this environment. Run through Live Studio’s local server so submissions/approvals persist.
+</div>
+    <div class="hr"></div>
+
+    <form id="submitForm">
+      <div style="display:grid; gap:12px;">
+        <div>
+          <label for="fbInput">Facebook embed code or post URL</label>
+          <textarea id="fbInput" placeholder="Paste the embed snippet you copied from Facebook (or a post URL)."></textarea>
+        </div>
+
+        <div style="display:grid; gap:12px;">
+          <div>
+            <label for="category">Category</label>
+            <select id="category">
+              <option value="support">Facebook (Support)</option>
+              <option value="maga">Facebook MAGA (Debate/Discuss)</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="title">Headline (keep it short)</label>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <input id="title" type="text" placeholder="Example: Claim vs Fact-check thread"/>
+              <span class="badge" id="titleCount">0 left</span>
+            </div>
+          </div>
+
+          <div>
+            <label for="tags">Tags (comma-separated)</label>
+            <input id="tags" type="text" placeholder="economy,factcheck,debate"/>
+          </div>
+        </div>
+
+        <div>
+          <label for="notes">Notes (optional)</label>
+          <textarea id="notes" placeholder="Context, why this matters, what to watch for…"></textarea>
+        </div>
+
+        <div style="display:grid; gap:12px;">
+          <div>
+            <label for="submitterName">Your username (optional)</label>
+            <input id="submitterName" type="text" placeholder="@yourhandle (optional)"/>
+          </div>
+          <div>
+            <label for="submitterUrl">Your profile link (optional)</label>
+            <input id="submitterUrl" type="text" placeholder="https://facebook.com/yourpage (optional)"/>
+          </div>
+          <div class="notice" style="display:flex; gap:10px; align-items:flex-start;">
+            <input id="consentShowName" type="checkbox" style="width:auto; margin-top:3px;"/>
+            <div class="small">
+              <b>Consent:</b> I agree to display my username as “Submitted by …” on the published card.
+              If unchecked, we show <b>Anonymous</b> and do not keep your username.
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+          <button class="btn blue" type="submit">Submit for Review</button>
+          <div id="submitResult" class="small"></div>
+        </div>
+      </div>
+    </form>
+
+    <div class="hr"></div>
+    <div class="h1">Preview</div>
+    <div id="previewBox"></div>
+  </div>
+</div>
+<script src="./config.js"></script>
+<script src="./auth.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>

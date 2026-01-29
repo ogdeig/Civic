@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#d1001f"/>
+<link rel="icon" href="./assets/logo.png"/>
+<link rel="stylesheet" href="./styles.css"/>
+<title>Facebook MAGA • Debate • Civic Threat</title>
+<meta name="description" content="Browse approved Facebook posts (Debate/Discuss)."/>
+</head>
+<body data-page="fb_maga">
+<div class="topbar">
+  <div class="brand">
+    <img src="./assets/logo.png" alt="Civic Threat Productions"/>
+    <div class="title">
+      <strong>CIVIC THREAT PRODUCTIONS</strong>
+      <span>Facebook dashboard • sleek prototype</span>
+    </div>
+
+    <div class="nav">
+      <div class="dropdown">
+        <button class="btn ghost" type="button" data-dd-toggle="1">Platforms ▾</button>
+        <div class="dropdown-menu">
+          <div class="dd-group">
+            <div class="dd-title">Facebook</div>
+            <a class="dd-item" href="./facebook.html"><div><b>Support</b></div><small></small></a>
+            <a class="dd-item" href="./facebook-maga.html"><div><b>MAGA / Debate</b></div><small>•</small></a>
+          </div>
+          <div class="dd-group">
+            <div class="dd-title">Coming next</div>
+            <div class="dd-item" style="opacity:.8"><div>X / Instagram / Truth Social</div><small>soon</small></div>
+          </div>
+        </div>
+      </div>
+
+      <a class="btn ghost" href="./submit.html">Submit</a>
+</div>
+  </div>
+</div>
+<div class="utility">
+  <div class="utility-inner">
+    <div style="flex: 1 1 280px; min-width:240px;">
+      <div style="font-weight:1000; font-size:16px; letter-spacing:.3px;">Facebook MAGA</div>
+      <div style="color:rgba(255,255,255,.78); font-size:12px; font-weight:900; margin-top:4px;">Debate / Discuss posts (newest first).</div>
+    </div>
+    <div class="searchwrap">
+          <label for="search">Search</label>
+          <input id="search" type="text" placeholder="Search title, tags, notes, URL, or submitter..."/>
+        </div>
+    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+      <span class="badge">Approved: <b id="countApproved">0</b></span>
+        <span class="badge">Pending: <b id="countPending">0</b></span>
+    </div>
+  </div>
+</div>
+<div class="container">
+  <div class="panel">
+    <div class="h1">Browse</div>
+    <div class="p">Focus on the claim, the receipts, and the conversation.</div>
+    <div id="storageWarn" class="notice warn hidden" style="margin-top:14px">
+  Storage is blocked in this environment. Run through Live Studio’s local server so submissions/approvals persist.
+</div>
+  </div>
+  <div id="postGrid" class="grid"></div>
+</div>
+<script src="./config.js"></script>
+<script src="./auth.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#d1001f"/>
+<link rel="icon" href="./assets/logo.png"/>
+<link rel="stylesheet" href="./styles.css"/>
+<title>Civic Threat • Dashboard</title>
+<meta name="description" content="Browse public Facebook posts in one sleek dashboard. Submit posts for review."/>
+</head>
+<body>
+<div class="topbar">
+  <div class="brand">
+    <img src="./assets/logo.png" alt="Civic Threat"/>
+    <div class="title">
+      <strong>CIVIC THREAT</strong>
+      <span>Public post dashboard</span>
+    </div>
+
+    <div class="nav">
+      <div class="dropdown">
+        <button class="btn ghost" type="button" data-dd-toggle="1">Platforms ▾</button>
+        <div class="dropdown-menu">
+          <div class="dd-group">
+            <div class="dd-title">Facebook</div>
+            <a class="dd-item" href="./facebook.html"><div><b>Support</b></div><small></small></a>
+            <a class="dd-item" href="./facebook-maga.html"><div><b>MAGA / Debate</b></div><small></small></a>
+          </div>
+          <div class="dd-group">
+            <div class="dd-title">Coming next</div>
+            <div class="dd-item" style="opacity:.8"><div>X / Instagram / Truth Social</div><small>soon</small></div>
+          </div>
+        </div>
+      </div>
+
+      <a class="btn blue" href="./submit.html">Submit</a>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <div class="panel" style="padding:24px;">
+    <div style="display:grid; gap:16px;">
+      <div>
+        <div class="h1" style="font-size:22px;">Browse. Compare. Discuss.</div>
+        <div class="p">
+          Curated public posts in one place. Submit posts for review and they’ll appear after approval.
+        </div>
+      </div>
+
+      <div style="display:flex; gap:12px; flex-wrap:wrap;">
+        <a class="btn blue" href="./facebook.html">Facebook • Support</a>
+        <a class="btn ghost" href="./facebook-maga.html">Facebook • MAGA / Debate</a>
+        <a class="btn ghost" href="./submit.html">Submit a Post</a>
+      </div>
+
+      <div class="notice">
+        <b>Tip:</b> Paste the <b>Facebook embed code</b> for best results.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="./config.js"></script>
+<script src="./auth.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>

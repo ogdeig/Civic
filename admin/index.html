@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#d1001f"/>
+<link rel="icon" href="../assets/logo.png"/>
+<link rel="stylesheet" href="../styles.css"/>
+<title>Admin • Login • Civic Threat</title>
+<meta name="robots" content="noindex,nofollow"/>
+</head>
+<body data-page="admin_login">
+<div class="topbar">
+  <div class="brand">
+    <img src="../assets/logo.png" alt="Civic Threat"/>
+    <div class="title">
+      <strong>CIVIC THREAT</strong>
+      <span>Admin</span>
+    </div>
+    <div class="nav">
+      <a class="btn ghost" href="../index.html">Home</a>
+      <a class="btn ghost" href="../facebook.html">Facebook</a>
+      <a class="btn ghost" href="../submit.html">Submit</a>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <div class="panel" style="max-width:520px; margin:0 auto;">
+    <div class="h1">Admin Login</div>
+    <div class="p">When live, protect <b>/admin/*</b> with Cloudflare Access/Basic Auth.</div>
+    <div class="hr"></div>
+
+    <form id="loginForm" style="display:grid; gap:12px;">
+      <div>
+        <label for="adminUser">Username</label>
+        <input id="adminUser" type="text" autocomplete="username"/>
+      </div>
+      <div>
+        <label for="adminPass">Password</label>
+        <input id="adminPass" type="password" autocomplete="current-password"/>
+      </div>
+
+      <button class="btn blue" type="submit">Login</button>
+      <div id="loginResult" class="small"></div>
+    </form>
+  </div>
+</div>
+
+<script src="../config.js"></script>
+<script src="../auth.js"></script>
+<script src="../app.js"></script>
+</body>
+</html>
