@@ -353,7 +353,11 @@
   const by = `<span class="pill">Submitted by: @${esc(submittedBy)}</span>`;
 
   const norm = normalizeFacebookEmbed(item.embedHtml, { small: isSmall, width: 500 });
-  const url = (item.postUrl || item.url || norm.url || "");
+  const target = bestPostUrl(item);
+
+  const goBtn = target
+    ? `<a class="btn red" href="${target}" target="_blank" rel="noopener">Go to post</a>`
+    : `<span class="btn red" style="opacity:.55; cursor:not-allowed;" title="Post link unavailable for this embed">Go to post</span>`;
 
   return `
     <article class="post-card">
@@ -370,7 +374,7 @@
       <div class="post-foot">
         ${by}
         <div class="btngroup">
-          ${url ? `<a class="btn red" href="${url}" target="_blank" rel="noopener">Go to post</a>` : ``}
+          ${goBtn}
           <a class="btn ghost" href="${item.category === "support" ? "./facebook.html" : "./facebook-maga.html"}">Browse</a>
         </div>
       </div>
@@ -383,32 +387,47 @@ function extractFacebookUrlFromEmbed(embedHtml){
   if(!embedHtml) return "";
   const s = String(embedHtml);
 
-  // 0) If the item already has a url field somewhere, caller can pass it separately
-  // (this function just extracts from embedHtml)
-
-  // 1) data-href on fb-post
-  let m = s.match(/data-href=["']([^"']+)["']/i);
+  // 1) data-href on fb-post / fb-video / etc.
+  let m = s.match(/data-href=[\"']([^\"']+)[\"']/i);
   if(m && m[1]) return m[1].trim();
 
-  // 2) plugins/post.php src that contains href=...
-  m = s.match(/src=["']([^"']*facebook\.com\/plugins\/post\.php[^"']*)["']/i);
+  // 2) iframe src from Facebook plugin with href=...
+  m = s.match(/src=[\"']([^\"']*facebook\.com\/plugins\/post\.php[^\"']*)[\"']/i);
   if(m && m[1]){
-    try{
-      const u = new URL(m[1], "https://www.facebook.com");
-      const href = u.searchParams.get("href");
-      if(href) return href.trim();
-    }catch(e){}
+    const src = m[1];
+    const hrefM = src.match(/[?&]href=([^&]+)/i);
+    if(hrefM && hrefM[1]){
+      try{ return decodeURIComponent(hrefM[1]); }catch(e){ return hrefM[1]; }
+    }
   }
 
-  // 3) any href=... parameter inside the snippet (often already encoded)
-  m = s.match(/(?:\?|&|;)href=([^&"']+)/i);
-  if(m && m[1]){
-    try{ return decodeURIComponent(m[1]); }catch(e){ return m[1]; }
-  }
-
-  // 4) any facebook URL inside the snippet
-  m = s.match(/https?:\/\/(?:www\.)?(?:m\.)?facebook\.com\/[^\s"'<>]+/i);
+  // 3) any explicit facebook.com URL in the snippet
+  m = s.match(/https?:\/\/www\.facebook\.com\/[A-Za-z0-9._\-\/\?=&%]+/i);
   if(m && m[0]) return m[0];
+
+  return "";
+}
+
+function extractFacebookPluginSrc(embedHtml){
+  if(!embedHtml) return "";
+  const s = String(embedHtml);
+  const m = s.match(/src=[\"']([^\"']*facebook\.com\/plugins\/post\.php[^\"']*)[\"']/i);
+  return (m && m[1]) ? m[1] : "";
+}
+
+function bestPostUrl(item){
+  if(!item) return "";
+  // Try common field names first (from DB / Sheets / local JSON)
+  const direct = item.postUrl || item.url || item.link || item.permalink || item.href || "";
+  if(direct && typeof direct === "string") return direct;
+
+  // Next: parse from embed code
+  const parsed = extractFacebookUrlFromEmbed(item.embedHtml || "");
+  if(parsed) return parsed;
+
+  // Fallback: open the plugin iframe src (still lets users reach the post via Facebook UI)
+  const plugin = extractFacebookPluginSrc(item.embedHtml || "");
+  if(plugin) return plugin;
 
   return "";
 }
@@ -418,7 +437,7 @@ function normalizeFacebookEmbed(embedHtml, opts={}){
   const width = opts.width || 500;
   const small = !!opts.small;
 
-  // Build a clean iframe (avoids FB JS SDK errors)
+  // Prefer a clean iframe embed (no FB JS SDK scripts)
   if(url){
     const src = `https://www.facebook.com/plugins/post.php?href=${encodeURIComponent(url)}&show_text=true&width=${width}`;
     return {
@@ -427,7 +446,7 @@ function normalizeFacebookEmbed(embedHtml, opts={}){
     };
   }
 
-  // Fallback: strip scripts to prevent JS errors
+  // Fallback: strip scripts to avoid console errors
   const cleaned = String(embedHtml || "")
     .replace(/<script[\s\S]*?<\/script>/gi, "")
     .replace(/<div[^>]*id=[\"']fb-root[\"'][^>]*>[\s\S]*?<\/div>/gi, "");
