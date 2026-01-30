@@ -353,7 +353,7 @@
   const by = `<span class="pill">Submitted by: @${esc(submittedBy)}</span>`;
 
   const norm = normalizeFacebookEmbed(item.embedHtml, { small: isSmall, width: 500 });
-  const url = norm.url;
+  const url = (item.postUrl || item.url || norm.url || "");
 
   return `
     <article class="post-card">
@@ -383,18 +383,31 @@ function extractFacebookUrlFromEmbed(embedHtml){
   if(!embedHtml) return "";
   const s = String(embedHtml);
 
-  // data-href on fb-post
-  let m = s.match(/data-href=[\"']([^\"']+)[\"']/i);
+  // 0) If the item already has a url field somewhere, caller can pass it separately
+  // (this function just extracts from embedHtml)
+
+  // 1) data-href on fb-post
+  let m = s.match(/data-href=["']([^"']+)["']/i);
   if(m && m[1]) return m[1].trim();
 
-  // plugin src with href=...
-  m = s.match(/href=([^&\"']+)/i);
+  // 2) plugins/post.php src that contains href=...
+  m = s.match(/src=["']([^"']*facebook\.com\/plugins\/post\.php[^"']*)["']/i);
+  if(m && m[1]){
+    try{
+      const u = new URL(m[1], "https://www.facebook.com");
+      const href = u.searchParams.get("href");
+      if(href) return href.trim();
+    }catch(e){}
+  }
+
+  // 3) any href=... parameter inside the snippet (often already encoded)
+  m = s.match(/(?:\?|&|;)href=([^&"']+)/i);
   if(m && m[1]){
     try{ return decodeURIComponent(m[1]); }catch(e){ return m[1]; }
   }
 
-  // any facebook URL inside snippet
-  m = s.match(/https?:\/\/www\.facebook\.com\/[\w\W]*?(?=[\s\"'<])/i);
+  // 4) any facebook URL inside the snippet
+  m = s.match(/https?:\/\/(?:www\.)?(?:m\.)?facebook\.com\/[^\s"'<>]+/i);
   if(m && m[0]) return m[0];
 
   return "";
