@@ -1,25 +1,52 @@
-/* Remote DB adapter (Google Sheets via Apps Script Web App)
-   - Configure in config.js: CT_CONFIG.REMOTE_DB
-   - If disabled or unreachable, the app falls back to local storage.
-*/
-async function remoteFetch(path, options={}){
-  const cfg = window.CT_CONFIG.REMOTE_DB || {};
-  const base = (cfg.appsScriptUrl || "").replace(/\/$/,"");
-  if(!cfg.enabled || !base) throw new Error("REMOTE_DB not configured");
-  const headers = Object.assign({"Content-Type":"application/json"}, options.headers||{});
-  if(cfg.apiKey) headers["X-CT-KEY"] = cfg.apiKey;
-  const res = await fetch(base + path, Object.assign({}, options, {headers}));
-  if(!res.ok){
-    const t = await res.text().catch(()=> "");
-    throw new Error("Remote error: " + res.status + " " + t);
-  }
-  return res.json();
-}
+// Remote DB connector (Google Sheets via Apps Script Web App)
+// Enable in config.js (CT_CONFIG.REMOTE_DB.enabled = true) and set appsScriptUrl.
+(function(){
+  "use strict";
 
-window.CT_REMOTE = {
-  async listApproved(){ return remoteFetch("/approved"); },
-  async listPending(){ return remoteFetch("/pending"); },
-  async submit(item){ return remoteFetch("/submit", {method:"POST", body: JSON.stringify(item)}); },
-  async approve(id){ return remoteFetch("/approve", {method:"POST", body: JSON.stringify({id})}); },
-  async reject(id){ return remoteFetch("/reject", {method:"POST", body: JSON.stringify({id})}); }
-};
+  async function remoteFetch(payload){
+    const cfg = (window.CT_CONFIG && window.CT_CONFIG.REMOTE_DB) ? window.CT_CONFIG.REMOTE_DB : null;
+    if(!cfg || !cfg.appsScriptUrl) throw new Error("REMOTE_DB not configured");
+    const body = Object.assign({}, payload, { apiKey: cfg.apiKey || "" });
+
+    const res = await fetch(cfg.appsScriptUrl, {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(body),
+      cache: "no-store"
+    });
+    if(!res.ok){
+      const txt = await res.text().catch(()=> "");
+      throw new Error("Remote error: " + res.status + " " + txt.slice(0,160));
+    }
+    const data = await res.json();
+    if(data && data.ok === false) throw new Error(data.error || "Remote error");
+    return data;
+  }
+
+  async function listApproved(){
+    const data = await remoteFetch({ action:"listApproved" });
+    return Array.isArray(data.items) ? data.items : [];
+  }
+
+  async function listPending(){
+    const data = await remoteFetch({ action:"listPending" });
+    return Array.isArray(data.items) ? data.items : [];
+  }
+
+  async function submit(item){
+    const data = await remoteFetch({ action:"submit", item });
+    return data;
+  }
+
+  async function approve(id){
+    const data = await remoteFetch({ action:"approve", id });
+    return data;
+  }
+
+  async function reject(id){
+    const data = await remoteFetch({ action:"reject", id });
+    return data;
+  }
+
+  window.CT_REMOTE = { listApproved, listPending, submit, approve, reject };
+})();

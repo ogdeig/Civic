@@ -1,13 +1,40 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="robots" content="noindex,nofollow" />
-  <title>Admin • Civic Threat</title>
-  <meta http-equiv="refresh" content="0; url=./review.html" />
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta name="color-scheme" content="dark"/>
+  <meta name="robots" content="noindex,nofollow"/>
+  <title>Admin Review | Civic Threat</title>
+  <link rel="icon" href="../assets/logo.png"/>
+  <link rel="stylesheet" href="../styles.css"/>
 </head>
-<body>
-  <p>Redirecting… <a href="./review.html">Continue</a></p>
+<body data-page="admin">
+  <div id="siteHeader"></div>
+  <main>
+<section class="hero" style="padding-bottom:10px">
+  <div class="wrap">
+    <h1 style="font-size:40px; margin-bottom:6px">Admin Review</h1>
+    <p>Approve or reject submitted posts. This page should be protected by Cloudflare Access.</p>
+  </div>
+</section>
+
+<section class="section" style="padding-top:12px">
+  <div class="wrap">
+    <h2>Pending</h2>
+    <div id="pendingList" style="display:flex; flex-direction:column; gap:12px; margin-top:12px"></div>
+
+    <div class="hr"></div>
+
+    <h2>Approved (latest 50)</h2>
+    <div id="approvedList" style="display:flex; flex-direction:column; gap:12px; margin-top:12px"></div>
+  </div>
+</section>
+</main>
+  <div id="siteFooter"></div>
+
+  <script src="../config.js"></script>
+  <script src="../data-api.js"></script>
+  <script src="../app.js"></script>
 </body>
 </html>
