@@ -356,8 +356,8 @@
   const target = bestPostUrl(item);
 
   const goBtn = target
-    ? `<a class="btn red" href="${target}" target="_blank" rel="noopener">Go to post</a>`
-    : `<span class="btn red" style="opacity:.55; cursor:not-allowed;" title="Post link unavailable for this embed">Go to post</span>`;
+    ? `<a class="btn blue" href="${target}" target="_blank" rel="noopener">Go to post</a>`
+    : `<span class="btn blue" style="opacity:.55; cursor:not-allowed;" title="Post link unavailable for this embed">Go to post</span>`;
 
   return `
     <article class="post-card">
@@ -375,7 +375,7 @@
         ${by}
         <div class="btngroup">
           ${goBtn}
-          <a class="btn ghost" href="${item.category === "support" ? "./facebook.html" : "./facebook-maga.html"}">Browse</a>
+          <a class="btn" href="${item.category === "support" ? "./facebook.html" : "./facebook-maga.html"}">Browse</a>
         </div>
       </div>
     </article>
@@ -383,11 +383,12 @@
 }
 
 
+// --- Facebook embed helpers (safe) ---
 function extractFacebookUrlFromEmbed(embedHtml){
   if(!embedHtml) return "";
   const s = String(embedHtml);
 
-  // 1) data-href on fb-post / fb-video / etc.
+  // 1) data-href on fb-post blocks
   let m = s.match(/data-href=[\"']([^\"']+)[\"']/i);
   if(m && m[1]) return m[1].trim();
 
@@ -401,7 +402,7 @@ function extractFacebookUrlFromEmbed(embedHtml){
     }
   }
 
-  // 3) any explicit facebook.com URL in the snippet
+  // 3) any facebook.com url in snippet
   m = s.match(/https?:\/\/www\.facebook\.com\/[A-Za-z0-9._\-\/\?=&%]+/i);
   if(m && m[0]) return m[0];
 
@@ -417,15 +418,12 @@ function extractFacebookPluginSrc(embedHtml){
 
 function bestPostUrl(item){
   if(!item) return "";
-  // Try common field names first (from DB / Sheets / local JSON)
   const direct = item.postUrl || item.url || item.link || item.permalink || item.href || "";
   if(direct && typeof direct === "string") return direct;
 
-  // Next: parse from embed code
   const parsed = extractFacebookUrlFromEmbed(item.embedHtml || "");
   if(parsed) return parsed;
 
-  // Fallback: open the plugin iframe src (still lets users reach the post via Facebook UI)
   const plugin = extractFacebookPluginSrc(item.embedHtml || "");
   if(plugin) return plugin;
 
@@ -437,7 +435,7 @@ function normalizeFacebookEmbed(embedHtml, opts={}){
   const width = opts.width || 500;
   const small = !!opts.small;
 
-  // Prefer a clean iframe embed (no FB JS SDK scripts)
+  // Prefer clean plugin iframe (no FB JS SDK scripts)
   if(url){
     const src = `https://www.facebook.com/plugins/post.php?href=${encodeURIComponent(url)}&show_text=true&width=${width}`;
     return {
@@ -446,11 +444,12 @@ function normalizeFacebookEmbed(embedHtml, opts={}){
     };
   }
 
-  // Fallback: strip scripts to avoid console errors
+  // Fallback: strip scripts to avoid FB console errors
   const cleaned = String(embedHtml || "")
     .replace(/<script[\s\S]*?<\/script>/gi, "")
     .replace(/<div[^>]*id=[\"']fb-root[\"'][^>]*>[\s\S]*?<\/div>/gi, "");
   return { url:"", html: cleaned };
 }
+// --- end helpers ---
 
 )();
