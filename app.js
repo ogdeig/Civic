@@ -12,14 +12,43 @@ function uid(prefix="id"){ return `${prefix}-${Math.random().toString(16).slice(
 }
 function stripFragment(url){ return url.replace(/#.*$/, "").trim(); } function extractFacebookUrl(input){ if(!input) return ""; const s = input.trim(); if(/https?:\/\/(www\.)?facebook\.com\//i.test(s) && !/[<>]/.test(s)) return stripFragment(s); let m = s.match(/data-href\s*=\s*["']([^"']+facebook\.com[^"']+)["']/i); if(m && m[1]) return stripFragment(m[1]); m = s.match(/\bhref\s*=\s*["']([^"']+facebook\.com[^"']+)["']/i); if(m && m[1] && !m[1].includes("plugins/post.php")) return stripFragment(m[1]); m = s.match(/plugins\/post\.php\?[^"']*href=([^&"']+)/i); if(m && m[1]){ try{ return stripFragment(decodeURIComponent(m[1])); }catch{ return stripFragment(m[1]); } } return "";
 } function formatSubmittedBy(sb){ const display = (sb && sb.display) ? sb.display : "Anonymous"; const url = sb && sb.url ? sb.url : ""; if(url){ return `<span class="submitted">Submitted by <a href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(display)}</a></span>`; } return `<span class="submitted">Submitted by ${escapeHtml(display)}</span>`;
-} function mountFooter(){ const cfg = window.CT_CONFIG; const bp = basePath(); const footer = document.createElement("footer"); footer.className = "site-footer"; footer.innerHTML = ` <div class="inner"> <div class="copy">© ${cfg.COPYRIGHT_YEAR} ${escapeHtml(cfg.SITE_NAME)}. All rights reserved.</div> <div class="footer-links">
+} function mountFooter(){
+  const bp = BASE_PATH;
+  const el = document.createElement("footer");
+  el.className = "site-footer";
+  el.innerHTML = `
+    <div class="footer-inner">
+      <div>
+        <div class="footer-brand">
+          <a href="${bp}index.html" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:#fff;">
+            <img src="${bp}assets/logo.png" alt="Civic Threat"/>
+            <div>
+              <div style="font-weight:900;letter-spacing:.6px;">CIVIC THREAT</div>
+              <div style="font-size:12px;opacity:.9;">Debate &amp; Discuss</div>
+            </div>
+          </a>
+        </div>
+        <div class="footer-copy">© ${new Date().getFullYear()} Civic Threat. All rights reserved.</div>
+      </div>
+
+      <div class="footer-links">
         <a href="${bp}about.html">About</a>
         <a href="${bp}advertising-disclosure.html">Advertising</a>
         <a href="${bp}terms.html">Terms</a>
         <a href="${bp}privacy.html">Privacy</a>
         <a href="${bp}cookies.html">Cookies</a>
         <a href="${bp}contact.html">Contact</a>
-      </div> </div> `; document.body.appendChild(footer);
+      </div>
+
+      <div class="iconrow" aria-label="Civic Threat social links">
+        <a class="btn iconbtn" href="https://www.facebook.com/CivicThreat/" target="_blank" rel="noopener" aria-label="Facebook"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.5 22v-8h2.7l.4-3H13.5V9.1c0-.9.3-1.6 1.6-1.6H16.7V4.7c-.3 0-1.4-.2-2.7-.2-2.7 0-4.5 1.6-4.5 4.6V11H6.7v3h2.8v8h4z"/></svg></a>
+        <a class="btn iconbtn" href="https://www.youtube.com/@civicthreat" target="_blank" rel="noopener" aria-label="YouTube"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.6 7.2a3 3 0 0 0-2.1-2.1C17.7 4.6 12 4.6 12 4.6s-5.7 0-7.5.5A3 3 0 0 0 2.4 7.2 31.7 31.7 0 0 0 2 12a31.7 31.7 0 0 0 .4 4.8 3 3 0 0 0 2.1 2.1c1.8.5 7.5.5 7.5.5s5.7 0 7.5-.5a3 3 0 0 0 2.1-2.1A31.7 31.7 0 0 0 22 12a31.7 31.7 0 0 0-.4-4.8zM10 15.5v-7l6 3.5-6 3.5z"/></svg></a>
+        <a class="btn iconbtn" href="https://www.tiktok.com/@civicthreat" target="_blank" rel="noopener" aria-label="TikTok"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.5 3c.4 2.4 1.9 4.3 4.1 5v3.3c-2 0-3.8-.6-5.3-1.7v6.6c0 3.3-2.7 6-6 6s-6-2.7-6-6 2.7-6 6-6c.4 0 .8 0 1.2.1v3.5c-.4-.1-.8-.2-1.2-.2-1.4 0-2.5 1.1-2.5 2.5S8 18.5 9.4 18.5s2.6-1 2.6-2.5V3h4.5z"/></svg></a>
+        <a class="btn iconbtn" href="https://x.com/CivicThreat" target="_blank" rel="noopener" aria-label="X"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.9 2H22l-6.8 7.8L23 22h-6.6l-5.2-6.7L5.4 22H2.3l7.3-8.4L1 2h6.8l4.7 6.1L18.9 2zm-1.1 18h1.7L6.1 3.9H4.3L17.8 20z"/></svg></a>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(el);
 } function initDropdowns(){ document.addEventListener("click", (e)=>{ const toggle = e.target.closest("[data-dd-toggle]"); const open = document.querySelector(".dropdown.open"); if(toggle){ const dd = toggle.closest(".dropdown"); if(open && open !== dd) open.classList.remove("open"); dd.classList.toggle("open"); return; } if(open && !e.target.closest(".dropdown")){ open.classList.remove("open"); } });
 } function initCookieBar(){ const ok = localStorage.getItem(LS.cookieOk) === "1"; if(ok) return; const wrap = document.createElement("div"); wrap.className = "cookiebar"; wrap.innerHTML = ` <div class="box"> <p> We may store site preferences and () submissions locally in your browser. Embedded Facebook content may set its own cookies. <a href="./cookies.html" style="text-decoration:underline">Learn more</a>. </p> <div style="display:flex; gap:10px; flex-wrap:wrap;"> <a class="btn ghost" href="./cookies.html">Details</a> <button class="btn blue" id="cookieAccept" type="button">OK</button> </div> </div> `; document.body.appendChild(wrap); el("#cookieAccept", wrap).addEventListener("click", ()=>{ localStorage.setItem(LS.cookieOk, "1"); wrap.remove(); });
 } /* Browse */

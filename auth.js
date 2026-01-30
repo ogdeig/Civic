@@ -40,3 +40,9 @@ async function login(username, password){
   }
   return false;
 }
+
+
+function requireAdmin(){
+  // Cloudflare Access protects /admin* so no second login is required.
+  return true;
+}
