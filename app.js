@@ -293,8 +293,20 @@
   function extractFacebookUrl(embedOrUrl){
     const raw = (embedOrUrl || "").trim();
     if(!raw) return "";
+
     // If direct URL pasted, keep it.
     if(/^https?:\/\/(www\.)?facebook\.com\//i.test(raw)) return raw;
+
+    // Try data-href="..."
+    const dataHref = raw.match(/data-href=["']([^"']+)["']/i);
+    if(dataHref && dataHref[1]){
+      const u = dataHref[1].trim();
+      if(/^https?:\/\/(www\.)?facebook\.com\//i.test(u)) return u;
+    }
+
+    // Try any facebook.com URL inside the snippet
+    const anyUrl = raw.match(/https?:\/\/(www\.)?facebook\.com\/[A-Za-z0-9._\-\/\?=&%]+/i);
+    if(anyUrl && anyUrl[0]) return anyUrl[0];
 
     // Try href="..."
     const hrefMatch = raw.match(/href=["']([^"']+)["']/i);
@@ -341,115 +353,218 @@
   }
 
   function renderPostCard(item, opts={}){
-  const isSmall = !!opts.small;
+    const small = opts.small === true;
+    const tagText = item.category === "support" ? "Facebook • Support" : "Facebook • MAGA / Debate";
+    const url = item.postUrl || "";
+    const frame = url ? `<iframe class="fbframe ${small ? "small":""}" src="${fbPluginSrc(url)}" loading="lazy" allow="encrypted-media"></iframe>`
+                      : `<div class="smallnote">Missing Facebook URL.</div>`;
 
-  const title = esc(item.title || "Untitled");
-  const date = esc(item.createdAt || "");
-  const categoryLabel = item.category === "support" ? "Facebook • Support" : "Facebook • MAGA / Debate";
+    const name = (item.submitterName || "Anonymous").trim() || "Anonymous";
+    const link = (item.submitterLink || submitterLink(name));
+    const by = link
+      ? `<a class="submittedby" href="${link}" target="_blank" rel="noopener" title="Open submitter profile">Submitted by: ${esc(name)}</a>`
+      : `<span class="submittedby">Submitted by: ${esc(name)}</span>`;
 
-  const allowName = !!item.allowUsername;
-  const submittedBy = allowName ? (item.submittedBy || "Anonymous") : "Anonymous";
+    const date = new Date(item.submittedAt || Date.now());
+    const dateStr = date.toLocaleDateString(undefined, {year:"numeric", month:"short", day:"2-digit"});
 
-  const by = `<span class="pill">Submitted by: @${esc(submittedBy)}</span>`;
+    const goBtn = url
+      ? `<a class="btn blue" href="${url}" target="_blank" rel="noopener">Go to post</a>`
+      : `<span class="btn blue disabled" title="Post link unavailable">Go to post</span>`;
 
-  const norm = normalizeFacebookEmbed(item.embedHtml, { small: isSmall, width: 500 });
-  const target = bestPostUrl(item);
-
-  const goBtn = target
-    ? `<a class="btn blue" href="${target}" target="_blank" rel="noopener">Go to post</a>`
-    : `<span class="btn blue" style="opacity:.55; cursor:not-allowed;" title="Post link unavailable for this embed">Go to post</span>`;
-
-  return `
-    <article class="post-card">
-      <div class="post-head">
-        <div>
-          <div class="post-title">${title}</div>
-          <div class="post-meta">${categoryLabel} • ${date}</div>
+    return `
+      <article class="post-card">
+        <div class="post-head">
+          <div class="post-title">
+            <h3>${esc(item.title || "Untitled")}</h3>
+            <div class="meta">${esc(tagText)} • ${esc(dateStr)}</div>
+          </div>
+          <div class="tagrow"><span class="tag">${esc(item.platform || "facebook")}</span></div>
         </div>
-        <span class="tag">facebook</span>
-      </div>
-
-      <div class="post-embed">${norm.html}</div>
-
-      <div class="post-foot">
-        ${by}
-        <div class="btngroup">
-          ${goBtn}
-          <a class="btn" href="${item.category === "support" ? "./facebook.html" : "./facebook-maga.html"}">Browse</a>
+        <div class="embed">${frame}</div>
+        <div class="post-foot">
+          ${by}
+          <div class="btngroup">
+            ${goBtn}
+            <a class="btn" href="${item.category === "support" ? "./facebook.html" : "./facebook-maga.html"}">Browse</a>
+          </div>
         </div>
-      </div>
-    </article>
-  `;
-}
+      </article>
+    `;
+  }
 
+  // ---------- Page controllers ----------
+  async function initHome(){
+    await ensureSeed();
+    const approved = (await listApproved()) || [];
+    const support = approved.filter(x => x.platform === "facebook" && x.category === "support").slice(0,3);
+    const maga = approved.filter(x => x.platform === "facebook" && x.category === "maga").slice(0,3);
 
-// --- Facebook embed helpers (safe) ---
-function extractFacebookUrlFromEmbed(embedHtml){
-  if(!embedHtml) return "";
-  const s = String(embedHtml);
+    const supportHost = qs("#homeSupport");
+    const magaHost = qs("#homeMaga");
+    if(supportHost) supportHost.innerHTML = support.length ? support.map(x=>renderPostCard(x,{small:true})).join("") : `<div class="smallnote">No approved posts yet. <a href="./submit.html">Submit one</a>.</div>`;
+    if(magaHost) magaHost.innerHTML = maga.length ? maga.map(x=>renderPostCard(x,{small:true})).join("") : `<div class="smallnote">No approved posts yet. <a href="./submit.html">Submit one</a>.</div>`;
+  }
 
-  // 1) data-href on fb-post blocks
-  let m = s.match(/data-href=[\"']([^\"']+)[\"']/i);
-  if(m && m[1]) return m[1].trim();
+  async function initFeed(category){
+    await ensureSeed();
+    const approved = (await listApproved()) || [];
+    const pending = (await listPending()) || [];
 
-  // 2) iframe src from Facebook plugin with href=...
-  m = s.match(/src=[\"']([^\"']*facebook\.com\/plugins\/post\.php[^\"']*)[\"']/i);
-  if(m && m[1]){
-    const src = m[1];
-    const hrefM = src.match(/[?&]href=([^&]+)/i);
-    if(hrefM && hrefM[1]){
-      try{ return decodeURIComponent(hrefM[1]); }catch(e){ return hrefM[1]; }
+    const filtered = approved.filter(x => x.platform==="facebook" && x.category===category)
+      .sort((a,b) => (b.approvedAt||0) - (a.approvedAt||0));
+
+    const grid = qs("#feedGrid");
+    const countApproved = qs("#countApproved");
+    const countPending = qs("#countPending");
+    if(countApproved) countApproved.textContent = String(filtered.length);
+    if(countPending) countPending.textContent = String(pending.filter(x=>x.platform==="facebook" && x.category===category).length);
+
+    const input = qs("#search");
+    function render(list){
+      if(!grid) return;
+      grid.innerHTML = list.length ? list.map(x=>renderPostCard(x)).join("") : `<div class="smallnote">Nothing here yet. <a href="./submit.html">Submit a post</a>.</div>`;
+    }
+
+    render(filtered);
+
+    if(input){
+      input.addEventListener("input", ()=>{
+        const q = input.value.trim().toLowerCase();
+        if(!q){ render(filtered); return; }
+        const s = filtered.filter(x =>
+          (x.title||"").toLowerCase().includes(q) ||
+          (x.postUrl||"").toLowerCase().includes(q) ||
+          (x.submitterName||"").toLowerCase().includes(q)
+        );
+        render(s);
+      });
     }
   }
 
-  // 3) any facebook.com url in snippet
-  m = s.match(/https?:\/\/www\.facebook\.com\/[A-Za-z0-9._\-\/\?=&%]+/i);
-  if(m && m[0]) return m[0];
+  async function initSubmit(){
+    const form = qs("#submitForm");
+    const status = qs("#submitStatus");
+    if(!form) return;
 
-  return "";
-}
+    form.addEventListener("submit", async (e)=>{
+      e.preventDefault();
+      if(status) status.textContent = "";
 
-function extractFacebookPluginSrc(embedHtml){
-  if(!embedHtml) return "";
-  const s = String(embedHtml);
-  const m = s.match(/src=[\"']([^\"']*facebook\.com\/plugins\/post\.php[^\"']*)[\"']/i);
-  return (m && m[1]) ? m[1] : "";
-}
+      const title = (qs("#title")?.value || "").trim();
+      const category = qs("#category")?.value || "support";
+      const embed = (qs("#embed")?.value || "").trim();
+      const username = (qs("#username")?.value || "").trim();
+      const consent = qs("#consent")?.checked === true;
 
-function bestPostUrl(item){
-  if(!item) return "";
-  const direct = item.postUrl || item.url || item.link || item.permalink || item.href || "";
-  if(direct && typeof direct === "string") return direct;
+      const cfg = CFG();
+      const max = cfg.TITLE_MAX || 80;
+      if(!title){ if(status) status.textContent = "Please enter a title."; return; }
+      if(title.length > max){ if(status) status.textContent = `Title must be ${max} characters or less.`; return; }
 
-  const parsed = extractFacebookUrlFromEmbed(item.embedHtml || "");
-  if(parsed) return parsed;
+      const postUrl = extractFacebookUrl(embed);
+      if(!postUrl){
+        if(status) status.textContent = "Please paste the Facebook embed code (or a direct Facebook post URL).";
+        return;
+      }
 
-  const plugin = extractFacebookPluginSrc(item.embedHtml || "");
-  if(plugin) return plugin;
+      const item = {
+        id: uid(),
+        platform: "facebook",
+        category,
+        title,
+        postUrl,
+        submittedAt: Date.now(),
+        submitterName: (consent && username) ? username : "Anonymous",
+        submitterLink: (consent && username) ? submitterLink(username) : "",
+        consent
+      };
 
-  return "";
-}
-
-function normalizeFacebookEmbed(embedHtml, opts={}){
-  const url = extractFacebookUrlFromEmbed(embedHtml);
-  const width = opts.width || 500;
-  const small = !!opts.small;
-
-  // Prefer clean plugin iframe (no FB JS SDK scripts)
-  if(url){
-    const src = `https://www.facebook.com/plugins/post.php?href=${encodeURIComponent(url)}&show_text=true&width=${width}`;
-    return {
-      url,
-      html: `<iframe class="fbframe ${small ? "small" : ""}" src="${src}" width="${width}" height="${small ? 260 : 360}" style="border:none;overflow:hidden" scrolling="no" frameborder="0" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" allowfullscreen="true"></iframe>`
-    };
+      try{
+        await submitItem(item);
+        form.reset();
+        if(status) status.textContent = "Submitted! Posts appear after review.";
+      }catch(err){
+        console.error(err);
+        if(status) status.textContent = "Submit failed. Please try again.";
+      }
+    });
   }
 
-  // Fallback: strip scripts to avoid FB console errors
-  const cleaned = String(embedHtml || "")
-    .replace(/<script[\s\S]*?<\/script>/gi, "")
-    .replace(/<div[^>]*id=[\"']fb-root[\"'][^>]*>[\s\S]*?<\/div>/gi, "");
-  return { url:"", html: cleaned };
-}
-// --- end helpers ---
+  async function initAdmin(){
+    await ensureSeed();
+    const pending = (await listPending()) || [];
+    const approved = (await listApproved()) || [];
 
-)();
+    const pendingHost = qs("#pendingList");
+    const approvedHost = qs("#approvedList");
+
+    function row(item, mode){
+      const title = esc(item.title || "Untitled");
+      const cat = item.category === "support" ? "Support" : "MAGA / Debate";
+      const url = esc(item.postUrl || "");
+      const by = esc((item.submitterName || "Anonymous").trim() || "Anonymous");
+      const date = new Date(item.submittedAt || Date.now()).toLocaleString();
+      const buttons = mode === "pending"
+        ? `<button class="btn blue" data-approve="${item.id}">Approve</button>
+           <button class="btn" data-reject="${item.id}">Reject</button>`
+        : ``;
+
+      return `
+        <div class="post-card" style="padding:12px; display:flex; flex-direction:column; gap:10px">
+          <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap">
+            <div>
+              <div style="font-weight:1000">${title}</div>
+              <div class="smallnote">Facebook • ${esc(cat)} • Submitted by ${by} • ${esc(date)}</div>
+              <div class="smallnote"><a href="${url}" target="_blank" rel="noopener">${url}</a></div>
+            </div>
+            <div style="display:flex; gap:10px; align-items:flex-start; flex-wrap:wrap">
+              ${buttons}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    if(pendingHost){
+      const list = pending.filter(x=>x.platform==="facebook").sort((a,b)=>(b.submittedAt||0)-(a.submittedAt||0));
+      pendingHost.innerHTML = list.length ? list.map(x=>row(x,"pending")).join("") : `<div class="smallnote">No pending submissions.</div>`;
+    }
+    if(approvedHost){
+      const list = approved.filter(x=>x.platform==="facebook").sort((a,b)=>(b.approvedAt||0)-(a.approvedAt||0)).slice(0,50);
+      approvedHost.innerHTML = list.length ? list.map(x=>row(x,"approved")).join("") : `<div class="smallnote">No approved posts yet.</div>`;
+    }
+
+    document.addEventListener("click", async (e)=>{
+      const a = e.target.closest("[data-approve]");
+      const r = e.target.closest("[data-reject]");
+      if(a){
+        const id = a.getAttribute("data-approve");
+        a.textContent = "Approving…";
+        await approveItem(id);
+        location.reload();
+      }
+      if(r){
+        const id = r.getAttribute("data-reject");
+        r.textContent = "Rejecting…";
+        await rejectItem(id);
+        location.reload();
+      }
+    });
+  }
+
+  function init(){
+    mountHeader();
+    mountFooter();
+    mountCookieBanner();
+
+    const page = document.body?.dataset?.page || "";
+    if(page === "home") return initHome();
+    if(page === "fb_support") return initFeed("support");
+    if(page === "fb_maga") return initFeed("maga");
+    if(page === "submit") return initSubmit();
+    if(page === "admin") return initAdmin();
+  }
+
+  document.addEventListener("DOMContentLoaded", init);
+})();
