@@ -66,19 +66,28 @@
       <div class="topbar">
         <div class="wrap">
           <div class="inner">
-            <a class="brand" href="${bp}index.html" aria-label="Home">
-              <img src="${bp}assets/logo.png" alt="Civic Threat logo"/>
-              <div class="text">
-                <strong>${esc(cfg.SITE_NAME || "CIVIC THREAT")}</strong>
-                <span>${esc(cfg.SITE_TAGLINE || "Debate & Discuss")}</span>
-              </div>
-              <div class="iconrow" aria-label="Social links">
-                ${socialIcon("facebook")}
-                ${socialIcon("youtube")}
-                ${socialIcon("tiktok")}
-                ${socialIcon("x")}
-              </div>
-            </a>
+            <div class="brandblock">
+  <a class="brand" href="${bp}index.html" aria-label="Home">
+    <img src="${bp}assets/logo.png" alt="Civic Threat logo"/>
+    <div class="text">
+      <strong>${esc(cfg.SITE_NAME || "CIVIC THREAT")}</strong>
+      <span>${esc(cfg.SITE_TAGLINE || "Debate & Discuss")}</span>
+    </div>
+  </a>
+
+  <div class="socialblock" aria-label="Follow Civic Threat on social media">
+    <div class="followcta" aria-hidden="true">
+      <span class="followtext">Follow us</span>
+      <span class="followarrow">➜</span>
+    </div>
+    <div class="iconrow" aria-label="Social links">
+      ${socialIcon("facebook")}
+      ${socialIcon("youtube")}
+      ${socialIcon("tiktok")}
+      ${socialIcon("x")}
+    </div>
+  </div>
+</div>
 
             <div class="nav">
               <div class="dropdown" id="platformsDD">
@@ -293,20 +302,8 @@
   function extractFacebookUrl(embedOrUrl){
     const raw = (embedOrUrl || "").trim();
     if(!raw) return "";
-
     // If direct URL pasted, keep it.
     if(/^https?:\/\/(www\.)?facebook\.com\//i.test(raw)) return raw;
-
-    // Try data-href="..."
-    const dataHref = raw.match(/data-href=["']([^"']+)["']/i);
-    if(dataHref && dataHref[1]){
-      const u = dataHref[1].trim();
-      if(/^https?:\/\/(www\.)?facebook\.com\//i.test(u)) return u;
-    }
-
-    // Try any facebook.com URL inside the snippet
-    const anyUrl = raw.match(/https?:\/\/(www\.)?facebook\.com\/[A-Za-z0-9._\-\/\?=&%]+/i);
-    if(anyUrl && anyUrl[0]) return anyUrl[0];
 
     // Try href="..."
     const hrefMatch = raw.match(/href=["']([^"']+)["']/i);
@@ -365,12 +362,8 @@
       ? `<a class="submittedby" href="${link}" target="_blank" rel="noopener" title="Open submitter profile">Submitted by: ${esc(name)}</a>`
       : `<span class="submittedby">Submitted by: ${esc(name)}</span>`;
 
-    const date = new Date(item.submittedAt || Date.now());
+    const date = item.approvedAt ? new Date(item.approvedAt) : new Date(item.submittedAt || Date.now());
     const dateStr = date.toLocaleDateString(undefined, {year:"numeric", month:"short", day:"2-digit"});
-
-    const goBtn = url
-      ? `<a class="btn blue" href="${url}" target="_blank" rel="noopener">Go to post</a>`
-      : `<span class="btn blue disabled" title="Post link unavailable">Go to post</span>`;
 
     return `
       <article class="post-card">
@@ -384,10 +377,7 @@
         <div class="embed">${frame}</div>
         <div class="post-foot">
           ${by}
-          <div class="btngroup">
-            ${goBtn}
-            <a class="btn" href="${item.category === "support" ? "./facebook.html" : "./facebook-maga.html"}">Browse</a>
-          </div>
+          <a class="btn" href="${item.category === "support" ? "./facebook.html" : "./facebook-maga.html"}">Browse</a>
         </div>
       </article>
     `;

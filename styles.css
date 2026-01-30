@@ -223,11 +223,11 @@ textarea{ min-height: 110px; resize: vertical; }
 }
 .fbframe{
   width:100%;
-  height: 360px !important;
+  height: 520px;
   border:0;
   background: rgba(0,0,0,.12);
 }
-.fbframe.small{ height: 260px !important; }
+.fbframe.small{ height: 360px; }
 @media (max-width: 420px){
   .fbframe{ height: 620px; }
   .fbframe.small{ height: 520px; }
@@ -299,6 +299,18 @@ textarea{ min-height: 110px; resize: vertical; }
 .cookiebar .actions{ display:flex; gap:10px; flex-wrap:wrap; }
 
 
-.btngroup{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-
-.btn.disabled{ opacity:.55; cursor:not-allowed; pointer-events:none; }
+/* Follow CTA next to social icons (header) */
+.brandblock{ display:flex; align-items:center; gap:14px; min-width:0; }
+.brandblock .brand{ gap:14px; text-decoration:none; color:inherit; }
+.socialblock{ display:flex; align-items:center; gap:10px; }
+.followcta{ display:flex; align-items:center; gap:8px; font-weight:900; letter-spacing:.3px; opacity:.95; }
+.followtext{ font-size:12px; text-transform:uppercase; }
+.followarrow{ display:inline-block; font-size:16px; transform: translateY(0); animation: ctFollowPulse 1.25s ease-in-out infinite; }
+@keyframes ctFollowPulse{
+  0%{ transform: translateY(0) translateX(0); opacity:.70; }
+  50%{ transform: translateY(-1px) translateX(2px); opacity:1; }
+  100%{ transform: translateY(0) translateX(0); opacity:.70; }
+}
+@media (max-width: 720px){
+  .followtext{ display:none; }
+}
