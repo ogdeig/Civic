@@ -365,6 +365,10 @@
     const date = item.approvedAt ? new Date(item.approvedAt) : new Date(item.submittedAt || Date.now());
     const dateStr = date.toLocaleDateString(undefined, {year:"numeric", month:"short", day:"2-digit"});
 
+    const go = url
+      ? `<a class="btn blue" href="${url}" target="_blank" rel="noopener">Go to post</a>`
+      : `<span class="btn blue" style="opacity:.55; cursor:not-allowed;" title="Post link unavailable">Go to post</span>`;
+
     return `
       <article class="post-card">
         <div class="post-head">
@@ -377,7 +381,10 @@
         <div class="embed">${frame}</div>
         <div class="post-foot">
           ${by}
-          <a class="btn" href="${item.category === "support" ? "./facebook.html" : "./facebook-maga.html"}">Browse</a>
+          <div class="btngroup">
+            ${go}
+            <a class="btn" href="${item.category === "support" ? "./facebook.html" : "./facebook-maga.html"}">Browse</a>
+          </div>
         </div>
       </article>
     `;
