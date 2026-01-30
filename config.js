@@ -8,10 +8,16 @@ window.CT_CONFIG = {
   TITLE_MAX: 80,
 
   // --- Remote Database (Google Sheets via Apps Script) ---
-  // Deploy the included Apps Script as a Web App, then paste its URL below.
+  // data-api.js will POST JSON to this Web App URL (appsScriptUrl) and include apiKey in the payload.
+  // IMPORTANT: leave enabled=false until your Apps Script is deployed and working.
   REMOTE_DB: {
     enabled: false,
-    appsScriptUrl: "https://script.google.com/macros/s/AKfycbx-CyGKK_nPZa9wnHkgEDHdzyWrhbWLF5GRFiuKnN39YXUhyJTdKtVWkY_SECpcBUcoew/exec",
-    apiKey: "" // optional shared secret; set in Apps Script + here
+
+    // Paste your deployed Apps Script *Web App* URL here (ends with /exec)
+    // Example: "https://script.google.com/macros/s/AKfycbx.../exec"
+    appsScriptUrl: "",
+
+    // Optional shared secret. If you set one in the Apps Script, set the same value here.
+    apiKey: ""
   }
 };
