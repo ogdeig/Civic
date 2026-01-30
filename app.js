@@ -72,23 +72,30 @@
                 <strong>${esc(cfg.SITE_NAME || "CIVIC THREAT")}</strong>
                 <span>${esc(cfg.SITE_TAGLINE || "Debate & Discuss")}</span>
               </div>
-              <div class="iconrow" aria-label="Social links">
-                ${socialIcon("facebook")}
-                ${socialIcon("youtube")}
-                ${socialIcon("tiktok")}
-                ${socialIcon("x")}
-              </div>
             </a>
 
             <div class="nav">
+              <div class="follow-cta" aria-label="Follow Civic Threat on social">
+                <div class="label">Follow us <span>→</span></div>
+                <div class="iconrow">
+                  ${socialIcon("facebook")}
+                  ${socialIcon("youtube")}
+                  ${socialIcon("tiktok")}
+                  ${socialIcon("x")}
+                </div>
+              </div>
+
               <div class="dropdown" id="platformsDD">
                 <button class="btn" type="button" id="platformsBtn" aria-haspopup="true" aria-expanded="false">Platforms ▾</button>
                 <div class="dropdown-menu" role="menu" aria-label="Platforms menu">
                   <div class="dd-title">Facebook</div>
-                  <a class="dd-item" role="menuitem" href="${bp}facebook.html"><span>Support</span><small>Browse</small></a>
-                  <a class="dd-item" role="menuitem" href="${bp}facebook-maga.html"><span>MAGA / Debate</span><small>Browse</small></a>
+                  <a role="menuitem" href="${bp}facebook.html">Facebook Support</a>
+                  <a role="menuitem" href="${bp}facebook-maga.html">Facebook MAGA / Debate</a>
+                  <div class="dd-title">More platforms</div>
+                  <a role="menuitem" href="${bp}index.html#coming-soon">Coming soon…</a>
                 </div>
               </div>
+
               <a class="btn blue" href="${bp}submit.html">Submit</a>
             </div>
           </div>
@@ -97,12 +104,6 @@
     `;
 
     wireDropdown(qs("#platformsDD"));
-  }
-
-  function socialIcon(k){
-    const url = SOCIAL[k];
-    const label = ({facebook:"Facebook", youtube:"YouTube", tiktok:"TikTok", x:"X"})[k] || k;
-    return `<a class="iconbtn" href="${url}" target="_blank" rel="noopener" aria-label="${label}">${ICONS[k]}</a>`;
   }
 
   function wireDropdown(dd){
@@ -152,12 +153,12 @@
                 </div>
               </div>
               <div class="footer-copy">© ${year} Civic Threat. All rights reserved.</div>
-              <div style="margin-top:10px" class="iconrow" aria-label="Social links in footer">
+              <div style="margin-top:10px" class="follow-cta" aria-label="Follow Civic Threat in footer"><div class="label">Follow us <span>→</span></div><div class="iconrow">
                 ${socialIcon("facebook")}
                 ${socialIcon("youtube")}
                 ${socialIcon("tiktok")}
                 ${socialIcon("x")}
-              </div>
+              </div></div>
             </div>
 
             <div>
@@ -368,7 +369,10 @@
         <div class="embed">${frame}</div>
         <div class="post-foot">
           ${by}
-          <a class="btn" href="${item.category === "support" ? "./facebook.html" : "./facebook-maga.html"}">Browse</a>
+          <div class="btngroup">
+            ${url ? `<a class="btn red" href="${url}" target="_blank" rel="noopener">View on Facebook</a>` : ``}
+            <a class="btn ghost" href="${item.category === "support" ? "./facebook.html" : "./facebook-maga.html"}">Browse</a>
+          </div>
         </div>
       </article>
     `;

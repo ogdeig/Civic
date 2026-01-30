@@ -11,7 +11,7 @@ window.CT_CONFIG = {
   // Deploy the included Apps Script as a Web App, then paste its URL below.
   REMOTE_DB: {
     enabled: false,
-    appsScriptUrl: "https://script.google.com/macros/s/AKfycbx-CyGKK_nPZa9wnHkgEDHdzyWrhbWLF5GRFiuKnN39YXUhyJTdKtVWkY_SECpcBUcoew/exec",
+    appsScriptUrl: "",
     apiKey: "" // optional shared secret; set in Apps Script + here
   }
 };
