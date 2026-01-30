@@ -1,37 +1,110 @@
-{
-  "version": 3,
-  "generatedAt": "2026-01-28T06:19:22.591044Z",
-  "posts": [
-    {
-      "id": "seed-1",
-      "platform": "facebook",
-      "category": "support",
-      "title": "Sample (Support) \u2014 replace with your own",
-      "fbUrl": "https://www.facebook.com/facebook/posts/10153231379946729",
-      "tags": [
-        "sample"
-      ],
-      "notes": "Starter example. Submit new posts on Submit page, then approve them on Review page.",
-      "addedAt": "2026-01-27T00:00:00Z",
-      "submittedBy": {
-        "display": "Anonymous"
-      }
-    },
-    {
-      "id": "seed-2",
-      "platform": "facebook",
-      "category": "maga",
-      "title": "Sample (MAGA / Debate) \u2014 replace with your own",
-      "fbUrl": "https://www.facebook.com/facebook/posts/10153231379946729",
-      "tags": [
-        "sample",
-        "debate"
-      ],
-      "notes": "Placeholder example for the MAGA / Debate section.",
-      "addedAt": "2026-01-27T00:00:00Z",
-      "submittedBy": {
-        "display": "Anonymous"
-      }
-    }
-  ]
-}
+[
+  {
+    "id": "ea2f5d05-1b6c-41cb-b96c-aa01eca4a39a",
+    "platform": "facebook",
+    "category": "maga",
+    "title": "This NC Congressman Is A Joke Posting Fake Videos",
+    "postUrl": "https://www.facebook.com/RealAustinAyers/posts/pfbid0359CqPXLsx1uVioA18EmTMv4vt2ibBFiSe4nEp3b9t1jqwkUiraJsZrG9Ya17Mo8cl",
+    "submittedAt": 1769775803402,
+    "submitterName": "Anonymous",
+    "submitterLink": "",
+    "consent": true,
+    "approvedAt": 1769775814302
+  },
+  {
+    "id": "387f3877-72b6-4ac1-b048-6b321ae081e9",
+    "platform": "facebook",
+    "category": "maga",
+    "title": "Ted Nugent Is A DOUCHE",
+    "postUrl": "https://www.facebook.com/tednugent/posts/pfbid038C1riQcu98KPdg3GxGSUGsjJkgnCm2E2YdprrmH9fxXLKEWBEgpcgZe4vBVK9JLel",
+    "submittedAt": 1769775484493,
+    "submitterName": "Anonymous",
+    "submitterLink": "",
+    "consent": false,
+    "approvedAt": 1769775493247
+  },
+  {
+    "id": "2a9cd680-1056-4f71-b339-6ab9e58dbf1a",
+    "platform": "facebook",
+    "category": "support",
+    "title": "Love this Guy",
+    "postUrl": "https://www.facebook.com/reel/711429758567468/",
+    "submittedAt": 1769775366810,
+    "submitterName": "Anonymous",
+    "submitterLink": "",
+    "consent": false,
+    "approvedAt": 1769775383612
+  },
+  {
+    "id": "285f2589-17c2-4341-b854-b1c4765af59a",
+    "platform": "facebook",
+    "category": "maga",
+    "title": "They will Try To Find Any Excuse For ICE",
+    "postUrl": "https://www.facebook.com/ThePoliticalInsider/posts/pfbid0k7Cc5ydLVgNyPyhmS7VHbjZtg8q88yuyBJ6ujVgEjUWBK1L4iori2mswf45LvXbMl",
+    "submittedAt": 1769775284342,
+    "submitterName": "@CivicThreat",
+    "submitterLink": "https://www.facebook.com/CivicThreat",
+    "consent": true,
+    "approvedAt": 1769775292272
+  },
+  {
+    "id": "6dd1cce7-d544-4ac1-9ab4-84669714234d",
+    "platform": "facebook",
+    "category": "support",
+    "title": "ICE is not the Jury, MAGA  isn't Either",
+    "postUrl": "https://www.facebook.com/USdems/posts/pfbid0KBodES53gaE23BJqbHnhEhg7Ctu3APLC8ACa64zKjUseGnngLDzTWRBf7Mp4NEXul",
+    "submittedAt": 1769775165794,
+    "submitterName": "@CivicThreat",
+    "submitterLink": "https://www.facebook.com/CivicThreat",
+    "consent": true,
+    "approvedAt": 1769775186062
+  },
+  {
+    "id": "ffc49371-9453-4fb9-9e8e-8a65e6fc5213",
+    "platform": "facebook",
+    "category": "maga",
+    "title": "STFU",
+    "postUrl": "https://www.facebook.com/OutspokenSamantha/posts/pfbid0BdsZcyDtmBqKCnwJpdNtULWrYrM6PdPwcXKy7xVmTtuC3xq6kpK4U1gzGDHTYNwsl",
+    "submittedAt": 1769762150839,
+    "submitterName": "@CivicThreat",
+    "submitterLink": "https://www.facebook.com/CivicThreat",
+    "consent": true,
+    "approvedAt": 1769763160173
+  },
+  {
+    "id": "14883ef3-e17a-410e-9ffe-cf51ba43ac64",
+    "platform": "facebook",
+    "category": "support",
+    "title": "Walkout!!",
+    "postUrl": "https://www.facebook.com/helpful.hippie.2025/posts/pfbid027sfmsaivcCUQNDSKP3sWZkoyDvjX8RfxCLabbsbpBBPiTsfxLJBn3dtSMrNT7Nocl",
+    "submittedAt": 1769761360827,
+    "submitterName": "Anonymous",
+    "submitterLink": "",
+    "consent": false,
+    "approvedAt": 1769761394684
+  },
+  {
+    "id": "0e764265-3427-495d-8926-b01ff79ec3a0",
+    "platform": "facebook",
+    "category": "support",
+    "title": "Uhhh Ohhh Indiana",
+    "postUrl": "https://www.facebook.com/helpful.hippie.2025/posts/pfbid07cVP8diQzdpweuPhSxYPhySUanfPFyvAyhqWydddZJGHnkdNriEq1NTvPvd5GsrDl",
+    "submittedAt": 1769760932528,
+    "submitterName": "Anonymous",
+    "submitterLink": "",
+    "consent": false,
+    "approvedAt": 1769760963009
+  },
+  {
+    "id": "72ab08e9-baec-4db2-869f-edc21385701a",
+    "platform": "facebook",
+    "category": "support",
+    "title": "gunny",
+    "postUrl": "https://www.facebook.com/reel/1185215460262982/",
+    "submittedAt": 1769746067027,
+    "submitterName": "@CivicThreat",
+    "submitterLink": "https://www.facebook.com/CivicThreat",
+    "consent": true,
+    "approvedAt": 1769746138064
+  }
+]
