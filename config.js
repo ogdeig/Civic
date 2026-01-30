@@ -14,7 +14,7 @@ window.CT_CONFIG = {
     enabled: true,
 
     // ✅ Your deployed Apps Script Web App URL
-    appsScriptUrl: "https://script.google.com/macros/s/AKfycbyFVtHnkg7t2kPHsqQcuDItH2Rp0iUZuZw6LwvGEjhVaBXkhUIobUZ8OFdcHeQ_6VU-NA/exec",
+    appsScriptUrl: "https://script.google.com/macros/s/AKfycbxvjktr3A_FCZEgRNtkWBb9qGJTjdwa0oaS2ofAzQDQGngka0vLe8MwJrgUqy5KUOl6lA/exec",
 
     // OPTIONAL:
     // If your Apps Script has CT_API_KEY set in Script Properties, put the same value here.
