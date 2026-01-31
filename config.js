@@ -12,7 +12,7 @@ window.CT_CONFIG = {
   // Enable this to make Google Sheets the source of truth (no more device-only posts).
   REMOTE_DB: {
     enabled: true,
-    appsScriptUrl: "https://script.google.com/macros/s/AKfycbyFVtHnkg7t2kPHsqQcuDItH2Rp0iUZuZw6LwvGEjhVaBXkhUIobUZ8OFdcHeQ_6VU-NA/exec",
-    apiKey: "" // optional shared key; only effective if enforced in Apps Script
+    appsScriptUrl: "https://script.google.com/macros/s/AKfycbxvjktr3A_FCZEgRNtkWBb9qGJTjdwa0oaS2ofAzQDQGngka0vLe8MwJrgUqy5KUOl6lA/exec",
+    apiKey: "civicthreat_12345_secret" // optional shared key; only effective if enforced in Apps Script
   }
 };
