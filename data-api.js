@@ -38,7 +38,12 @@
 
       const script = document.createElement("script");
       script.async = true;
-      script.src = url.toString();
+
+      const finalUrl = url.toString();
+      window.__CT_LAST_REMOTE_URL = finalUrl;
+      try{ console.log("[CT_REMOTE] JSONP ->", finalUrl); }catch(_){}
+
+      script.src = finalUrl;
 
       let done = false;
       const timer = setTimeout(()=>{
@@ -61,6 +66,15 @@
         resolve(data);
       };
 
+      script.onload = ()=>{
+        // If callback never fires, this helps diagnose "loaded but not executed/called"
+        setTimeout(()=>{
+          if(!done){
+            try{ console.warn("[CT_REMOTE] Script loaded but callback did not fire. Check Web App access, CSP, or response type.", finalUrl); }catch(_){}
+          }
+        }, 50);
+      };
+
       script.onerror = ()=>{
         if(done) return;
         done = true;
@@ -81,6 +95,7 @@
   }
 
   window.CT_REMOTE = {
+    __transport: "jsonp",
     listApproved: async ()=> (await call({ action:"listApproved" })).items || [],
     listPending:  async ()=> (await call({ action:"listPending"  })).items || [],
     submit: async (item)=>{
