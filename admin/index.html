@@ -187,9 +187,7 @@
           const res = await remoteDeleteApproved(id);
 
           if(!res || res.ok !== true){
-            alert("Delete failed. If you haven't added deleteApproved to Apps Script yet, do that next.
-
-" + (res && res.error ? res.error : "Unknown error"));
+            alert("Delete failed. If you haven't added deleteApproved to Apps Script yet, do that next.\n\n" + (res && res.error ? res.error : "Unknown error"));
             delBtn.textContent = "Delete";
             return;
           }
