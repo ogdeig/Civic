@@ -1,4 +1,5 @@
-// CivicThreat.us — site config (GitHub Pages + Cloudflare friendly)
+// CivicThreat.us site config
+// NOTE: This file is public on GitHub Pages. Do not put true secrets here.
 window.CT_CONFIG = {
   SITE_NAME: "CIVIC THREAT",
   SITE_TAGLINE: "Debate & Discuss",
@@ -8,18 +9,10 @@ window.CT_CONFIG = {
   TITLE_MAX: 80,
 
   // --- Remote Database (Google Sheets via Apps Script Web App) ---
-  // data-api.js will POST JSON to this URL and include apiKey in the payload.
+  // Enable this to make Google Sheets the source of truth (no more device-only posts).
   REMOTE_DB: {
-    // ✅ Turn ON remote mode (Sheets becomes the source of truth)
     enabled: true,
-
-    // ✅ Your deployed Apps Script Web App URL
-    appsScriptUrl: "https://script.google.com/macros/s/AKfycbxvjktr3A_FCZEgRNtkWBb9qGJTjdwa0oaS2ofAzQDQGngka0vLe8MwJrgUqy5KUOl6lA/exec",
-
-    // OPTIONAL:
-    // If your Apps Script has CT_API_KEY set in Script Properties, put the same value here.
-    // If you haven't set CT_API_KEY (or want to test quickly), leave this "" AND temporarily
-    // disable auth check in Apps Script (not recommended long-term).
-    apiKey: "civicthreat_12345_secret"
+    appsScriptUrl: "https://script.google.com/macros/s/AKfycbyFVtHnkg7t2kPHsqQcuDItH2Rp0iUZuZw6LwvGEjhVaBXkhUIobUZ8OFdcHeQ_6VU-NA/exec",
+    apiKey: "" // optional shared key; only effective if enforced in Apps Script
   }
 };
