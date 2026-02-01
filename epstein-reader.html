@@ -3,31 +3,48 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Epstein Files — Read Aloud</title>
+  <title>Epstein Files — PDF Read Aloud | Civic Threat</title>
+  <meta name="description" content="Select a PDF and have it read aloud in your browser using text-to-speech. Browse and listen page by page, adjust speed, pause, stop, or skip ahead." />
+  <meta name="robots" content="index,follow" />
+
+  <!-- Favicon (uses your existing logo file) -->
+  <link rel="icon" href="./assets/logo.png" type="image/png" />
+  <link rel="apple-touch-icon" href="./assets/logo.png" />
 
   <!-- Your site CSS (keep your existing one) -->
   <link rel="stylesheet" href="./styles.css" />
 
   <style>
-    /* Page-only polish (no “dashboard containers”) */
+    /* Page-only polish */
     .reader-wrap { max-width: 1100px; margin: 0 auto; padding: 22px 16px 60px; }
     .reader-head { display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap; margin: 10px 0 18px; }
     .reader-head h1 { margin:0; font-size: 28px; letter-spacing:.2px; }
-    .reader-sub { margin:6px 0 0; opacity:.85; line-height:1.45; }
+    .reader-sub { margin:6px 0 0; opacity:.86; line-height:1.55; max-width: 60ch; }
 
-    .reader-controls { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-    .reader-controls select { min-width: 260px; }
+    .reader-controls { display:flex; gap:10px; flex-wrap:wrap; align-items:end; }
+    .reader-controls .control { display:flex; flex-direction:column; gap:6px; }
+    .reader-controls select { min-width: 280px; }
 
     .reader-status {
       margin-top: 14px;
-      padding: 12px 0;
-      font-size: 18px; /* bigger, per your request */
-      font-weight: 800;
+      padding: 10px 0;
+      font-size: 20px; /* more visible */
+      font-weight: 900;
       letter-spacing: .2px;
     }
+    .reader-status small { display:block; margin-top:6px; font-size: 14px; font-weight: 700; opacity:.85; }
 
-    .reader-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top: 10px; }
+    .reader-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top: 10px; align-items:center; }
     .reader-actions .btn { white-space: nowrap; }
+
+    .speed {
+      display:flex; align-items:center; gap:10px;
+      padding: 8px 10px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+    }
+    .speed label { font-weight: 900; opacity:.95; }
+    .speed select { min-width: 120px; }
 
     .pdf-preview {
       margin-top: 18px;
@@ -35,10 +52,20 @@
       background: rgba(0,0,0,.18);
       padding: 12px;
     }
-    .pdf-preview iframe { width:100%; height: 620px; border:0; }
+    .pdf-preview iframe { width:100%; height: 620px; border:0; background: rgba(255,255,255,.02); }
     @media (max-width: 640px){
       .pdf-preview iframe { height: 520px; }
+      .reader-controls select { min-width: 240px; }
     }
+
+    .legalbox {
+      margin-top: 18px;
+      padding: 14px 14px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.14);
+      line-height: 1.55;
+    }
+    .legalbox strong { display:block; margin-bottom:6px; }
   </style>
 </head>
 
@@ -50,44 +77,64 @@
   <main class="reader-wrap">
     <div class="reader-head">
       <div>
-        <h1>Epstein Files — Read Aloud</h1>
+        <h1>Epstein Files — PDF Read Aloud</h1>
         <p class="reader-sub">
-          Choose a PDF from the list. It will load the document and read it aloud using a UK English voice when available.
+          Choose a PDF from the list. This page loads the document in your browser and reads it aloud using text-to-speech.
+          Use the controls to pause, stop, change speed, or skip to the next page.
         </p>
       </div>
 
       <div class="reader-controls">
-        <label class="smallnote" for="pdfSelect" style="font-weight:800; opacity:1">Select PDF</label>
-        <select id="pdfSelect" class="input" aria-label="Select a PDF">
-          <option value="">Loading list…</option>
-        </select>
+        <div class="control">
+          <label class="smallnote" for="pdfSelect" style="font-weight:900; opacity:1">Select PDF</label>
+          <select id="pdfSelect" class="input" aria-label="Select a PDF">
+            <option value="">Loading list…</option>
+          </select>
+        </div>
       </div>
     </div>
 
-    <div id="readerStatus" class="reader-status">Loading PDF list…</div>
+    <div id="readerStatus" class="reader-status">
+      Loading PDF list…
+      <small id="readerSubStatus"></small>
+    </div>
 
     <div class="reader-actions">
       <button class="btn blue" id="btnPlay" type="button">Play / Resume</button>
       <button class="btn" id="btnPause" type="button">Pause</button>
       <button class="btn" id="btnStop" type="button">Stop</button>
+      <button class="btn" id="btnSkip" type="button">Skip Page</button>
       <button class="btn" id="btnMute" type="button">Mute</button>
 
-      <label class="smallnote" style="display:flex; align-items:center; gap:10px; font-weight:800">
+      <div class="speed" aria-label="Reading speed">
+        <label for="speedSelect">Speed</label>
+        <select id="speedSelect" class="input">
+          <option value="1">1×</option>
+          <option value="1.25">1.25×</option>
+          <option value="1.5">1.5×</option>
+          <option value="2">2×</option>
+        </select>
+      </div>
+
+      <label class="smallnote" style="display:flex; align-items:center; gap:10px; font-weight:900; opacity:1">
         Volume
         <input id="volSlider" type="range" min="0" max="1" step="0.05" value="1" />
       </label>
     </div>
 
     <div class="pdf-preview" id="pdfPreview" style="display:none">
-      <div class="smallnote" style="margin-bottom:10px; opacity:.9">
-        Preview (Facebook-style embed not used here — this is just the PDF)
+      <div class="smallnote" style="margin-bottom:10px; opacity:.9; font-weight:900">
+        PDF Viewer
       </div>
       <iframe id="pdfFrame" title="PDF preview"></iframe>
     </div>
 
-    <p class="smallnote" style="margin-top:18px; opacity:.85">
-      Tip: If the PDF is very large, the first minute may take a moment to process. You’ll see progress updates while it loads pages.
-    </p>
+    <div class="legalbox">
+      <strong>Important notice</strong>
+      This tool uses automated text extraction and text-to-speech. Accuracy is not guaranteed (tables, scans, or poor-quality pages may read incorrectly).
+      Content may include sensitive or distressing material. Use at your own discretion.
+      Civic Threat is providing a discussion and research tool and does not claim endorsement by any platform or document source.
+    </div>
   </main>
 
   <!-- Footer injected by app.js -->
@@ -98,10 +145,9 @@
   <script src="./data-api.js"></script>
   <script src="./app.js"></script>
 
-  <!-- PDF.js from CDN (no local files needed) -->
+  <!-- PDF.js from CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script>
   <script>
-    // Set worker from CDN to match the library version
     if (window.pdfjsLib) {
       window.pdfjsLib.GlobalWorkerOptions.workerSrc =
         "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.worker.min.js";
