@@ -135,7 +135,7 @@
 <div class="dropdown" id="ReleasedsDD">
   <button class="btn" type="button" id="ReleasedsBtn" aria-haspopup="true" aria-expanded="false">Released Files ▾</button>
   <div class="dropdown-menu" role="menu" aria-label="Released files menu">
-    <a class="dd-item" role="menuitem" href="${bp}epstein-reader.html"><span>Epstein Files</span><small>PDF reader + audio</small></a>
+    <a class="dd-item" role="menuitem" href="${bp}released/epstein/epstein-reader.html"><span>Epstein Files</span><small>PDF reader + audio</small></a>
   </div>
 </div>
               <a class="btn blue" href="${bp}submit.html">Submit</a>
