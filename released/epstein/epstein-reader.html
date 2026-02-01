@@ -6,7 +6,317 @@
 
   <title>Epstein Files Reader (TTS) • Civic Threat</title>
   <meta name="description" content="Listen to and view released PDF documents with text-to-speech. Choose voice, speed, and navigate pages." />
+  <meta name="robots" content="index,follow"<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+  <title>Epstein Files Reader (TTS) • Civic Threat</title>
+  <meta name="description" content="Listen to and view released PDF documents with text-to-speech. Choose voice, speed, and navigate pages." />
   <meta name="robots" content="index,follow" />
+
+  <!-- Use your site logo for favicon to avoid /assets/favicon.ico 404 -->
+  <link rel="icon" href="/assets/logo.png" type="image/png" />
+
+  <!-- IMPORTANT: Use your main site CSS so header/footer match the rest of the site -->
+  <link rel="stylesheet" href="/styles.css?v=1" />
+
+  <!-- Minimal page-only styling (does NOT change your header colors) -->
+  <style>
+    .ep-wrap{ max-width: 1200px; margin: 0 auto; padding: 28px 18px 42px; }
+    .ep-hero{ margin-bottom: 18px; }
+    .ep-hero h1{ margin: 0 0 8px; font-size: 34px; letter-spacing: .2px; }
+    .ep-hero p{ margin: 0; color: rgba(255,255,255,.78); max-width: 900px; }
+
+    .ep-grid{
+      display: grid;
+      grid-template-columns: 1.05fr .95fr;
+      gap: 16px;
+      align-items: start;
+      margin-top: 18px;
+    }
+    @media (max-width: 980px){
+      .ep-grid{ grid-template-columns: 1fr; }
+    }
+
+    .ep-card{
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.30);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .ep-card .ep-hd{
+      padding: 14px 14px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      display:flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .ep-card .ep-hd strong{ font-size: 14px; letter-spacing: .2px; }
+    .ep-card .ep-bd{ padding: 14px; }
+
+    .ep-row{
+      display:flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: end;
+    }
+    .ep-field{ flex: 1 1 280px; min-width: 240px; }
+    .ep-field.small{ flex: 0 1 160px; min-width: 150px; }
+
+    .ep-field label{
+      display:block;
+      font-size: 12px;
+      color: rgba(255,255,255,.66);
+      margin: 0 0 6px;
+    }
+
+    .ep-field select{
+      width: 100%;
+      background: rgba(0,0,0,.35);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 10px;
+      padding: 10px 10px;
+      outline: none;
+    }
+
+    .ep-controls{
+      display:flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .ep-status{
+      margin-top: 12px;
+      padding: 14px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.32);
+      font-size: 18px;  /* bigger like you asked */
+      font-weight: 900;
+      letter-spacing: .2px;
+    }
+    .ep-status small{
+      display:block;
+      margin-top: 6px;
+      font-weight: 700;
+      font-size: 13px;
+      color: rgba(255,255,255,.68);
+    }
+
+    .ep-view-meta{
+      color: rgba(255,255,255,.72);
+      font-size: 13px;
+    }
+
+    .ep-canvasWrap{
+      padding: 12px;
+      display:grid;
+      place-items: center;
+      background: rgba(0,0,0,.22);
+    }
+    #pdfCanvas{
+      width: 100%;
+      height: auto;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: #111;
+    }
+
+    .ep-note{
+      margin-top: 10px;
+      color: rgba(255,255,255,.62);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    /* 21+ Gate */
+    .ep-gate{
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: grid;
+      place-items: center;
+      padding: 18px;
+      background: rgba(0,0,0,.86);
+    }
+    .ep-gateCard{
+      width: min(820px, 100%);
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.60);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    .ep-gateCard .g-hd{
+      padding: 16px 16px;
+      border-bottom: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,0,80,.12);
+    }
+    .ep-gateCard .g-hd h2{
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: .2px;
+    }
+    .ep-gateCard .g-bd{
+      padding: 16px 16px;
+      color: rgba(255,255,255,.78);
+    }
+    .ep-gateCard ul{ margin: 10px 0 0 18px; }
+    .ep-gateCard li{ margin: 6px 0; }
+    .ep-gateCard .g-actions{
+      padding: 14px 16px;
+      border-top: 1px solid rgba(255,255,255,.12);
+      display:flex;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-wrap: wrap;
+      background: rgba(0,0,0,.25);
+    }
+    .hidden{ display:none !important; }
+  </style>
+</head>
+
+<body data-page="">
+  <!-- Site Header injected by app.js -->
+  <div id="siteHeader"></div>
+
+  <!-- 21+ Gate -->
+  <div id="gate" class="ep-gate">
+    <div class="ep-gateCard">
+      <div class="g-hd">
+        <h2>Age Verification Required</h2>
+      </div>
+      <div class="g-bd">
+        This page contains material that may include sexually explicit content and sensitive subject matter.
+        <ul>
+          <li>You must be <strong>21 years of age or older</strong> to continue.</li>
+          <li>By continuing, you confirm you meet this age requirement.</li>
+          <li>This content is provided for informational purposes; viewer discretion is advised.</li>
+        </ul>
+      </div>
+      <div class="g-actions">
+        <button class="btn" id="leaveBtn" type="button">Leave</button>
+        <button class="btn blue" id="agreeBtn" type="button">I’m 21+ — Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <main class="ep-wrap">
+    <section class="ep-hero">
+      <h1>Epstein Files Reader (TTS)</h1>
+      <p>
+        Select a released PDF to view it and have it read aloud. Choose a voice and reading speed,
+        then use Play / Pause / Stop. Prev/Next moves one page at a time.
+      </p>
+    </section>
+
+    <section class="ep-grid">
+      <!-- Controls -->
+      <div class="ep-card">
+        <div class="ep-hd">
+          <strong>Controls</strong>
+          <span style="color:rgba(255,255,255,.55);font-size:12px">Text-to-Speech + PDF Viewer</span>
+        </div>
+        <div class="ep-bd">
+          <div class="ep-row">
+            <div class="ep-field">
+              <label for="pdfSelect">Choose a PDF</label>
+              <select id="pdfSelect">
+                <option value="">Loading PDFs…</option>
+              </select>
+            </div>
+
+            <div class="ep-field">
+              <label for="voiceSelect">Voice</label>
+              <select id="voiceSelect">
+                <option value="">Loading voices…</option>
+              </select>
+            </div>
+
+            <div class="ep-field small">
+              <label for="speedSelect">Speed</label>
+              <select id="speedSelect">
+                <option value="1">1.0×</option>
+                <option value="1.25">1.25×</option>
+                <option value="1.5">1.5×</option>
+                <option value="2">2.0×</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="ep-controls">
+            <button class="btn blue" id="playBtn" type="button">▶ Play</button>
+            <button class="btn" id="pauseBtn" type="button" disabled>⏸ Pause</button>
+            <button class="btn" id="stopBtn" type="button" disabled>⏹ Stop</button>
+
+            <button class="btn" id="prevBtn" type="button" disabled>← Prev Page</button>
+            <button class="btn" id="nextBtn" type="button" disabled>Next Page →</button>
+
+            <button class="btn" id="muteBtn" type="button" disabled>🔇 Mute</button>
+          </div>
+
+          <div class="ep-status" id="statusBox">
+            Loading reader…
+            <small id="statusSub">Please wait.</small>
+          </div>
+
+          <div class="ep-note">
+            <strong>Disclosure:</strong> This page contains sensitive content. All voices and playback are provided by your device/browser.
+            Some PDFs may be scanned (image-only) and may not contain extractable text for reading.
+          </div>
+        </div>
+      </div>
+
+      <!-- Viewer -->
+      <div class="ep-card">
+        <div class="ep-hd">
+          <strong>Viewer</strong>
+          <span class="ep-view-meta" id="viewerMeta">No PDF loaded.</span>
+        </div>
+        <div class="ep-canvasWrap">
+          <canvas id="pdfCanvas" width="900" height="1200"></canvas>
+        </div>
+        <div style="padding: 12px 14px; border-top:1px solid rgba(255,255,255,.10); display:flex; justify-content:flex-end;">
+          <a class="btn" id="openPdfBtn" href="#" target="_blank" rel="noopener" style="display:none;">Open PDF</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Site Footer injected by app.js -->
+  <div id="siteFooter"></div>
+
+  <!-- Load your normal site JS so header/footer render -->
+  <script src="/config.js?v=1"></script>
+  <script src="/data-api.js?v=1"></script>
+  <script src="/app.js?v=1"></script>
+
+  <!-- PDF.js as ES module (fixes your cdnjs MIME/type issues) -->
+  <script type="module">
+    try{
+      // Pick a known-good pdf.js version on cdnjs and load the .mjs module build
+      const v = "4.10.38";
+      const pdfjs = await import(`https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${v}/pdf.min.mjs`);
+      pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${v}/pdf.worker.min.mjs`;
+      window.pdfjsLib = pdfjs;
+      window.dispatchEvent(new Event("pdfjs-ready"));
+    }catch(e){
+      console.error("PDF.js module load failed", e);
+      window.__pdfjs_load_error = e;
+      window.dispatchEvent(new Event("pdfjs-failed"));
+    }
+  </script>
+
+  <!-- Reader logic -->
+  <script src="./epstein-tts.js?v=10" defer></script>
+</body>
+</html>
+ />
 
   <!-- Use your site logo for favicon to avoid /assets/favicon.ico 404 -->
   <link rel="icon" href="/assets/logo.png" type="image/png" />
