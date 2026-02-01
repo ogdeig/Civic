@@ -59,7 +59,34 @@ main{ min-height: 65vh; }
   font-size:12px; font-weight:900; opacity:.92; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 
-.iconrow{ display:flex; align-items:center; gap:10px; }
+
+
+/* Header layout: keep brand + Follow + icons on one line */
+.topbar .inner{ flex-wrap:nowrap; }
+.brandblock{ display:flex; align-items:center; gap:16px; min-width:0; flex:1 1 auto; }
+.socialblock{ display:flex; align-items:center; gap:12px; margin-left:6px; white-space:nowrap; }
+.followcta{ display:flex; align-items:center; gap:8px; font-weight:1000; font-size:12px; letter-spacing:.4px; text-transform:uppercase; opacity:.95; }
+.followtext{ opacity:.92; }
+.followarrow{ display:inline-block; font-size:16px; transform-origin:center; animation: ctPulseArrow 1.15s ease-in-out infinite; }
+@keyframes ctPulseArrow{
+  0%,100%{ transform:translateX(0) scale(1); opacity:.85; }
+  50%{ transform:translateX(3px) scale(1.07); opacity:1; }
+}
+@media (prefers-reduced-motion: reduce){
+  .followarrow{ animation:none; }
+}
+
+/* Social icons row */
+.iconrow{ display:flex; align-items:center; gap:8px; }
+
+/* Allow wrapping only on narrow screens */
+@media (max-width: 880px){
+  .topbar .inner{ flex-wrap:wrap; }
+  .brandblock{ flex-wrap:wrap; }
+  .socialblock{ width:100%; justify-content:flex-start; margin-top:10px; }
+  .followcta{ font-size:11px; }
+}
+
 .iconbtn{
   display:inline-flex; align-items:center; justify-content:center;
   width:32px; height:32px;
@@ -223,11 +250,12 @@ textarea{ min-height: 110px; resize: vertical; }
 }
 .fbframe{
   width:100%;
-  height: 520px;
+  height: 480px;
   border:0;
   background: rgba(0,0,0,.12);
 }
-.fbframe.small{ height: 360px; }
+.fbframe.small{
+  height: 340px; }
 @media (max-width: 420px){
   .fbframe{ height: 620px; }
   .fbframe.small{ height: 520px; }
@@ -359,9 +387,9 @@ textarea{ min-height: 110px; resize: vertical; }
 
 /* Make loading text VERY visible */
 .fbembed-loading .txt{
-  font-size: 22px;
+  font-size: 28px;
   font-weight: 900;
   letter-spacing: .3px;
   text-shadow: 0 2px 10px rgba(0,0,0,.55);
 }
-.fbembed-loading .dots{ font-size: 22px; }
+.fbembed-loading .dots{ font-size: 28px; }
