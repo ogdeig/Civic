@@ -1,0 +1,78 @@
+name: Build Epstein PDF index
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "released/epstein/pdfs/**"
+      - ".github/workflows/build-epstein-index.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build-index:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate released/epstein/index.json
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          PDF_DIR="released/epstein/pdfs"
+          OUT_FILE="released/epstein/index.json"
+
+          mkdir -p "$(dirname "$OUT_FILE")"
+
+          python3 - << 'PY'
+          import os, json, re, time
+          from pathlib import Path
+
+          pdf_dir = Path("released/epstein/pdfs")
+          out_file = Path("released/epstein/index.json")
+
+          def label_from_filename(name: str) -> str:
+            # Turn "2006-1234_epstein_deposition.pdf" into "2006 1234 Epstein Deposition"
+            base = re.sub(r"\.pdf$", "", name, flags=re.I)
+            base = base.replace("_", " ").replace("-", " ")
+            base = re.sub(r"\s+", " ", base).strip()
+            # Title-case but keep common short words reasonable
+            return base[:1].upper() + base[1:]
+
+          items = []
+          if pdf_dir.exists():
+            for p in sorted(pdf_dir.glob("*.pdf"), key=lambda x: x.name.lower()):
+              items.append({
+                "file": p.name,
+                "path": f"released/epstein/pdfs/{p.name}",
+                "label": label_from_filename(p.name),
+              })
+
+          payload = {
+            "generatedAt": int(time.time()),
+            "count": len(items),
+            "items": items
+          }
+
+          out_file.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+          print(f"Wrote {out_file} with {len(items)} items.")
+          PY
+
+      - name: Commit changes (if any)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git status --porcelain | grep -q "released/epstein/index.json"; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add released/epstein/index.json
+            git commit -m "Update Epstein PDF index"
+            git push
+          else
+            echo "No changes to commit."
+          fi
