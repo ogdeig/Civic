@@ -3,551 +3,344 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Released Epstein Files Reader (21+) | Civic Threat</title>
-
-  <meta name="description" content="Listen to released PDF documents with text-to-speech. Includes a built-in PDF viewer, voice selection, and playback controls. Adults 21+ only." />
+  <title>Epstein Files Reader (TTS) • Civic Threat</title>
+  <meta name="description" content="Listen to and view released PDF documents with text-to-speech. Choose voice, speed, and navigate pages." />
   <meta name="robots" content="index,follow" />
 
-  <!-- Social share -->
-  <meta property="og:title" content="Released Epstein Files Reader (21+) | Civic Threat" />
-  <meta property="og:description" content="Select a released PDF, view it, and listen with text-to-speech. Adults 21+ only." />
-  <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://civicthreat.us/released/epstein/epstein-reader.html" />
+  <!-- Use logo as favicon to avoid 404 -->
+  <link rel="icon" href="/assets/logo.png" type="image/png" />
 
-  <!-- Use your existing site social image if you want -->
-  <meta property="og:image" content="https://civicthreat.us/civicthreat-social-1200x630.jpg" />
-  <meta name="twitter:card" content="summary_large_image" />
-
-  <!-- Favicon (absolute path so it works from /released/epstein/) -->
-  <link rel="icon" href="/assets/favicon.ico" />
-  <link rel="apple-touch-icon" href="/assets/favicon.ico" />
-
-  <!-- Site CSS -->
-  <link rel="stylesheet" href="/styles.css" />
-
-  <!-- Page-specific polish (keeps your overall theme, avoids "dashboard" look) -->
   <style>
     :root{
-      --ct-bg:#05060a;
-      --ct-panel:rgba(255,255,255,.06);
-      --ct-panel2:rgba(255,255,255,.04);
-      --ct-border:rgba(255,255,255,.12);
-      --ct-shadow:0 10px 30px rgba(0,0,0,.55);
-      --ct-red:#c1001f;
-      --ct-blue:#1e6bff;
-      --ct-text:#ffffff;
-      --ct-muted:rgba(255,255,255,.75);
+      --bg:#0b0d12;
+      --panel:#0f131b;
+      --panel2:#0c1017;
+      --text:#eef2ff;
+      --muted:rgba(238,242,255,.72);
+      --muted2:rgba(238,242,255,.55);
+      --line:rgba(255,255,255,.10);
+      --red:#ff2b2b;
+      --blue:#2b6cff;
+      --good:#3cff9c;
+      --warn:#ffcc66;
+      --shadow:0 12px 30px rgba(0,0,0,.55);
+      --radius:10px;
+      --btnshadow:0 8px 18px rgba(0,0,0,.35);
     }
 
-    body{ background:var(--ct-bg); color:var(--ct-text); }
-
-    /* Sticky header */
-    .ct-topbar{
-      position:sticky; top:0; z-index:9999;
-      background:linear-gradient(180deg, rgba(193,0,31,.98), rgba(140,0,22,.92));
-      border-bottom:1px solid rgba(255,255,255,.12);
-      box-shadow:0 8px 24px rgba(0,0,0,.35);
-    }
-    .ct-wrap{ max-width:1150px; margin:0 auto; padding:0 16px; }
-    .ct-topbar .row{ display:flex; align-items:center; justify-content:space-between; gap:14px; padding:10px 0; }
-    .ct-brand{ display:flex; align-items:center; gap:12px; text-decoration:none; color:#fff; min-width: 240px; }
-    .ct-brand img{ width:42px; height:42px; object-fit:contain; }
-    .ct-brand .t strong{ display:block; font-weight:1000; letter-spacing:.04em; }
-    .ct-brand .t span{ display:block; font-size:12px; opacity:.92; margin-top:2px; }
-
-    .ct-social{
-      display:flex; align-items:center; gap:10px;
-      margin-left:10px;
+    body{
+      margin:0;
+      background:radial-gradient(1200px 700px at 20% -10%, rgba(43,108,255,.18), transparent 60%),
+                 radial-gradient(1200px 700px at 80% 0%, rgba(255,43,43,.14), transparent 60%),
+                 var(--bg);
+      color:var(--text);
+      font: 16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
     }
 
-    .ct-follow{
-      display:flex; align-items:center; gap:8px;
-      font-weight:900; letter-spacing:.02em;
-      padding:6px 10px;
-      background:rgba(0,0,0,.18);
-      border:1px solid rgba(255,255,255,.16);
-      box-shadow:0 8px 20px rgba(0,0,0,.22);
-      user-select:none;
-      white-space:nowrap;
-    }
-    .ct-follow .arrow{
-      display:inline-block;
-      animation:pulseArrow 1.2s ease-in-out infinite;
-      transform-origin:center;
-    }
-    @keyframes pulseArrow{
-      0%{ transform:translateX(0); opacity:.85; }
-      50%{ transform:translateX(4px); opacity:1; }
-      100%{ transform:translateX(0); opacity:.85; }
-    }
+    a{ color:inherit; }
+    .wrap{ max-width:1100px; margin:0 auto; padding:20px; }
 
-    .ct-iconrow{ display:flex; align-items:center; gap:8px; }
-    .ct-iconbtn{
-      width:34px; height:34px;
-      display:grid; place-items:center;
-      border:1px solid rgba(255,255,255,.18);
-      background:rgba(0,0,0,.18);
-      box-shadow:0 8px 18px rgba(0,0,0,.25);
-      text-decoration:none;
-      border-radius:10px;
+    /* simple page header */
+    .pagehead{
+      display:flex; align-items:center; gap:12px;
+      padding:14px 16px;
+      background:linear-gradient(90deg, rgba(255,43,43,.15), rgba(43,108,255,.12));
+      border:1px solid var(--line);
+      box-shadow:var(--shadow);
     }
-    .ct-iconbtn svg{ width:18px; height:18px; fill:#fff; opacity:.95; }
-
-    .ct-nav{ display:flex; align-items:center; gap:10px; }
-    .ct-btn{
-      display:inline-flex; align-items:center; justify-content:center;
-      padding:9px 12px;
-      font-weight:900;
-      border-radius:12px;
-      border:1px solid rgba(255,255,255,.16);
-      background:rgba(0,0,0,.20);
-      color:#fff;
-      text-decoration:none;
-      box-shadow:0 10px 22px rgba(0,0,0,.28);
-      cursor:pointer;
-      user-select:none;
-      white-space:nowrap;
-    }
-    .ct-btn.blue{ background:rgba(30,107,255,.88); border-color:rgba(255,255,255,.2); }
-    .ct-btn:hover{ filter:brightness(1.05); }
-
-    .ct-dd{ position:relative; }
-    .ct-ddmenu{
-      position:absolute; right:0; top:calc(100% + 8px);
-      width:260px;
-      background:rgba(10,12,18,.96);
-      border:1px solid rgba(255,255,255,.14);
-      box-shadow:0 18px 50px rgba(0,0,0,.6);
-      border-radius:14px;
+    .logo{
+      width:44px;height:44px;border-radius:10px;
+      background:rgba(255,255,255,.06);
+      display:grid;place-items:center;
+      border:1px solid var(--line);
       overflow:hidden;
-      display:none;
+      flex:0 0 auto;
     }
-    .ct-dd.open .ct-ddmenu{ display:block; }
-    .ct-ddmenu .title{
-      padding:10px 12px;
-      font-weight:1000;
-      border-bottom:1px solid rgba(255,255,255,.10);
-      opacity:.95;
-    }
-    .ct-ddmenu a{
-      display:flex; justify-content:space-between; align-items:center;
-      padding:10px 12px;
-      text-decoration:none; color:#fff;
-      border-bottom:1px solid rgba(255,255,255,.08);
-    }
-    .ct-ddmenu a small{ opacity:.75; font-weight:700; }
-    .ct-ddmenu a:hover{ background:rgba(255,255,255,.06); }
+    .logo img{ width:100%; height:100%; object-fit:cover; }
+    .titleblock{ min-width:0; }
+    .titleblock h1{ margin:0; font-size:18px; letter-spacing:.3px; }
+    .titleblock p{ margin:2px 0 0; color:var(--muted); font-size:13px; }
 
-    /* Main */
-    .ct-main{ padding:18px 0 28px; }
-    .ct-hero{
-      display:flex; flex-direction:column; gap:10px;
-      padding:14px 0;
-    }
-    .ct-hero h1{ margin:0; font-size:28px; letter-spacing:.01em; }
-    .ct-hero p{ margin:0; color:var(--ct-muted); line-height:1.45; }
-
-    .ct-grid{
+    .grid{
       display:grid;
-      grid-template-columns: 1fr 1.1fr;
+      grid-template-columns: 1.15fr .85fr;
       gap:16px;
-      align-items:start;
+      margin-top:16px;
     }
-    @media (max-width: 980px){
-      .ct-grid{ grid-template-columns:1fr; }
-      .ct-brand{ min-width:auto; }
+    @media (max-width:980px){
+      .grid{ grid-template-columns:1fr; }
     }
 
-    .ct-panel{
-      background:var(--ct-panel);
-      border:1px solid var(--ct-border);
-      box-shadow:var(--ct-shadow);
-      border-radius:14px;
+    .card{
+      background:linear-gradient(180deg, rgba(255,255,255,.035), transparent 55%), var(--panel);
+      border:1px solid var(--line);
+      box-shadow:var(--shadow);
+      border-radius:var(--radius);
       overflow:hidden;
     }
-    .ct-panel .hd{
-      padding:12px 12px;
-      border-bottom:1px solid rgba(255,255,255,.10);
-      display:flex; align-items:center; justify-content:space-between; gap:10px;
-      background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+    .card .hd{
+      padding:14px 16px;
+      border-bottom:1px solid var(--line);
+      background:var(--panel2);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
     }
-    .ct-panel .hd strong{ font-weight:1000; }
-    .ct-panel .bd{ padding:12px; }
+    .card .hd strong{ font-size:14px; letter-spacing:.2px; }
+    .card .bd{ padding:16px; }
 
-    .ct-formrow{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
-    @media (max-width: 560px){ .ct-formrow{ grid-template-columns:1fr; } }
+    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    label{ font-size:12px; color:var(--muted2); display:block; margin-bottom:6px; }
 
-    label{ display:block; font-weight:900; margin-bottom:6px; }
     select, input[type="range"]{
-      width:100%;
+      background:rgba(0,0,0,.35);
+      color:var(--text);
+      border:1px solid var(--line);
+      border-radius:10px;
       padding:10px 10px;
-      border-radius:12px;
-      border:1px solid rgba(255,255,255,.16);
-      background:rgba(0,0,0,.25);
-      color:#fff;
       outline:none;
-      box-shadow:0 10px 22px rgba(0,0,0,.22);
-    }
-    input[type="range"]{ padding:10px 0; box-shadow:none; }
-
-    .ct-controls{
-      display:flex; gap:10px; flex-wrap:wrap; align-items:center;
-      margin-top:10px;
+      width:100%;
     }
 
-    .ct-status{
-      margin-top:10px;
-      padding:14px 14px;
-      border-radius:14px;
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(0,0,0,.22);
-      box-shadow:0 14px 34px rgba(0,0,0,.32);
-      font-weight:950;
-      font-size:18px; /* user asked: very visible */
-      letter-spacing:.01em;
+    .ctrls{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
     }
-    .ct-status small{ display:block; font-weight:800; opacity:.8; margin-top:6px; font-size:12px; }
-
-    .ct-viewerWrap{
-      display:flex; flex-direction:column; gap:10px;
-    }
-    .ct-canvasWrap{
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(0,0,0,.25);
-      border-radius:14px;
-      overflow:hidden;
-      box-shadow:0 16px 40px rgba(0,0,0,.45);
-    }
-    canvas{ width:100%; height:auto; display:block; background:#0b0c10; }
-
-    .ct-viewMeta{
-      display:flex; align-items:center; justify-content:space-between;
-      gap:10px; flex-wrap:wrap;
-      color:var(--ct-muted);
+    .btn{
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.06);
+      color:var(--text);
+      padding:10px 12px;
+      border-radius:12px;
+      cursor:pointer;
+      box-shadow:var(--btnshadow);
+      display:inline-flex;
+      gap:8px;
+      align-items:center;
       font-weight:800;
+      letter-spacing:.2px;
+      user-select:none;
+    }
+    .btn:hover{ filter:brightness(1.06); }
+    .btn:disabled{ opacity:.45; cursor:not-allowed; }
+    .btn.blue{ background:linear-gradient(180deg, rgba(43,108,255,.55), rgba(43,108,255,.22)); border-color:rgba(43,108,255,.55); }
+    .btn.red{ background:linear-gradient(180deg, rgba(255,43,43,.60), rgba(255,43,43,.22)); border-color:rgba(255,43,43,.55); }
+    .btn.good{ background:linear-gradient(180deg, rgba(60,255,156,.30), rgba(60,255,156,.10)); border-color:rgba(60,255,156,.40); }
+
+    .status{
+      margin-top:12px;
+      padding:12px 12px;
+      border-radius:12px;
+      border:1px solid var(--line);
+      background:rgba(0,0,0,.30);
+      color:var(--muted);
+      font-size:16px; /* BIGGER like you asked */
+      font-weight:900;
+      letter-spacing:.2px;
+    }
+    .status small{ display:block; margin-top:6px; font-weight:700; color:var(--muted2); }
+
+    .viewer{
+      padding:0;
+    }
+    .viewerTop{
+      padding:12px 16px;
+      border-bottom:1px solid var(--line);
+      background:var(--panel2);
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .viewerTop .meta{ color:var(--muted); font-size:13px; }
+    .canvasWrap{
+      padding:12px;
+      display:grid;
+      place-items:center;
+      background:rgba(0,0,0,.25);
+    }
+    canvas{
+      width:100%;
+      max-width:100%;
+      height:auto;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.10);
+      box-shadow:0 14px 30px rgba(0,0,0,.55);
+      background:#111;
     }
 
-    .ct-foot{
-      margin-top:18px;
-      padding:16px 0 22px;
-      border-top:1px solid rgba(255,255,255,.10);
-      color:rgba(255,255,255,.75);
-      font-size:13px;
-      line-height:1.45;
+    .footnote{
+      color:var(--muted2);
+      font-size:12px;
+      margin-top:12px;
     }
 
     /* 21+ gate modal */
-    .ct-gate{
-      position:fixed; inset:0; z-index:99999;
-      display:none;
+    .gate{
+      position:fixed; inset:0;
+      display:grid; place-items:center;
       background:rgba(0,0,0,.82);
-      backdrop-filter: blur(8px);
+      z-index:9999;
+      padding:16px;
     }
-    .ct-gate.show{ display:flex; align-items:center; justify-content:center; }
-    .ct-gate .box{
-      width:min(680px, calc(100% - 24px));
-      background:rgba(10,12,18,.98);
-      border:1px solid rgba(255,255,255,.16);
-      box-shadow:0 22px 70px rgba(0,0,0,.75);
-      border-radius:18px;
+    .gateCard{
+      max-width:720px; width:100%;
+      background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,.25)), var(--panel);
+      border:1px solid var(--line);
+      box-shadow:0 20px 50px rgba(0,0,0,.7);
+      border-radius:14px;
       overflow:hidden;
     }
-    .ct-gate .box .top{
-      padding:14px 16px;
-      background:linear-gradient(180deg, rgba(193,0,31,.98), rgba(120,0,18,.92));
-      border-bottom:1px solid rgba(255,255,255,.12);
-      font-weight:1000;
+    .gateCard .ghd{
+      padding:16px 18px;
+      border-bottom:1px solid var(--line);
+      background:linear-gradient(90deg, rgba(255,43,43,.18), rgba(43,108,255,.12));
     }
-    .ct-gate .box .mid{ padding:16px; }
-    .ct-gate .check{
-      display:flex; align-items:flex-start; gap:10px;
-      margin-top:12px;
-      padding:12px;
-      border:1px solid rgba(255,255,255,.14);
-      border-radius:14px;
-      background:rgba(0,0,0,.22);
+    .gateCard .ghd h2{ margin:0; font-size:18px; letter-spacing:.2px; }
+    .gateCard .gbd{ padding:18px; color:var(--muted); }
+    .gateCard ul{ margin:10px 0 0 18px; }
+    .gateCard li{ margin:6px 0; }
+    .gateActions{
+      padding:16px 18px;
+      border-top:1px solid var(--line);
+      display:flex;
+      gap:10px;
+      justify-content:flex-end;
+      flex-wrap:wrap;
+      background:rgba(0,0,0,.18);
     }
-    .ct-gate input[type="checkbox"]{ width:18px; height:18px; margin-top:2px; }
-    .ct-gate .actions{
-      display:flex; gap:10px; flex-wrap:wrap;
-      padding:14px 16px;
-      border-top:1px solid rgba(255,255,255,.10);
-      background:rgba(255,255,255,.02);
-    }
-    .ct-gate .actions .ct-btn{ flex:1; }
-    .ct-link{ color:#fff; text-decoration:underline; text-underline-offset:3px; }
 
-    /* Keep header compact on small screens */
-    @media (max-width: 720px){
-      .ct-follow{ display:none; }
-      .ct-iconbtn{ width:32px; height:32px; border-radius:10px; }
-      .ct-brand img{ width:38px; height:38px; }
-      .ct-hero h1{ font-size:22px; }
-    }
+    .hidden{ display:none !important; }
   </style>
-
-  <!-- PDF.js from CDN (fixes your 404 / missing pdfjsLib) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.js" crossorigin="anonymous"></script>
-
-  <!-- Reader logic -->
-  <script defer src="./epstein-tts.js?v=8"></script>
 </head>
 
 <body>
-  <!-- Sticky header (self-contained so it always works on this subpage) -->
-  <header class="ct-topbar" role="banner">
-    <div class="ct-wrap">
-      <div class="row">
-        <a class="ct-brand" href="/index.html" aria-label="Civic Threat Home">
-          <img src="/assets/logo.png" alt="Civic Threat logo" />
-          <div class="t">
-            <strong>CIVIC THREAT</strong>
-            <span>Debate & Discuss</span>
-          </div>
-        </a>
-
-        <div class="ct-social" aria-label="Social links">
-          <div class="ct-follow" aria-hidden="true">
-            <span>Follow us</span>
-            <span class="arrow">➜</span>
-          </div>
-          <div class="ct-iconrow">
-            <a class="ct-iconbtn" href="https://www.facebook.com/CivicThreat/" target="_blank" rel="noopener" aria-label="Facebook">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12a10 10 0 1 0-11.6 9.9v-7H8v-2.9h2.4V9.8c0-2.4 1.4-3.7 3.6-3.7 1 0 2 .2 2 .2v2.2h-1.1c-1.1 0-1.5.7-1.5 1.4v1.7H16l-.4 2.9h-2.2v7A10 10 0 0 0 22 12z"/></svg>
-            </a>
-            <a class="ct-iconbtn" href="https://www.youtube.com/@civicthreat" target="_blank" rel="noopener" aria-label="YouTube">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.6 7.2a3 3 0 0 0-2.1-2.1C17.7 4.6 12 4.6 12 4.6s-5.7 0-7.5.5A3 3 0 0 0 2.4 7.2 31.7 31.7 0 0 0 2 12a31.7 31.7 0 0 0 .4 4.8 3 3 0 0 0 2.1 2.1c1.8.5 7.5.5 7.5.5s5.7 0 7.5-.5a3 3 0 0 0 2.1-2.1A31.7 31.7 0 0 0 22 12a31.7 31.7 0 0 0-.4-4.8zM10 15.5v-7l6 3.5-6 3.5z"/></svg>
-            </a>
-            <a class="ct-iconbtn" href="https://www.tiktok.com/@civicthreat" target="_blank" rel="noopener" aria-label="TikTok">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.6 3c.5 2.7 2.3 4.8 5 5.2v3.2c-1.9 0-3.6-.6-5-1.7v6.2c0 3.1-2.5 5.6-5.6 5.6S5.4 19 5.4 15.9s2.5-5.6 5.6-5.6c.5 0 1 .1 1.4.2v3.2c-.4-.2-.9-.3-1.4-.3-1.3 0-2.3 1-2.3 2.3s1 2.3 2.3 2.3 2.3-1 2.3-2.3V3h3.3z"/></svg>
-            </a>
-            <a class="ct-iconbtn" href="https://x.com/CivicThreat" target="_blank" rel="noopener" aria-label="X">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.9 2H22l-6.9 7.9L23 22h-6.6l-5.2-6.7L5.4 22H2.3l7.4-8.5L1 2h6.8l4.7 6.1L18.9 2zm-1.1 18h1.7L6.1 3.9H4.3L17.8 20z"/></svg>
-            </a>
-          </div>
-        </div>
-
-        <nav class="ct-nav" aria-label="Main navigation">
-          <div class="ct-dd" id="ddPlatforms">
-            <button class="ct-btn" type="button" aria-haspopup="true" aria-expanded="false" id="btnPlatforms">Platforms ▾</button>
-            <div class="ct-ddmenu" role="menu" aria-label="Platforms">
-              <div class="title">Facebook</div>
-              <a href="/facebook.html" role="menuitem"><span>Support</span><small>Browse</small></a>
-              <a href="/facebook-maga.html" role="menuitem"><span>MAGA / Debate</span><small>Browse</small></a>
-            </div>
-          </div>
-
-          <div class="ct-dd" id="ddReleases">
-            <button class="ct-btn" type="button" aria-haspopup="true" aria-expanded="false" id="btnReleases">Released Files ▾</button>
-            <div class="ct-ddmenu" role="menu" aria-label="Released Files">
-              <div class="title">Epstein Files</div>
-              <a href="/released/epstein/epstein-reader.html" role="menuitem"><span>PDF Reader (21+)</span><small>Listen & view</small></a>
-            </div>
-          </div>
-
-          <a class="ct-btn blue" href="/submit.html">Submit</a>
-        </nav>
+  <!-- 21+ Consent Gate -->
+  <div id="gate" class="gate">
+    <div class="gateCard">
+      <div class="ghd">
+        <h2>Age Verification Required</h2>
       </div>
-    </div>
-  </header>
-
-  <!-- Main -->
-  <main class="ct-main">
-    <div class="ct-wrap">
-      <div class="ct-hero">
-        <h1>Released Epstein Files Reader (21+)</h1>
-        <p>
-          Select a released PDF, view it on the right, and use text-to-speech to listen.
-          Playback controls support pause/resume, stop (restart), and next/previous page.
-        </p>
+      <div class="gbd">
+        This page contains material that may include sexually explicit content and sensitive subject matter.
+        <ul>
+          <li>You must be <strong>twenty-one (21) or older</strong> to continue.</li>
+          <li>By continuing, you confirm you meet this age requirement.</li>
+          <li>Content is provided for informational purposes; viewer discretion advised.</li>
+        </ul>
       </div>
-
-      <div class="ct-grid">
-        <!-- Controls -->
-        <section class="ct-panel" aria-label="Reader controls">
-          <div class="hd">
-            <strong>Player</strong>
-            <span style="opacity:.85;font-weight:900">TTS + PDF Viewer</span>
-          </div>
-          <div class="bd">
-            <div class="ct-formrow">
-              <div>
-                <label for="pdfSelect">Choose a PDF</label>
-                <select id="pdfSelect">
-                  <option value="">Loading PDFs…</option>
-                </select>
-              </div>
-              <div>
-                <label for="voiceSelect">Voice</label>
-                <select id="voiceSelect">
-                  <option value="">Loading voices…</option>
-                </select>
-              </div>
-              <div>
-                <label for="speedSelect">Read speed</label>
-                <select id="speedSelect">
-                  <option value="1">1.0×</option>
-                  <option value="1.25">1.25×</option>
-                  <option value="1.5">1.5×</option>
-                  <option value="2">2.0×</option>
-                </select>
-              </div>
-              <div>
-                <label for="volumeRange">Volume</label>
-                <input id="volumeRange" type="range" min="0" max="1" step="0.05" value="1" />
-              </div>
-            </div>
-
-            <div class="ct-controls">
-              <button class="ct-btn blue" id="btnPlay">Play</button>
-              <button class="ct-btn" id="btnPause">Pause</button>
-              <button class="ct-btn" id="btnStop">Stop</button>
-              <button class="ct-btn" id="btnPrev">◀ Prev Page</button>
-              <button class="ct-btn" id="btnNext">Next Page ▶</button>
-              <button class="ct-btn" id="btnMute">Mute</button>
-              <a class="ct-btn" id="btnOpenPdf" href="#" target="_blank" rel="noopener" style="display:none;">Open PDF</a>
-            </div>
-
-            <div class="ct-status" id="statusBox">
-              Loading…
-              <small id="statusSub">Preparing reader</small>
-            </div>
-
-            <div class="ct-foot">
-              <strong>Adult content warning:</strong> These documents may contain sexually explicit content and sensitive material.
-              Access is restricted to adults aged 21 and over.
-              <br /><br />
-              <strong>Disclosure:</strong> This page is provided for informational purposes. Civic Threat does not endorse or verify every claim contained within source documents.
-            </div>
-          </div>
-        </section>
-
-        <!-- Viewer -->
-        <section class="ct-panel" aria-label="PDF viewer">
-          <div class="hd">
-            <strong>PDF Viewer</strong>
-            <span id="pageMeta" style="opacity:.85;font-weight:900">Page — / —</span>
-          </div>
-          <div class="bd">
-            <div class="ct-viewerWrap">
-              <div class="ct-canvasWrap">
-                <canvas id="pdfCanvas" width="900" height="1200"></canvas>
-              </div>
-
-              <div class="ct-viewMeta">
-                <span id="docMeta">No document loaded</span>
-                <span id="progressMeta">Ready</span>
-              </div>
-            </div>
-          </div>
-        </section>
-      </div>
-    </div>
-  </main>
-
-  <!-- Footer -->
-  <footer class="site-footer" style="margin-top:0">
-    <div class="wrap">
-      <div class="inner">
-        <div>
-          <div class="footer-brand">
-            <img src="/assets/logo.png" alt="Civic Threat logo" />
-            <div class="t">
-              <strong>CIVIC THREAT</strong>
-              <span>Debate & Discuss</span>
-            </div>
-          </div>
-          <div class="footer-copy">© <span id="yearNow"></span> Civic Threat. All rights reserved.</div>
-
-          <div class="followcta footer-cta" aria-hidden="true" style="margin-top:10px">
-            <span class="followtext">Follow us</span>
-            <span class="followarrow">➜</span>
-          </div>
-
-          <div style="margin-top:10px" class="iconrow" aria-label="Social links in footer">
-            <a class="iconbtn" href="https://www.facebook.com/CivicThreat/" target="_blank" rel="noopener" aria-label="Facebook">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12a10 10 0 1 0-11.6 9.9v-7H8v-2.9h2.4V9.8c0-2.4 1.4-3.7 3.6-3.7 1 0 2 .2 2 .2v2.2h-1.1c-1.1 0-1.5.7-1.5 1.4v1.7H16l-.4 2.9h-2.2v7A10 10 0 0 0 22 12z"/></svg>
-            </a>
-            <a class="iconbtn" href="https://www.youtube.com/@civicthreat" target="_blank" rel="noopener" aria-label="YouTube">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.6 7.2a3 3 0 0 0-2.1-2.1C17.7 4.6 12 4.6 12 4.6s-5.7 0-7.5.5A3 3 0 0 0 2.4 7.2 31.7 31.7 0 0 0 2 12a31.7 31.7 0 0 0 .4 4.8 3 3 0 0 0 2.1 2.1c1.8.5 7.5.5 7.5.5s5.7 0 7.5-.5a3 3 0 0 0 2.1-2.1A31.7 31.7 0 0 0 22 12a31.7 31.7 0 0 0-.4-4.8zM10 15.5v-7l6 3.5-6 3.5z"/></svg>
-            </a>
-            <a class="iconbtn" href="https://www.tiktok.com/@civicthreat" target="_blank" rel="noopener" aria-label="TikTok">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.6 3c.5 2.7 2.3 4.8 5 5.2v3.2c-1.9 0-3.6-.6-5-1.7v6.2c0 3.1-2.5 5.6-5.6 5.6S5.4 19 5.4 15.9s2.5-5.6 5.6-5.6c.5 0 1 .1 1.4.2v3.2c-.4-.2-.9-.3-1.4-.3-1.3 0-2.3 1-2.3 2.3s1 2.3 2.3 2.3 2.3-1 2.3-2.3V3h3.3z"/></svg>
-            </a>
-            <a class="iconbtn" href="https://x.com/CivicThreat" target="_blank" rel="noopener" aria-label="X">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.9 2H22l-6.9 7.9L23 22h-6.6l-5.2-6.7L5.4 22H2.3l7.4-8.5L1 2h6.8l4.7 6.1L18.9 2zm-1.1 18h1.7L6.1 3.9H4.3L17.8 20z"/></svg>
-            </a>
-          </div>
-        </div>
-
-        <div>
-          <div class="footer-links">
-            <a href="/about.html">About</a>
-            <a href="/advertising-disclosure.html">Advertising Disclosure</a>
-            <a href="/privacy.html">Privacy</a>
-            <a href="/terms.html">Terms</a>
-            <a href="/cookies.html">Cookies</a>
-            <a href="/contact.html">Contact</a>
-          </div>
-        </div>
-      </div>
-    </div>
-  </footer>
-
-  <!-- 21+ Gate -->
-  <div class="ct-gate" id="ageGate" aria-modal="true" role="dialog" aria-label="Age verification">
-    <div class="box">
-      <div class="top">Adults 21+ Only</div>
-      <div class="mid">
-        <p style="margin:0;color:rgba(255,255,255,.85);line-height:1.45">
-          This page contains released court documents that may include sexually explicit content and sensitive descriptions.
-          You must confirm you are at least <strong>21 years old</strong> to view or listen.
-        </p>
-
-        <div class="check">
-          <input type="checkbox" id="ageCheck" />
-          <div>
-            <div style="font-weight:1000">I confirm I am 21 years of age or older.</div>
-            <div style="opacity:.8; margin-top:4px">
-              By continuing, you agree to our <a class="ct-link" href="/terms.html" target="_blank" rel="noopener">Terms</a> and
-              <a class="ct-link" href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="actions">
-        <button class="ct-btn" id="ageExit">Leave</button>
-        <button class="ct-btn blue" id="ageContinue" disabled>Continue</button>
+      <div class="gateActions">
+        <button class="btn" id="leaveBtn" type="button">Leave</button>
+        <button class="btn red" id="agreeBtn" type="button">I’m 21+ — Continue</button>
       </div>
     </div>
   </div>
 
-  <script>
-    // Dropdown wiring for header menus
-    (function(){
-      const dd = (rootId, btnId) => {
-        const root = document.getElementById(rootId);
-        const btn = document.getElementById(btnId);
-        if(!root || !btn) return;
+  <div class="wrap">
+    <div class="pagehead">
+      <a class="logo" href="/" aria-label="Civic Threat home">
+        <img src="/assets/logo.png" alt="Civic Threat logo">
+      </a>
+      <div class="titleblock">
+        <h1>Released Files • Epstein PDF Reader (TTS)</h1>
+        <p>Pick a PDF, choose a voice and speed, then press Play. Use Prev/Next to move one page at a time.</p>
+      </div>
+    </div>
 
-        const close = ()=>{ root.classList.remove("open"); btn.setAttribute("aria-expanded","false"); };
-        const open  = ()=>{ root.classList.add("open"); btn.setAttribute("aria-expanded","true"); };
+    <div class="grid">
+      <!-- Controls -->
+      <section class="card">
+        <div class="hd">
+          <strong>Controls</strong>
+          <span style="color:rgba(255,255,255,.55); font-size:12px;">Text-to-Speech + PDF Viewer</span>
+        </div>
+        <div class="bd">
+          <div class="row" style="gap:14px;">
+            <div style="flex:1 1 360px; min-width:240px;">
+              <label for="pdfSelect">Choose a PDF</label>
+              <select id="pdfSelect">
+                <option value="">Loading PDFs…</option>
+              </select>
+            </div>
 
-        btn.addEventListener("click", (e)=>{
-          e.preventDefault();
-          root.classList.contains("open") ? close() : open();
-        });
+            <div style="flex:1 1 240px; min-width:220px;">
+              <label for="voiceSelect">Voice</label>
+              <select id="voiceSelect">
+                <option value="">Loading voices…</option>
+              </select>
+            </div>
 
-        document.addEventListener("click", (e)=>{ if(!root.contains(e.target)) close(); });
-        document.addEventListener("keydown", (e)=>{ if(e.key === "Escape") close(); });
-      };
-      dd("ddPlatforms","btnPlatforms");
-      dd("ddReleases","btnReleases");
+            <div style="flex:0 1 180px; min-width:160px;">
+              <label for="speedSelect">Speed</label>
+              <select id="speedSelect">
+                <option value="1">1.0×</option>
+                <option value="1.25">1.25×</option>
+                <option value="1.5">1.5×</option>
+                <option value="2">2.0×</option>
+              </select>
+            </div>
+          </div>
 
-      // footer year
-      const y = document.getElementById("yearNow");
-      if(y) y.textContent = String(new Date().getFullYear());
-    })();
+          <div class="ctrls" style="margin-top:14px;">
+            <button class="btn blue" id="playBtn" type="button">▶ Play</button>
+            <button class="btn" id="pauseBtn" type="button" disabled>⏸ Pause</button>
+            <button class="btn" id="stopBtn" type="button" disabled>⏹ Stop</button>
+
+            <button class="btn" id="prevBtn" type="button" disabled>← Prev Page</button>
+            <button class="btn" id="nextBtn" type="button" disabled>Next Page →</button>
+
+            <button class="btn" id="muteBtn" type="button" disabled>🔇 Mute</button>
+          </div>
+
+          <div class="status" id="statusBox">
+            Loading reader…
+            <small id="statusSub">Please wait.</small>
+          </div>
+
+          <div class="footnote">
+            Tip: If voices look different on mobile, use the Voice dropdown to select your preferred English voice.
+          </div>
+        </div>
+      </section>
+
+      <!-- Viewer -->
+      <section class="card viewer">
+        <div class="viewerTop">
+          <div>
+            <div style="font-weight:900">Viewer</div>
+            <div class="meta" id="viewerMeta">No PDF loaded.</div>
+          </div>
+          <div class="row">
+            <a class="btn good" id="openPdfBtn" href="#" target="_blank" rel="noopener" style="display:none;">Open PDF</a>
+          </div>
+        </div>
+        <div class="canvasWrap">
+          <canvas id="pdfCanvas" width="900" height="1200"></canvas>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Load PDF.js as ES Module (cdnjs now serves .mjs) -->
+  <script type="module">
+    try {
+      const v = "5.4.149"; // current cdnjs version listing
+      const pdfjs = await import(`https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${v}/pdf.min.mjs`);
+      pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${v}/pdf.worker.min.mjs`;
+      window.pdfjsLib = pdfjs;
+      window.dispatchEvent(new Event("pdfjs-ready"));
+    } catch (e) {
+      console.error("PDF.js module load failed", e);
+      window.__pdfjs_load_error = e;
+      window.dispatchEvent(new Event("pdfjs-failed"));
+    }
   </script>
+
+  <!-- App logic -->
+  <script src="./epstein-tts.js?v=9" defer></script>
 </body>
 </html>
