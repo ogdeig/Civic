@@ -43,10 +43,10 @@
   }
 
   async function listApproved(){ return await remoteApi().listApproved(); }
-  async function listPending(){ return await remoteApi().listPending(); }
+  async function listPending(){  return await remoteApi().listPending(); }
   async function submitItem(item){ return await remoteApi().submit(item); }
   async function approveItem(id){ return await remoteApi().approve(id); }
-  async function rejectItem(id){ return await remoteApi().reject(id); }
+  async function rejectItem(id){  return await remoteApi().reject(id); }
 
   function uid(){
     if(window.crypto && crypto.randomUUID) return crypto.randomUUID();
@@ -64,6 +64,7 @@
     if(!dd) return;
     const btn = qs("button", dd);
     const menu = qs(".dropdown-menu", dd);
+    if(!btn || !menu) return;
 
     function close(){
       dd.classList.remove("open");
@@ -78,12 +79,15 @@
       e.preventDefault();
       dd.classList.contains("open") ? close() : open();
     });
+
     document.addEventListener("click", (e)=>{
       if(!dd.contains(e.target)) close();
     });
+
     document.addEventListener("keydown", (e)=>{
       if(e.key === "Escape") close();
     });
+
     qsa("a", menu).forEach(a=>a.addEventListener("click", close));
   }
 
@@ -130,6 +134,18 @@
                   <a class="dd-item" role="menuitem" href="${bp}facebook-maga.html"><span>MAGA / Debate</span><small>Browse</small></a>
                 </div>
               </div>
+
+              <!-- NEW: Released Files dropdown -->
+              <div class="dropdown" id="releasesDD">
+                <button class="btn" type="button" id="releasesBtn" aria-haspopup="true" aria-expanded="false">Released Files ▾</button>
+                <div class="dropdown-menu" role="menu" aria-label="Released files menu">
+                  <a class="dd-item" role="menuitem" href="${bp}epstein-reader.html">
+                    <span>Epstein Files</span>
+                    <small>PDF Read Aloud</small>
+                  </a>
+                </div>
+              </div>
+
               <a class="btn blue" href="${bp}submit.html">Submit</a>
             </div>
           </div>
@@ -138,6 +154,7 @@
     `;
 
     wireDropdown(qs("#platformsDD"));
+    wireDropdown(qs("#releasesDD"));
   }
 
   function mountFooter(){
@@ -191,7 +208,7 @@
     `;
   }
 
-  // ---------- Cookie consent (cookie only) ----------
+  // ---------- Cookie consent (no localStorage; cookie only) ----------
   function getCookie(name){
     const m = document.cookie.match(new RegExp("(^|;\\s*)" + name.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&") + "=([^;]*)"));
     return m ? decodeURIComponent(m[2]) : "";
@@ -215,7 +232,7 @@
           <a href="${bp}cookies.html">Cookie Policy</a>
         </p>
         <div class="actions">
-          <button class="btn" type="button" data-cookie="reject">Reject non‑essential</button>
+          <button class="btn" type="button" data-cookie="reject">Reject non-essential</button>
           <button class="btn blue" type="button" data-cookie="accept">Accept</button>
         </div>
       </div>
@@ -234,6 +251,7 @@
   function extractFacebookUrl(embedOrUrl){
     const raw = (embedOrUrl || "").trim();
     if(!raw) return "";
+
     if(/^https?:\/\/(www\.)?facebook\.com\//i.test(raw)) return raw;
 
     const hrefMatch = raw.match(/href=["']([^"']+)["']/i);
@@ -266,10 +284,9 @@
     return "";
   }
 
-  function fbPluginSrc(postUrl, width){
+  function fbPluginSrc(postUrl){
     const href = encodeURIComponent(postUrl);
-    const w = width || 500;
-    return `https://www.facebook.com/plugins/post.php?href=${href}&show_text=true&width=${w}`;
+    return `https://www.facebook.com/plugins/post.php?href=${href}&show_text=true&width=500`;
   }
 
   function submitterLink(username){
@@ -288,61 +305,13 @@
     </div>`;
   }
 
-  // ---------- Lazy-loading Facebook embeds ----------
-  function initLazyFacebookEmbeds(root=document){
-    const shells = qsa(".fbembed-shell", root);
-    if(!shells.length) return;
-
-    const makeIframe = (shell) => {
-      if(shell.dataset.loaded === "1") return;
-      const url = shell.getAttribute("data-fb-url") || "";
-      if(!url) return;
-
-      const small = shell.classList.contains("small");
-      const width = small ? 420 : 500;
-
-      const iframe = document.createElement("iframe");
-      iframe.className = "fbframe" + (small ? " small" : "");
-      iframe.src = fbPluginSrc(url, width);
-      iframe.loading = "lazy";
-      iframe.setAttribute("allow", "encrypted-media");
-      iframe.setAttribute("referrerpolicy", "no-referrer-when-downgrade");
-
-      shell.innerHTML = "";
-      shell.appendChild(iframe);
-      shell.dataset.loaded = "1";
-    };
-
-    if("IntersectionObserver" in window){
-      const io = new IntersectionObserver((entries) => {
-        entries.forEach((entry) => {
-          if(entry.isIntersecting){
-            makeIframe(entry.target);
-            io.unobserve(entry.target);
-          }
-        });
-      }, { rootMargin: "300px 0px" });
-
-      shells.forEach(s => io.observe(s));
-    } else {
-      shells.forEach(makeIframe);
-    }
-  }
-
   function renderPostCard(item, opts={}){
     const small = opts.small === true;
     const tagText = item.category === "support" ? "Facebook • Support" : "Facebook • MAGA / Debate";
     const url = item.postUrl || "";
 
     const frame = url
-      ? `
-        <div class="fbembed-shell ${small ? "small":""}" data-fb-url="${esc(url)}">
-          <div class="fbembed-loading">
-            <div class="spinner"></div>
-            <div class="txt">Loading post…</div>
-          </div>
-        </div>
-      `
+      ? `<iframe class="fbframe ${small ? "small":""}" src="${fbPluginSrc(url)}" loading="lazy" allow="encrypted-media"></iframe>`
       : `<div class="smallnote">Missing Facebook URL.</div>`;
 
     const name = (item.submitterName || "Anonymous").trim() || "Anonymous";
@@ -386,9 +355,6 @@
     const supportHost = qs("#homeSupport");
     const magaHost = qs("#homeMaga");
 
-    if(supportHost) supportHost.innerHTML = `<div class="loadingline">Loading newest posts<span class="dots"></span></div>`;
-    if(magaHost) magaHost.innerHTML = `<div class="loadingline">Loading newest posts<span class="dots"></span></div>`;
-
     try{
       const approved = (await listApproved()) || [];
       const support = approved.filter(x => x.platform === "facebook" && x.category === "support").slice(0,3);
@@ -401,8 +367,6 @@
       if(magaHost) magaHost.innerHTML = maga.length
         ? maga.map(x=>renderPostCard(x,{small:true})).join("")
         : `<div class="smallnote">No approved posts yet. <a href="./submit.html">Submit one</a>.</div>`;
-
-      initLazyFacebookEmbeds(document);
     }catch(err){
       console.error(err);
       const msg = (err && err.message) ? err.message : String(err);
@@ -416,8 +380,6 @@
     const countApproved = qs("#countApproved");
     const countPending = qs("#countPending");
     const input = qs("#search");
-
-    if(grid) grid.innerHTML = `<div class="loadingline">Loading posts<span class="dots"></span></div>`;
 
     try{
       const approved = (await listApproved()) || [];
@@ -435,7 +397,6 @@
         grid.innerHTML = list.length
           ? list.map(x=>renderPostCard(x)).join("")
           : `<div class="smallnote">Nothing here yet. <a href="./submit.html">Submit a post</a>.</div>`;
-        initLazyFacebookEmbeds(grid);
       }
 
       render(filtered);
