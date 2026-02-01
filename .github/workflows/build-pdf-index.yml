@@ -16,31 +16,39 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+
+      - name: Diagnostics (show repo + pdfs folder)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Branch: $(git rev-parse --abbrev-ref HEAD)"
+          echo "Top-level files:"
+          ls -la
+          echo ""
+          echo "pdfs folder contents:"
+          if [ -d "pdfs" ]; then
+            ls -la pdfs
+          else
+            echo "pdfs/ does not exist in this repo on this branch."
+          fi
 
       - name: Generate pdfs/index.json
         shell: bash
         run: |
           set -euo pipefail
-
           mkdir -p pdfs
 
-          # Collect PDFs (case-insensitive)
-          mapfile -t files < <(find pdfs -maxdepth 1 -type f \( -iname "*.pdf" \) -printf "%f\n" | sort -f)
+          # Collect PDFs (case-insensitive), only in /pdfs (not subfolders)
+          mapfile -t files < <(find pdfs -maxdepth 1 -type f -iname "*.pdf" -printf "%f\n" | sort -f)
 
-          # Write JSON
           out="pdfs/index.json"
           echo "[" > "$out"
 
           first=1
           for f in "${files[@]}"; do
-            # Title = filename without extension, with separators prettified
             base="${f%.*}"
             title="${base//_/ }"
             title="${title//-/ }"
-
-            # Escape double quotes for JSON safety (rare, but just in case)
             title="${title//\"/\\\"}"
             f_esc="${f//\"/\\\"}"
 
@@ -54,14 +62,18 @@ jobs:
 
           echo "]" >> "$out"
 
+          echo ""
           echo "Generated $out with ${#files[@]} PDF(s)."
+          echo "index.json preview:"
+          cat "$out"
 
-      - name: Commit changes (if any)
+      - name: Commit changes (including new file)
         shell: bash
         run: |
           set -euo pipefail
 
-          if git diff --quiet -- pdfs/index.json; then
+          # Detect any change, including untracked index.json
+          if [ -z "$(git status --porcelain pdfs/index.json)" ]; then
             echo "No changes to commit."
             exit 0
           fi
