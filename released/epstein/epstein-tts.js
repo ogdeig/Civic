@@ -339,6 +339,5 @@
       disableControls(true);
     }
   }
-
   document.addEventListener("DOMContentLoaded", init);
 })();
