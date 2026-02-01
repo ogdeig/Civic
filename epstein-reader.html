@@ -5,16 +5,10 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Epstein Files Reader | Civic Threat</title>
   <meta name="description" content="Listen to PDF documents read aloud with selectable voices and playback controls. Viewer included. 21+ only." />
-
-  <meta property="og:title" content="Epstein Files Reader | Civic Threat" />
-  <meta property="og:description" content="Listen to PDF documents read aloud with selectable voices and playback controls. Viewer included. 21+ only." />
-  <meta property="og:type" content="website" />
-  <meta property="og:image" content="/civicthreat-social-1280x720.png" />
-
   <link rel="icon" href="/favicon.ico" />
   <link rel="stylesheet" href="./styles.css" />
+
   <style>
-    /* Page-only styles (kept minimal, matches your dark theme) */
     .reader-wrap { padding: 18px 0 36px; }
     .reader-hero { display:flex; justify-content:space-between; gap:14px; align-items:flex-start; flex-wrap:wrap; }
     .reader-hero h1 { margin:0; font-size: 22px; letter-spacing:.2px; }
@@ -25,7 +19,6 @@
     .reader-panel .pad { padding: 14px; }
     .reader-panel h2 { margin:0 0 10px; font-size: 15px; letter-spacing:.2px; opacity:.92; }
     .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-    .row > * { flex: 0 0 auto; }
     .row .grow { flex: 1 1 auto; min-width: 200px; }
     select, input[type="range"]{
       width:100%;
@@ -37,10 +30,9 @@
       outline:none;
     }
     .btnrow { display:flex; flex-wrap:wrap; gap:10px; }
-    .btnrow .btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; }
     .status {
-      font-size: 16px; /* bigger & visible */
-      font-weight: 800;
+      font-size: 18px;   /* bigger */
+      font-weight: 900;  /* bolder */
       letter-spacing: .2px;
       padding: 10px 12px;
       border-radius: 10px;
@@ -49,40 +41,22 @@
     }
     .substatus { margin-top:8px; opacity:.82; font-size:13px; line-height:1.35; }
 
-    .viewer {
-      width:100%;
-      height: 72vh;
-      border: 0;
-      display:block;
-      background:#000;
-    }
-    @media (max-width: 520px){
-      .viewer { height: 60vh; }
-      .reader-hero h1 { font-size: 20px; }
-    }
+    .viewer { width:100%; height:72vh; border:0; display:block; background:#000; }
+    @media (max-width: 520px){ .viewer { height: 60vh; } .reader-hero h1 { font-size: 20px; } }
 
-    /* Age gate modal */
-    .agegate {
-      position: fixed; inset:0; z-index: 9999;
-      display:none;
-      align-items:center; justify-content:center;
-      background: rgba(0,0,0,.78);
-      padding: 18px;
-    }
+    .agegate { position: fixed; inset:0; z-index: 9999; display:none; align-items:center; justify-content:center;
+      background: rgba(0,0,0,.78); padding: 18px; }
     .agegate.open { display:flex; }
-    .agebox {
-      max-width: 560px;
-      width:100%;
-      background: #07090f;
-      border: 1px solid rgba(255,255,255,.14);
-      box-shadow: 0 20px 60px rgba(0,0,0,.6);
-      padding: 18px;
-    }
+    .agebox { max-width: 560px; width:100%; background: #07090f; border: 1px solid rgba(255,255,255,.14);
+      box-shadow: 0 20px 60px rgba(0,0,0,.6); padding: 18px; }
     .agebox h3{ margin:0 0 8px; font-size: 18px; }
     .agebox p{ margin:0 0 12px; opacity:.88; line-height:1.4; }
     .agebox label{ display:flex; gap:10px; align-items:flex-start; margin: 10px 0 14px; opacity:.95; }
     .agebox input[type="checkbox"]{ transform: translateY(2px); }
     .ageactions{ display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
+
+    .tinybtn { padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,.14); background: rgba(0,0,0,.25); color:#fff; cursor:pointer; }
+    .tinybtn:hover { background: rgba(255,255,255,.06); }
   </style>
 </head>
 
@@ -104,17 +78,22 @@
       <section class="reader-panel">
         <div class="pad">
           <h2>Choose a PDF</h2>
+
           <div class="row" style="margin-bottom:10px">
             <div class="grow">
               <select id="pdfSelect" aria-label="Select a PDF"></select>
             </div>
           </div>
 
-          <div class="row" style="margin-bottom:12px">
+          <div class="row" style="margin-bottom:8px">
             <div class="grow">
               <label style="display:block; font-size:12px; opacity:.85; margin:0 0 6px">Voice</label>
               <select id="voiceSelect" aria-label="Select voice"></select>
             </div>
+          </div>
+
+          <div class="row" style="margin-bottom:12px">
+            <button class="tinybtn" id="btnReloadVoices" type="button">Reload Voices</button>
           </div>
 
           <div class="row" style="margin-bottom:12px">
@@ -162,7 +141,6 @@
 
   <footer id="siteFooter"></footer>
 
-  <!-- 21+ Gate -->
   <div class="agegate" id="ageGate" aria-modal="true" role="dialog">
     <div class="agebox">
       <h3>Adults Only (21+)</h3>
@@ -189,7 +167,7 @@
   <script src="./data-api.js"></script>
   <script src="./app.js"></script>
 
-  <!-- Reader logic -->
-  <script src="./epstein-tts.js"></script>
+  <!-- Reader logic (cache-busted) -->
+  <script src="./epstein-tts.js?v=7"></script>
 </body>
 </html>
