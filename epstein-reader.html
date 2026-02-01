@@ -3,156 +3,191 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Epstein Files — PDF Read Aloud | Civic Threat</title>
-  <meta name="description" content="Select a PDF and have it read aloud in your browser using text-to-speech. Browse and listen page by page, adjust speed, pause, stop, or skip ahead." />
-  <meta name="robots" content="index,follow" />
+  <title>Epstein Files Reader | Civic Threat</title>
+  <meta name="description" content="Listen to PDF documents read aloud with selectable voices and playback controls. Viewer included. 21+ only." />
 
-  <!-- Favicon (uses your existing logo file) -->
-  <link rel="icon" href="./assets/logo.png" type="image/png" />
-  <link rel="apple-touch-icon" href="./assets/logo.png" />
+  <meta property="og:title" content="Epstein Files Reader | Civic Threat" />
+  <meta property="og:description" content="Listen to PDF documents read aloud with selectable voices and playback controls. Viewer included. 21+ only." />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="/civicthreat-social-1280x720.png" />
 
-  <!-- Your site CSS (keep your existing one) -->
+  <link rel="icon" href="/favicon.ico" />
   <link rel="stylesheet" href="./styles.css" />
-
   <style>
-    /* Page-only polish */
-    .reader-wrap { max-width: 1100px; margin: 0 auto; padding: 22px 16px 60px; }
-    .reader-head { display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap; margin: 10px 0 18px; }
-    .reader-head h1 { margin:0; font-size: 28px; letter-spacing:.2px; }
-    .reader-sub { margin:6px 0 0; opacity:.86; line-height:1.55; max-width: 60ch; }
-
-    .reader-controls { display:flex; gap:10px; flex-wrap:wrap; align-items:end; }
-    .reader-controls .control { display:flex; flex-direction:column; gap:6px; }
-    .reader-controls select { min-width: 280px; }
-
-    .reader-status {
-      margin-top: 14px;
-      padding: 10px 0;
-      font-size: 20px; /* more visible */
-      font-weight: 900;
+    /* Page-only styles (kept minimal, matches your dark theme) */
+    .reader-wrap { padding: 18px 0 36px; }
+    .reader-hero { display:flex; justify-content:space-between; gap:14px; align-items:flex-start; flex-wrap:wrap; }
+    .reader-hero h1 { margin:0; font-size: 22px; letter-spacing:.2px; }
+    .reader-hero p { margin:6px 0 0; opacity:.85; max-width: 70ch; }
+    .reader-grid { display:grid; grid-template-columns: 420px 1fr; gap:16px; margin-top:14px; }
+    @media (max-width: 980px){ .reader-grid { grid-template-columns: 1fr; } }
+    .reader-panel { background: rgba(0,0,0,.22); border: 1px solid rgba(255,255,255,.10); box-shadow: 0 12px 28px rgba(0,0,0,.35); }
+    .reader-panel .pad { padding: 14px; }
+    .reader-panel h2 { margin:0 0 10px; font-size: 15px; letter-spacing:.2px; opacity:.92; }
+    .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .row > * { flex: 0 0 auto; }
+    .row .grow { flex: 1 1 auto; min-width: 200px; }
+    select, input[type="range"]{
+      width:100%;
+      background: rgba(0,0,0,.35);
+      color:#fff;
+      border:1px solid rgba(255,255,255,.14);
+      border-radius: 8px;
+      padding:10px;
+      outline:none;
+    }
+    .btnrow { display:flex; flex-wrap:wrap; gap:10px; }
+    .btnrow .btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; }
+    .status {
+      font-size: 16px; /* bigger & visible */
+      font-weight: 800;
       letter-spacing: .2px;
-    }
-    .reader-status small { display:block; margin-top:6px; font-size: 14px; font-weight: 700; opacity:.85; }
-
-    .reader-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top: 10px; align-items:center; }
-    .reader-actions .btn { white-space: nowrap; }
-
-    .speed {
-      display:flex; align-items:center; gap:10px;
-      padding: 8px 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(0,0,0,.35);
       border: 1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.18);
     }
-    .speed label { font-weight: 900; opacity:.95; }
-    .speed select { min-width: 120px; }
+    .substatus { margin-top:8px; opacity:.82; font-size:13px; line-height:1.35; }
 
-    .pdf-preview {
-      margin-top: 18px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.18);
-      padding: 12px;
+    .viewer {
+      width:100%;
+      height: 72vh;
+      border: 0;
+      display:block;
+      background:#000;
     }
-    .pdf-preview iframe { width:100%; height: 620px; border:0; background: rgba(255,255,255,.02); }
-    @media (max-width: 640px){
-      .pdf-preview iframe { height: 520px; }
-      .reader-controls select { min-width: 240px; }
+    @media (max-width: 520px){
+      .viewer { height: 60vh; }
+      .reader-hero h1 { font-size: 20px; }
     }
 
-    .legalbox {
-      margin-top: 18px;
-      padding: 14px 14px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.14);
-      line-height: 1.55;
+    /* Age gate modal */
+    .agegate {
+      position: fixed; inset:0; z-index: 9999;
+      display:none;
+      align-items:center; justify-content:center;
+      background: rgba(0,0,0,.78);
+      padding: 18px;
     }
-    .legalbox strong { display:block; margin-bottom:6px; }
+    .agegate.open { display:flex; }
+    .agebox {
+      max-width: 560px;
+      width:100%;
+      background: #07090f;
+      border: 1px solid rgba(255,255,255,.14);
+      box-shadow: 0 20px 60px rgba(0,0,0,.6);
+      padding: 18px;
+    }
+    .agebox h3{ margin:0 0 8px; font-size: 18px; }
+    .agebox p{ margin:0 0 12px; opacity:.88; line-height:1.4; }
+    .agebox label{ display:flex; gap:10px; align-items:flex-start; margin: 10px 0 14px; opacity:.95; }
+    .agebox input[type="checkbox"]{ transform: translateY(2px); }
+    .ageactions{ display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
   </style>
 </head>
 
-<body data-page="epstein">
-
-  <!-- Header injected by app.js -->
+<body data-page="epstein_reader">
   <header id="siteHeader"></header>
 
-  <main class="reader-wrap">
-    <div class="reader-head">
+  <main class="wrap reader-wrap">
+    <div class="reader-hero">
       <div>
-        <h1>Epstein Files — PDF Read Aloud</h1>
-        <p class="reader-sub">
-          Choose a PDF from the list. This page loads the document in your browser and reads it aloud using text-to-speech.
-          Use the controls to pause, stop, change speed, or skip to the next page.
+        <h1>Epstein Files Reader</h1>
+        <p>
+          Select a PDF and listen to it read aloud. Use Pause/Stop/Next/Back and choose your voice and reading speed.
+          <strong>21+ only.</strong>
         </p>
       </div>
+    </div>
 
-      <div class="reader-controls">
-        <div class="control">
-          <label class="smallnote" for="pdfSelect" style="font-weight:900; opacity:1">Select PDF</label>
-          <select id="pdfSelect" class="input" aria-label="Select a PDF">
-            <option value="">Loading list…</option>
-          </select>
+    <div class="reader-grid">
+      <section class="reader-panel">
+        <div class="pad">
+          <h2>Choose a PDF</h2>
+          <div class="row" style="margin-bottom:10px">
+            <div class="grow">
+              <select id="pdfSelect" aria-label="Select a PDF"></select>
+            </div>
+          </div>
+
+          <div class="row" style="margin-bottom:12px">
+            <div class="grow">
+              <label style="display:block; font-size:12px; opacity:.85; margin:0 0 6px">Voice</label>
+              <select id="voiceSelect" aria-label="Select voice"></select>
+            </div>
+          </div>
+
+          <div class="row" style="margin-bottom:12px">
+            <div class="grow">
+              <label style="display:block; font-size:12px; opacity:.85; margin:0 0 6px">Speed</label>
+              <select id="rateSelect" aria-label="Select reading speed">
+                <option value="1">1.0× (Normal)</option>
+                <option value="1.25">1.25×</option>
+                <option value="1.5">1.5×</option>
+                <option value="2">2.0×</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="btnrow" style="margin-bottom:12px">
+            <button class="btn blue" id="btnStart" type="button">▶ Start</button>
+            <button class="btn" id="btnPause" type="button">⏸ Pause</button>
+            <button class="btn" id="btnStop" type="button">⏹ Stop</button>
+          </div>
+
+          <div class="btnrow" style="margin-bottom:12px">
+            <button class="btn" id="btnPrev" type="button">← Back (1 page)</button>
+            <button class="btn" id="btnNext" type="button">Next (1 page) →</button>
+          </div>
+
+          <div class="row" style="margin-bottom:10px">
+            <a class="btn" id="btnOpenPdf" href="#" target="_blank" rel="noopener">Open PDF</a>
+            <span class="smallnote" id="pageInfo" style="opacity:.8"></span>
+          </div>
+
+          <div class="status" id="statusText">Loading PDFs…</div>
+          <div class="substatus" id="subStatus"></div>
+
+          <div style="margin-top:12px" class="smallnote">
+            Legal: This tool reads documents as provided. Nothing here is legal advice. Some documents may contain explicit content.
+          </div>
         </div>
-      </div>
-    </div>
+      </section>
 
-    <div id="readerStatus" class="reader-status">
-      Loading PDF list…
-      <small id="readerSubStatus"></small>
-    </div>
-
-    <div class="reader-actions">
-      <button class="btn blue" id="btnPlay" type="button">Play / Resume</button>
-      <button class="btn" id="btnPause" type="button">Pause</button>
-      <button class="btn" id="btnStop" type="button">Stop</button>
-      <button class="btn" id="btnSkip" type="button">Skip Page</button>
-      <button class="btn" id="btnMute" type="button">Mute</button>
-
-      <div class="speed" aria-label="Reading speed">
-        <label for="speedSelect">Speed</label>
-        <select id="speedSelect" class="input">
-          <option value="1">1×</option>
-          <option value="1.25">1.25×</option>
-          <option value="1.5">1.5×</option>
-          <option value="2">2×</option>
-        </select>
-      </div>
-
-      <label class="smallnote" style="display:flex; align-items:center; gap:10px; font-weight:900; opacity:1">
-        Volume
-        <input id="volSlider" type="range" min="0" max="1" step="0.05" value="1" />
-      </label>
-    </div>
-
-    <div class="pdf-preview" id="pdfPreview" style="display:none">
-      <div class="smallnote" style="margin-bottom:10px; opacity:.9; font-weight:900">
-        PDF Viewer
-      </div>
-      <iframe id="pdfFrame" title="PDF preview"></iframe>
-    </div>
-
-    <div class="legalbox">
-      <strong>Important notice</strong>
-      This tool uses automated text extraction and text-to-speech. Accuracy is not guaranteed (tables, scans, or poor-quality pages may read incorrectly).
-      Content may include sensitive or distressing material. Use at your own discretion.
-      Civic Threat is providing a discussion and research tool and does not claim endorsement by any platform or document source.
+      <section class="reader-panel">
+        <iframe id="pdfFrame" class="viewer" title="PDF Viewer"></iframe>
+      </section>
     </div>
   </main>
 
-  <!-- Footer injected by app.js -->
   <footer id="siteFooter"></footer>
+
+  <!-- 21+ Gate -->
+  <div class="agegate" id="ageGate" aria-modal="true" role="dialog">
+    <div class="agebox">
+      <h3>Adults Only (21+)</h3>
+      <p>
+        This page may include sexually explicit descriptions and sensitive content.
+        You must confirm you are <strong>twenty-one (21) or older</strong> to continue.
+      </p>
+      <label>
+        <input type="checkbox" id="ageCheck" />
+        <span>I confirm I am 21 or older and I agree to view/listen to this content.</span>
+      </label>
+      <div class="ageactions">
+        <a class="btn" href="./index.html">Leave</a>
+        <button class="btn blue" id="ageEnter" type="button" disabled>Enter</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PDF.js (CDN) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.js"></script>
 
   <!-- Your site scripts -->
   <script src="./config.js"></script>
   <script src="./data-api.js"></script>
   <script src="./app.js"></script>
-
-  <!-- PDF.js from CDN -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script>
-  <script>
-    if (window.pdfjsLib) {
-      window.pdfjsLib.GlobalWorkerOptions.workerSrc =
-        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.worker.min.js";
-    }
-  </script>
 
   <!-- Reader logic -->
   <script src="./epstein-tts.js"></script>
