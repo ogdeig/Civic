@@ -3,278 +3,234 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+
   <title>Epstein Files Reader (TTS) • Civic Threat</title>
   <meta name="description" content="Listen to and view released PDF documents with text-to-speech. Choose voice, speed, and navigate pages." />
   <meta name="robots" content="index,follow" />
 
-  <!-- Use logo as favicon to avoid 404 -->
+  <!-- Use your site logo for favicon to avoid /assets/favicon.ico 404 -->
   <link rel="icon" href="/assets/logo.png" type="image/png" />
 
+  <!-- IMPORTANT: Use your main site CSS so header/footer match the rest of the site -->
+  <link rel="stylesheet" href="/styles.css?v=1" />
+
+  <!-- Minimal page-only styling (does NOT change your header colors) -->
   <style>
-    :root{
-      --bg:#0b0d12;
-      --panel:#0f131b;
-      --panel2:#0c1017;
-      --text:#eef2ff;
-      --muted:rgba(238,242,255,.72);
-      --muted2:rgba(238,242,255,.55);
-      --line:rgba(255,255,255,.10);
-      --red:#ff2b2b;
-      --blue:#2b6cff;
-      --good:#3cff9c;
-      --warn:#ffcc66;
-      --shadow:0 12px 30px rgba(0,0,0,.55);
-      --radius:10px;
-      --btnshadow:0 8px 18px rgba(0,0,0,.35);
+    .ep-wrap{ max-width: 1200px; margin: 0 auto; padding: 28px 18px 42px; }
+    .ep-hero{ margin-bottom: 18px; }
+    .ep-hero h1{ margin: 0 0 8px; font-size: 34px; letter-spacing: .2px; }
+    .ep-hero p{ margin: 0; color: rgba(255,255,255,.78); max-width: 900px; }
+
+    .ep-grid{
+      display: grid;
+      grid-template-columns: 1.05fr .95fr;
+      gap: 16px;
+      align-items: start;
+      margin-top: 18px;
+    }
+    @media (max-width: 980px){
+      .ep-grid{ grid-template-columns: 1fr; }
     }
 
-    body{
-      margin:0;
-      background:radial-gradient(1200px 700px at 20% -10%, rgba(43,108,255,.18), transparent 60%),
-                 radial-gradient(1200px 700px at 80% 0%, rgba(255,43,43,.14), transparent 60%),
-                 var(--bg);
-      color:var(--text);
-      font: 16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    .ep-card{
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.30);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .ep-card .ep-hd{
+      padding: 14px 14px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      display:flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .ep-card .ep-hd strong{ font-size: 14px; letter-spacing: .2px; }
+    .ep-card .ep-bd{ padding: 14px; }
+
+    .ep-row{
+      display:flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: end;
+    }
+    .ep-field{ flex: 1 1 280px; min-width: 240px; }
+    .ep-field.small{ flex: 0 1 160px; min-width: 150px; }
+
+    .ep-field label{
+      display:block;
+      font-size: 12px;
+      color: rgba(255,255,255,.66);
+      margin: 0 0 6px;
     }
 
-    a{ color:inherit; }
-    .wrap{ max-width:1100px; margin:0 auto; padding:20px; }
-
-    /* simple page header */
-    .pagehead{
-      display:flex; align-items:center; gap:12px;
-      padding:14px 16px;
-      background:linear-gradient(90deg, rgba(255,43,43,.15), rgba(43,108,255,.12));
-      border:1px solid var(--line);
-      box-shadow:var(--shadow);
+    .ep-field select{
+      width: 100%;
+      background: rgba(0,0,0,.35);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 10px;
+      padding: 10px 10px;
+      outline: none;
     }
-    .logo{
-      width:44px;height:44px;border-radius:10px;
-      background:rgba(255,255,255,.06);
-      display:grid;place-items:center;
-      border:1px solid var(--line);
-      overflow:hidden;
-      flex:0 0 auto;
-    }
-    .logo img{ width:100%; height:100%; object-fit:cover; }
-    .titleblock{ min-width:0; }
-    .titleblock h1{ margin:0; font-size:18px; letter-spacing:.3px; }
-    .titleblock p{ margin:2px 0 0; color:var(--muted); font-size:13px; }
 
-    .grid{
+    .ep-controls{
+      display:flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .ep-status{
+      margin-top: 12px;
+      padding: 14px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.32);
+      font-size: 18px;  /* bigger like you asked */
+      font-weight: 900;
+      letter-spacing: .2px;
+    }
+    .ep-status small{
+      display:block;
+      margin-top: 6px;
+      font-weight: 700;
+      font-size: 13px;
+      color: rgba(255,255,255,.68);
+    }
+
+    .ep-view-meta{
+      color: rgba(255,255,255,.72);
+      font-size: 13px;
+    }
+
+    .ep-canvasWrap{
+      padding: 12px;
       display:grid;
-      grid-template-columns: 1.15fr .85fr;
-      gap:16px;
-      margin-top:16px;
+      place-items: center;
+      background: rgba(0,0,0,.22);
     }
-    @media (max-width:980px){
-      .grid{ grid-template-columns:1fr; }
+    #pdfCanvas{
+      width: 100%;
+      height: auto;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: #111;
     }
 
-    .card{
-      background:linear-gradient(180deg, rgba(255,255,255,.035), transparent 55%), var(--panel);
-      border:1px solid var(--line);
-      box-shadow:var(--shadow);
-      border-radius:var(--radius);
-      overflow:hidden;
+    .ep-note{
+      margin-top: 10px;
+      color: rgba(255,255,255,.62);
+      font-size: 12px;
+      line-height: 1.45;
     }
-    .card .hd{
-      padding:14px 16px;
-      border-bottom:1px solid var(--line);
-      background:var(--panel2);
+
+    /* 21+ Gate */
+    .ep-gate{
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: grid;
+      place-items: center;
+      padding: 18px;
+      background: rgba(0,0,0,.86);
+    }
+    .ep-gateCard{
+      width: min(820px, 100%);
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.60);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    .ep-gateCard .g-hd{
+      padding: 16px 16px;
+      border-bottom: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,0,80,.12);
+    }
+    .ep-gateCard .g-hd h2{
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: .2px;
+    }
+    .ep-gateCard .g-bd{
+      padding: 16px 16px;
+      color: rgba(255,255,255,.78);
+    }
+    .ep-gateCard ul{ margin: 10px 0 0 18px; }
+    .ep-gateCard li{ margin: 6px 0; }
+    .ep-gateCard .g-actions{
+      padding: 14px 16px;
+      border-top: 1px solid rgba(255,255,255,.12);
       display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      flex-wrap:wrap;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-wrap: wrap;
+      background: rgba(0,0,0,.25);
     }
-    .card .hd strong{ font-size:14px; letter-spacing:.2px; }
-    .card .bd{ padding:16px; }
-
-    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-    label{ font-size:12px; color:var(--muted2); display:block; margin-bottom:6px; }
-
-    select, input[type="range"]{
-      background:rgba(0,0,0,.35);
-      color:var(--text);
-      border:1px solid var(--line);
-      border-radius:10px;
-      padding:10px 10px;
-      outline:none;
-      width:100%;
-    }
-
-    .ctrls{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-    .btn{
-      border:1px solid var(--line);
-      background:rgba(255,255,255,.06);
-      color:var(--text);
-      padding:10px 12px;
-      border-radius:12px;
-      cursor:pointer;
-      box-shadow:var(--btnshadow);
-      display:inline-flex;
-      gap:8px;
-      align-items:center;
-      font-weight:800;
-      letter-spacing:.2px;
-      user-select:none;
-    }
-    .btn:hover{ filter:brightness(1.06); }
-    .btn:disabled{ opacity:.45; cursor:not-allowed; }
-    .btn.blue{ background:linear-gradient(180deg, rgba(43,108,255,.55), rgba(43,108,255,.22)); border-color:rgba(43,108,255,.55); }
-    .btn.red{ background:linear-gradient(180deg, rgba(255,43,43,.60), rgba(255,43,43,.22)); border-color:rgba(255,43,43,.55); }
-    .btn.good{ background:linear-gradient(180deg, rgba(60,255,156,.30), rgba(60,255,156,.10)); border-color:rgba(60,255,156,.40); }
-
-    .status{
-      margin-top:12px;
-      padding:12px 12px;
-      border-radius:12px;
-      border:1px solid var(--line);
-      background:rgba(0,0,0,.30);
-      color:var(--muted);
-      font-size:16px; /* BIGGER like you asked */
-      font-weight:900;
-      letter-spacing:.2px;
-    }
-    .status small{ display:block; margin-top:6px; font-weight:700; color:var(--muted2); }
-
-    .viewer{
-      padding:0;
-    }
-    .viewerTop{
-      padding:12px 16px;
-      border-bottom:1px solid var(--line);
-      background:var(--panel2);
-      display:flex;
-      justify-content:space-between;
-      gap:10px;
-      align-items:center;
-      flex-wrap:wrap;
-    }
-    .viewerTop .meta{ color:var(--muted); font-size:13px; }
-    .canvasWrap{
-      padding:12px;
-      display:grid;
-      place-items:center;
-      background:rgba(0,0,0,.25);
-    }
-    canvas{
-      width:100%;
-      max-width:100%;
-      height:auto;
-      border-radius:12px;
-      border:1px solid rgba(255,255,255,.10);
-      box-shadow:0 14px 30px rgba(0,0,0,.55);
-      background:#111;
-    }
-
-    .footnote{
-      color:var(--muted2);
-      font-size:12px;
-      margin-top:12px;
-    }
-
-    /* 21+ gate modal */
-    .gate{
-      position:fixed; inset:0;
-      display:grid; place-items:center;
-      background:rgba(0,0,0,.82);
-      z-index:9999;
-      padding:16px;
-    }
-    .gateCard{
-      max-width:720px; width:100%;
-      background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,.25)), var(--panel);
-      border:1px solid var(--line);
-      box-shadow:0 20px 50px rgba(0,0,0,.7);
-      border-radius:14px;
-      overflow:hidden;
-    }
-    .gateCard .ghd{
-      padding:16px 18px;
-      border-bottom:1px solid var(--line);
-      background:linear-gradient(90deg, rgba(255,43,43,.18), rgba(43,108,255,.12));
-    }
-    .gateCard .ghd h2{ margin:0; font-size:18px; letter-spacing:.2px; }
-    .gateCard .gbd{ padding:18px; color:var(--muted); }
-    .gateCard ul{ margin:10px 0 0 18px; }
-    .gateCard li{ margin:6px 0; }
-    .gateActions{
-      padding:16px 18px;
-      border-top:1px solid var(--line);
-      display:flex;
-      gap:10px;
-      justify-content:flex-end;
-      flex-wrap:wrap;
-      background:rgba(0,0,0,.18);
-    }
-
     .hidden{ display:none !important; }
   </style>
 </head>
 
-<body>
-  <!-- 21+ Consent Gate -->
-  <div id="gate" class="gate">
-    <div class="gateCard">
-      <div class="ghd">
+<body data-page="">
+  <!-- Site Header injected by app.js -->
+  <div id="siteHeader"></div>
+
+  <!-- 21+ Gate -->
+  <div id="gate" class="ep-gate">
+    <div class="ep-gateCard">
+      <div class="g-hd">
         <h2>Age Verification Required</h2>
       </div>
-      <div class="gbd">
+      <div class="g-bd">
         This page contains material that may include sexually explicit content and sensitive subject matter.
         <ul>
-          <li>You must be <strong>twenty-one (21) or older</strong> to continue.</li>
+          <li>You must be <strong>21 years of age or older</strong> to continue.</li>
           <li>By continuing, you confirm you meet this age requirement.</li>
-          <li>Content is provided for informational purposes; viewer discretion advised.</li>
+          <li>This content is provided for informational purposes; viewer discretion is advised.</li>
         </ul>
       </div>
-      <div class="gateActions">
+      <div class="g-actions">
         <button class="btn" id="leaveBtn" type="button">Leave</button>
-        <button class="btn red" id="agreeBtn" type="button">I’m 21+ — Continue</button>
+        <button class="btn blue" id="agreeBtn" type="button">I’m 21+ — Continue</button>
       </div>
     </div>
   </div>
 
-  <div class="wrap">
-    <div class="pagehead">
-      <a class="logo" href="/" aria-label="Civic Threat home">
-        <img src="/assets/logo.png" alt="Civic Threat logo">
-      </a>
-      <div class="titleblock">
-        <h1>Released Files • Epstein PDF Reader (TTS)</h1>
-        <p>Pick a PDF, choose a voice and speed, then press Play. Use Prev/Next to move one page at a time.</p>
-      </div>
-    </div>
+  <main class="ep-wrap">
+    <section class="ep-hero">
+      <h1>Epstein Files Reader (TTS)</h1>
+      <p>
+        Select a released PDF to view it and have it read aloud. Choose a voice and reading speed,
+        then use Play / Pause / Stop. Prev/Next moves one page at a time.
+      </p>
+    </section>
 
-    <div class="grid">
+    <section class="ep-grid">
       <!-- Controls -->
-      <section class="card">
-        <div class="hd">
+      <div class="ep-card">
+        <div class="ep-hd">
           <strong>Controls</strong>
-          <span style="color:rgba(255,255,255,.55); font-size:12px;">Text-to-Speech + PDF Viewer</span>
+          <span style="color:rgba(255,255,255,.55);font-size:12px">Text-to-Speech + PDF Viewer</span>
         </div>
-        <div class="bd">
-          <div class="row" style="gap:14px;">
-            <div style="flex:1 1 360px; min-width:240px;">
+        <div class="ep-bd">
+          <div class="ep-row">
+            <div class="ep-field">
               <label for="pdfSelect">Choose a PDF</label>
               <select id="pdfSelect">
                 <option value="">Loading PDFs…</option>
               </select>
             </div>
 
-            <div style="flex:1 1 240px; min-width:220px;">
+            <div class="ep-field">
               <label for="voiceSelect">Voice</label>
               <select id="voiceSelect">
                 <option value="">Loading voices…</option>
               </select>
             </div>
 
-            <div style="flex:0 1 180px; min-width:160px;">
+            <div class="ep-field small">
               <label for="speedSelect">Speed</label>
               <select id="speedSelect">
                 <option value="1">1.0×</option>
@@ -285,7 +241,7 @@
             </div>
           </div>
 
-          <div class="ctrls" style="margin-top:14px;">
+          <div class="ep-controls">
             <button class="btn blue" id="playBtn" type="button">▶ Play</button>
             <button class="btn" id="pauseBtn" type="button" disabled>⏸ Pause</button>
             <button class="btn" id="stopBtn" type="button" disabled>⏹ Stop</button>
@@ -296,51 +252,59 @@
             <button class="btn" id="muteBtn" type="button" disabled>🔇 Mute</button>
           </div>
 
-          <div class="status" id="statusBox">
+          <div class="ep-status" id="statusBox">
             Loading reader…
             <small id="statusSub">Please wait.</small>
           </div>
 
-          <div class="footnote">
-            Tip: If voices look different on mobile, use the Voice dropdown to select your preferred English voice.
+          <div class="ep-note">
+            <strong>Disclosure:</strong> This page contains sensitive content. All voices and playback are provided by your device/browser.
+            Some PDFs may be scanned (image-only) and may not contain extractable text for reading.
           </div>
         </div>
-      </section>
+      </div>
 
       <!-- Viewer -->
-      <section class="card viewer">
-        <div class="viewerTop">
-          <div>
-            <div style="font-weight:900">Viewer</div>
-            <div class="meta" id="viewerMeta">No PDF loaded.</div>
-          </div>
-          <div class="row">
-            <a class="btn good" id="openPdfBtn" href="#" target="_blank" rel="noopener" style="display:none;">Open PDF</a>
-          </div>
+      <div class="ep-card">
+        <div class="ep-hd">
+          <strong>Viewer</strong>
+          <span class="ep-view-meta" id="viewerMeta">No PDF loaded.</span>
         </div>
-        <div class="canvasWrap">
+        <div class="ep-canvasWrap">
           <canvas id="pdfCanvas" width="900" height="1200"></canvas>
         </div>
-      </section>
-    </div>
-  </div>
+        <div style="padding: 12px 14px; border-top:1px solid rgba(255,255,255,.10); display:flex; justify-content:flex-end;">
+          <a class="btn" id="openPdfBtn" href="#" target="_blank" rel="noopener" style="display:none;">Open PDF</a>
+        </div>
+      </div>
+    </section>
+  </main>
 
-  <!-- Load PDF.js as ES Module (cdnjs now serves .mjs) -->
+  <!-- Site Footer injected by app.js -->
+  <div id="siteFooter"></div>
+
+  <!-- Load your normal site JS so header/footer render -->
+  <script src="/config.js?v=1"></script>
+  <script src="/data-api.js?v=1"></script>
+  <script src="/app.js?v=1"></script>
+
+  <!-- PDF.js as ES module (fixes your cdnjs MIME/type issues) -->
   <script type="module">
-    try {
-      const v = "5.4.149"; // current cdnjs version listing
+    try{
+      // Pick a known-good pdf.js version on cdnjs and load the .mjs module build
+      const v = "4.10.38";
       const pdfjs = await import(`https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${v}/pdf.min.mjs`);
       pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${v}/pdf.worker.min.mjs`;
       window.pdfjsLib = pdfjs;
       window.dispatchEvent(new Event("pdfjs-ready"));
-    } catch (e) {
+    }catch(e){
       console.error("PDF.js module load failed", e);
       window.__pdfjs_load_error = e;
       window.dispatchEvent(new Event("pdfjs-failed"));
     }
   </script>
 
-  <!-- App logic -->
-  <script src="./epstein-tts.js?v=9" defer></script>
+  <!-- Reader logic -->
+  <script src="./epstein-tts.js?v=10" defer></script>
 </body>
 </html>
