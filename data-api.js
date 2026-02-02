@@ -1,77 +1,78 @@
-/* CivicThreat.us data API
-   Uses JSONP-style calls to a Google Apps Script endpoint (no CORS headaches).
-*/
+/**
+ * data-api.js — CivicThreat.us
+ * JSONP client for Google Apps Script backend.
+ *
+ * Why JSONP?
+ * - GitHub Pages cannot do cross-origin XHR/fetch to Apps Script without CORS headers.
+ * - JSONP works via <script> injection.
+ */
+
 (function(){
-  "use strict";
-
-  function bust(){ return String(Date.now()); }
-
-  // JSONP call
-  function call(params){
-    return new Promise((resolve, reject) => {
-      const cfg = window.CT_CONFIG || {};
-      const endpoint = cfg.appsScriptUrl || cfg.APPS_SCRIPT_URL || cfg.apps_script_url;
-      if(!endpoint) return reject(new Error("Missing CT_CONFIG.appsScriptUrl in config.js"));
-
-      const cb = "cb_" + Math.random().toString(16).slice(2);
-      const url = new URL(endpoint);
-
-      // Add all params
-      Object.entries(params || {}).forEach(([k,v]) => {
-        if(v === undefined || v === null) return;
-        url.searchParams.set(k, String(v));
-      });
-
-      // Cache bust + callback
-      url.searchParams.set("callback", cb);
-      url.searchParams.set("_", bust());
-
-      const script = document.createElement("script");
-      script.async = true;
-      script.src = url.toString();
-
-      const cleanup = () => {
-        try{ delete window[cb]; }catch(_){}
-        if(script && script.parentNode) script.parentNode.removeChild(script);
-      };
-
-      window[cb] = (data) => {
-        cleanup();
-        if(data && data.ok === false){
-          reject(new Error(data.error || "API error"));
-        }else{
-          resolve(data);
-        }
-      };
-
-      script.onerror = () => {
-        cleanup();
-        reject(new Error("API request failed"));
-      };
-
-      document.head.appendChild(script);
+  function loadScript(src){
+    return new Promise((resolve, reject)=>{
+      const s = document.createElement("script");
+      s.src = src;
+      s.async = true;
+      s.onload = ()=> resolve();
+      s.onerror = ()=> reject(new Error("JSONP load failed: " + src));
+      document.head.appendChild(s);
     });
   }
 
-  // Public API
+  function b64url(str){
+    // base64url for Apps Script payload parameter
+    const b64 = btoa(unescape(encodeURIComponent(str)));
+    return b64.replaceAll("+","-").replaceAll("/","_").replaceAll("=","");
+  }
+
+  function call(params){
+    return new Promise(async (resolve, reject)=>{
+      try{
+        const cfg = window.CT_CONFIG || {};
+        const urlBase = cfg.API_URL;
+        const apiKey = cfg.API_KEY;
+
+        if(!urlBase) throw new Error("CT_CONFIG.API_URL missing");
+        if(!apiKey) throw new Error("CT_CONFIG.API_KEY missing");
+
+        const cbName = "__ct_cb_" + Math.random().toString(36).slice(2);
+        window[cbName] = (data)=>{
+          try { delete window[cbName]; } catch(_){}
+          resolve(data);
+        };
+
+        const qp = new URLSearchParams();
+        qp.set("callback", cbName);
+        qp.set("apiKey", apiKey);
+
+        Object.keys(params||{}).forEach(k=>{
+          if(params[k] === undefined || params[k] === null) return;
+          if(k === "payload"){
+            qp.set("payload", b64url(JSON.stringify(params[k])));
+          } else {
+            qp.set(k, String(params[k]));
+          }
+        });
+
+        const full = urlBase + (urlBase.includes("?") ? "&" : "?") + qp.toString();
+        await loadScript(full);
+      } catch(err){
+        reject(err);
+      }
+    });
+  }
+
   window.CT_REMOTE = {
-    listApproved: async ({ platform="facebook", category="support", limit=48 }={}) =>
-      await call({ action:"listApproved", platform, category, limit }),
+    health: async ()=> await call({ action:"health" }),
 
-    listPending: async ({ limit=200 }={}) =>
-      await call({ action:"listPending", limit }),
+    listApproved: async ()=> await call({ action:"listApproved" }),
+    listPending: async ()=> await call({ action:"listPending" }),
 
-    submit: async (payload) => await call({ action:"submit", payload: JSON.stringify(payload || {}) }),
+    submit: async (item)=> await call({ action:"submit", payload:{ item } }),
+    approve: async (id)=> await call({ action:"approve", id }),
+    reject: async (id)=> await call({ action:"reject", id }),
 
-    approve: async (id) => await call({ action:"approve", id }),
-
-    reject: async (id) => await call({ action:"reject", id }),
-
-    // Reactions (increment per post)
-    // kind: "up" (support) or "down" (maga)
-    react: async ({ id, kind }) => await call({ action:"react", id, kind }),
-
-    deleteApproved: async (id) => await call({ action:"deleteApproved", id })
+    deleteApproved: async (id)=> await call({ action:"deleteApproved", id }),
+    react: async (id, kind)=> await call({ action:"react", id, kind })
   };
-
 })();
