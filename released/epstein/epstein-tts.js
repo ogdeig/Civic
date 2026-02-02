@@ -32,6 +32,10 @@
     chunkIndex: 0,
 
     pageTextCache: new Map(),
+
+    // FIX: prevent race conditions while switching PDFs quickly
+    loadSeq: 0,
+    loadingPdf: false,
   };
 
   function setStatus(title, line){
@@ -50,20 +54,56 @@
 
   function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
 
-  function stopAllAudio(){
+  function cancelSpeech(){
     try{ window.speechSynthesis.cancel(); }catch(_){}
-    state.playing = false;
-    state.paused = false;
+  }
+
+  function clearPlaybackBuffers(){
     state.chunks = [];
     state.chunkIndex = 0;
   }
 
+  function stopAllAudio(){
+    cancelSpeech();
+    state.playing = false;
+    state.paused = false;
+    clearPlaybackBuffers();
+  }
+
+  function setControlsEnabled(ready){
+    // ready = true when a PDF is fully loaded and the UI can play
+    const disable = !ready;
+    const nodes = [el.btnPlay, el.btnPause, el.btnStop, el.btnPrev, el.btnNext, el.btnMute];
+    nodes.forEach(n => { if(n) n.disabled = disable; });
+
+    // Stop should always be usable if a PDF exists (even during load)
+    if(el.btnStop) el.btnStop.disabled = !(state.pdfDoc || state.loadingPdf) ? true : false;
+
+    // Prev/Next only if pdf loaded
+    if(el.btnPrev) el.btnPrev.disabled = !(state.pdfDoc && ready);
+    if(el.btnNext) el.btnNext.disabled = !(state.pdfDoc && ready);
+    if(el.btnPause) el.btnPause.disabled = !(state.playing && ready);
+  }
+
   function wireStopOnLeave(){
+    // Hard stop when leaving page
     window.addEventListener("pagehide", stopAllAudio);
     window.addEventListener("beforeunload", stopAllAudio);
-    document.addEventListener("visibilitychange", () => {
-      if(document.hidden) stopAllAudio();
+
+    // FIX: also stop on in-site navigation clicks (menus, links)
+    document.addEventListener("click", (e) => {
+      const a = e.target && e.target.closest ? e.target.closest("a") : null;
+      if(!a) return;
+      // Only stop if it's actual navigation (ignore #, javascript:, etc.)
+      const href = (a.getAttribute("href") || "").trim();
+      if(!href) return;
+      if(href.startsWith("#")) return;
+      if(/^javascript:/i.test(href)) return;
+      stopAllAudio();
     });
+
+    // FIX: back/forward navigation
+    window.addEventListener("popstate", stopAllAudio);
   }
 
   // ---- 21+ gate ----
@@ -221,29 +261,70 @@
   }
 
   // ---- PDF load/render ----
+  async function destroyCurrentPdf(){
+    try{
+      if(state.pdfDoc && typeof state.pdfDoc.destroy === "function"){
+        await state.pdfDoc.destroy();
+      }
+    }catch(_){}
+    state.pdfDoc = null;
+  }
+
   async function loadPdf(url, label){
+    // increment load sequence; older async steps won't “win”
+    const seq = ++state.loadSeq;
+
+    // stop audio, clear cache
     stopAllAudio();
     state.pageTextCache.clear();
+    clearPlaybackBuffers();
+
+    state.loadingPdf = true;
+    setControlsEnabled(false);
 
     setStatus("Loading PDF…", "Preparing viewer…");
     if(el.pageMeta) el.pageMeta.textContent = "Loading…";
 
     const pdfjsLib = await ensurePdfJs();
+
     try{
       pdfjsLib.GlobalWorkerOptions.workerSrc =
         "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
     }catch(_){}
 
-    const task = pdfjsLib.getDocument({ url, withCredentials: false });
-    state.pdfDoc = await task.promise;
+    try{
+      await destroyCurrentPdf();
 
-    state.pdfUrl = url;
-    state.pdfLabel = label || "";
-    state.totalPages = state.pdfDoc.numPages || 0;
-    state.page = 1;
+      // If user changed selection during awaits, abort
+      if(seq !== state.loadSeq) return;
 
-    await renderPage(1);
-    setStatus("Ready.", "Press Play to start reading page 1.");
+      const task = pdfjsLib.getDocument({ url, withCredentials: false });
+      const doc = await task.promise;
+
+      if(seq !== state.loadSeq){
+        try{ await doc.destroy(); }catch(_){}
+        return;
+      }
+
+      state.pdfDoc = doc;
+      state.pdfUrl = url;
+      state.pdfLabel = label || "";
+      state.totalPages = state.pdfDoc.numPages || 0;
+      state.page = 1;
+
+      await renderPage(1);
+
+      setStatus("Ready.", "Press Play to start reading page 1.");
+    }catch(err){
+      console.error(err);
+      setStatus("Error", "Failed to load PDF. Check the file path and that the PDF is accessible.");
+      if(el.pageMeta) el.pageMeta.textContent = "Failed to load PDF.";
+      await destroyCurrentPdf();
+    }finally{
+      state.loadingPdf = false;
+      // enable if PDF loaded
+      setControlsEnabled(!!state.pdfDoc);
+    }
   }
 
   async function renderPage(n){
@@ -343,8 +424,7 @@
     };
 
     try{
-      // Cancel before speak prevents stuck/one-page-only behavior on some devices
-      window.speechSynthesis.cancel();
+      // FIX: DO NOT cancel here; it can break chaining on some browsers
       window.speechSynthesis.speak(u);
     }catch(err){
       console.error(err);
@@ -357,6 +437,10 @@
   async function startReadingPage(n){
     if(!state.pdfDoc) return;
     n = clamp(n, 1, state.totalPages || 1);
+
+    // FIX: clear any pending utterances ONCE when starting a page
+    cancelSpeech();
+    clearPlaybackBuffers();
 
     setStatus("Playing…", `Reading page ${n}…`);
     const text = await getPageText(n);
@@ -392,16 +476,10 @@
 
   function restartReading(){
     if(!state.pdfDoc) return;
-    try{ window.speechSynthesis.cancel(); }catch(_){}
+    cancelSpeech();
     state.playing = true;
     state.paused = false;
     startReadingPage(state.page);
-  }
-
-  function addSafeListener(node, type, fn){
-    if(!node) return false;
-    node.addEventListener(type, fn);
-    return true;
   }
 
   function showMissingIds(missing){
@@ -430,11 +508,17 @@
 
     if(missing.length){
       showMissingIds(missing);
-      // Don’t crash — just don’t wire controls
       return;
     }
 
+    // initial state: nothing loaded
+    setControlsEnabled(false);
+
     el.btnPlay.addEventListener("click", async () => {
+      if(state.loadingPdf){
+        setStatus("Loading PDF…", "Please wait for the PDF to finish loading.");
+        return;
+      }
       if(!state.pdfDoc){
         setStatus("Ready.", "Select a PDF first.");
         return;
@@ -449,6 +533,7 @@
         }catch(_){
           restartReading();
         }
+        setControlsEnabled(true);
         return;
       }
 
@@ -456,6 +541,8 @@
 
       state.playing = true;
       state.paused = false;
+      setControlsEnabled(true);
+
       await renderPage(state.page);
       await startReadingPage(state.page);
     });
@@ -465,6 +552,7 @@
       state.paused = true;
       try{ window.speechSynthesis.pause(); }catch(_){}
       setStatus("Paused.", "Press Play to resume.");
+      setControlsEnabled(true);
     });
 
     el.btnStop.addEventListener("click", async () => {
@@ -473,21 +561,30 @@
         state.page = 1;
         await renderPage(1);
         setStatus("Stopped.", "Press Play to start from page 1.");
+        setControlsEnabled(true);
       }else{
         setStatus("Ready.", "Select a PDF to begin.");
+        setControlsEnabled(false);
       }
     });
 
+    // FIX: Prev/Next while playing should keep playing automatically on the new page
     el.btnNext.addEventListener("click", async () => {
+      if(state.loadingPdf) return;
       if(!state.pdfDoc) return;
+
       const wasPlaying = state.playing && !state.paused;
 
-      stopAllAudio();
+      // cancel current speech but keep play state intention
+      cancelSpeech();
+      clearPlaybackBuffers();
+
       state.page = clamp(state.page + 1, 1, state.totalPages);
       await renderPage(state.page);
 
       if(wasPlaying){
         state.playing = true;
+        state.paused = false;
         await startReadingPage(state.page);
       }else{
         setStatus("Ready.", `Moved to page ${state.page}. Press Play to read.`);
@@ -495,15 +592,20 @@
     });
 
     el.btnPrev.addEventListener("click", async () => {
+      if(state.loadingPdf) return;
       if(!state.pdfDoc) return;
+
       const wasPlaying = state.playing && !state.paused;
 
-      stopAllAudio();
+      cancelSpeech();
+      clearPlaybackBuffers();
+
       state.page = clamp(state.page - 1, 1, state.totalPages);
       await renderPage(state.page);
 
       if(wasPlaying){
         state.playing = true;
+        state.paused = false;
         await startReadingPage(state.page);
       }else{
         setStatus("Ready.", `Moved to page ${state.page}. Press Play to read.`);
@@ -521,15 +623,20 @@
     el.pdfSelect.addEventListener("change", async () => {
       const url = el.pdfSelect.value || "";
       const label = el.pdfSelect.options[el.pdfSelect.selectedIndex]?.textContent || "";
+
       if(!url){
         stopAllAudio();
-        state.pdfDoc = null;
+        await destroyCurrentPdf();
         state.totalPages = 0;
         state.page = 1;
-        el.pageMeta.textContent = "No PDF loaded.";
+        state.loadingPdf = false;
+
+        if(el.pageMeta) el.pageMeta.textContent = "No PDF loaded.";
         setStatus("Ready.", "Select a PDF to begin.");
+        setControlsEnabled(false);
         return;
       }
+
       await loadPdf(url, label);
     });
   }
@@ -573,8 +680,6 @@
   function init(){
     collectEls();
 
-    // Tell you immediately if this page is missing the core UI
-    // (so you know you're on the wrong file or old layout)
     if(!el.pdfSelect || !el.btnPlay){
       const missing = [];
       if(!el.pdfSelect) missing.push("#pdfSelect");
