@@ -1,29 +1,33 @@
-/* global window */
-(function(){
-  "use strict";
+/*
+  CivicThreat.us — config.js
+  Edit this file to point the site at your Google Apps Script Web App.
 
-  window.CT_CONFIG = {
-    SITE_NAME: "CIVIC THREAT",
-    SITE_TAGLINE: "Debate & Discuss",
-    COPYRIGHT_YEAR: 2026,
+  IMPORTANT: Always use the /exec URL (not /dev) for production.
+*/
 
-    SOCIAL: {
-      facebook: "https://www.facebook.com/CivicThreat/",
-      youtube:  "https://www.youtube.com/@civicthreat",
-      tiktok:   "https://www.tiktok.com/@civicthreat",
-      x:        "https://x.com/CivicThreat"
-    },
+window.CT_CONFIG = {
+  // Site / UI
+  SITE_NAME: "Civic Threat",
 
-    // Remote DB (Google Sheets via Apps Script JSONP)
-    REMOTE_DB: {
-      enabled: true,
-      appsScriptUrl: "https://script.google.com/macros/s/AKfycbxvjktr3A_FCZEgRNtkWBb9qGJTjdwa0oaS2ofAzQDQGngka0vLe8MwJrgUqy5KUOl6lA/exec",
-      apiKey: "civicthreat_12345_secret" // optional shared key; only effective if enforced in Apps Script
-    }
-  };
+  // Remote DB via Google Apps Script (JSONP)
+  REMOTE_DB: {
+    enabled: true,
+    // Example:
+    // appsScriptUrl: "https://script.google.com/macros/s/AKfycbxvjktr3A_FCZEgRNtkWBb9qGJTjdwa0oaS2ofAzQDQGngka0vLe8MwJrgUqy5KUOl6lA/exec",
+    appsScriptUrl: "",
+    // This must match CT_API_KEY in Apps Script Properties (or your fallback key).
+    apiKey: "",
+  },
 
-  // --- Backward-compatible aliases (fixes CT_CONFIG.API_URL missing) ---
-  // Some older front-end code expects CT_CONFIG.API_URL / CT_CONFIG.API_KEY.
-  window.CT_CONFIG.API_URL = window.CT_CONFIG.API_URL || window.CT_CONFIG.REMOTE_DB.appsScriptUrl;
-  window.CT_CONFIG.API_KEY = window.CT_CONFIG.API_KEY || window.CT_CONFIG.REMOTE_DB.apiKey;
-})();
+  // Reaction settings
+  REACTIONS: {
+    // 1 click per browser every 5 seconds
+    cooldownMs: 5000,
+  },
+
+  // Home page limits
+  HOME_LIMITS: {
+    support: 6,
+    maga: 6,
+  }
+};
