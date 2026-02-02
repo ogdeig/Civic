@@ -83,6 +83,6 @@
     react: (id, dir) => call("react", { id, dir }).then(r => ({
       reactionsUp: Number(r.reactionsUp || 0),
       reactionsDown: Number(r.reactionsDown || 0)
-    }))
+    })) 
   };
 })();
