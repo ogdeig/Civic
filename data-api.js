@@ -1,82 +1,88 @@
-/* CivicThreat.us — Data API client (JSONP) */
-(function(){
-  const CTData = {};
+/* data-api.js — CivicThreat.us JSONP client (GitHub Pages friendly) */
+(function () {
+  const CFG = window.CT_CONFIG || {};
 
-  function CFG(){ return (window.CT_CONFIG || {}); }
-  function getKey(){
-    const cfg = CFG();
-    const k = (cfg.REMOTE_DB && cfg.REMOTE_DB.apiKey) ? cfg.REMOTE_DB.apiKey : '';
-    return String(k || '').trim();
+  function ensureUrl() {
+    const url = (CFG.APPS_SCRIPT_URL || "").trim();
+    if (!url) throw new Error("CT_CONFIG.APPS_SCRIPT_URL missing");
+    return url;
   }
 
-  function getUrl(){
-    const cfg = CFG();
+  function jsonp(url, params) {
+    return new Promise((resolve, reject) => {
+      const cb = "ct_cb_" + Math.random().toString(36).slice(2);
+      params = params || {};
+      params.callback = cb;
 
-    // Preferred (current)
-    const v1 = cfg && cfg.REMOTE_DB && cfg.REMOTE_DB.appsScriptUrl;
-    if (v1) return String(v1).trim();
+      const q = Object.keys(params)
+        .map(k => encodeURIComponent(k) + "=" + encodeURIComponent(String(params[k])))
+        .join("&");
 
-    // Backward-compat (older configs people may still have deployed)
-    const v2 = cfg && (cfg.API_URL || cfg.APPS_SCRIPT_URL || cfg.appsScriptUrl);
-    if (v2) return String(v2).trim();
+      const src = url + (url.includes("?") ? "&" : "?") + q;
 
-    throw new Error("CT_CONFIG.REMOTE_DB.appsScriptUrl missing");
-  }
+      const s = document.createElement("script");
+      let done = false;
 
-  function jsonp(url){
-    return new Promise((resolve, reject)=>{
-      const cb = `__ct_jsonp_${Date.now()}_${Math.floor(Math.random()*1e9)}`;
-      const script = document.createElement("script");
-      const sep = url.includes("?") ? "&" : "?";
-      script.src = `${url}${sep}callback=${cb}`;
-      script.async = true;
-
-      const t = setTimeout(()=>{
-        cleanup();
-        reject(new Error("timeout"));
-      }, 15000);
-
-      function cleanup(){
-        clearTimeout(t);
-        try{ delete window[cb]; }catch{}
-        if (script && script.parentNode) script.parentNode.removeChild(script);
-      }
-
-      window[cb] = (data)=>{
+      window[cb] = (data) => {
+        done = true;
         cleanup();
         resolve(data);
       };
 
-      script.onerror = ()=>{
+      function cleanup() {
+        try { delete window[cb]; } catch (e) { window[cb] = undefined; }
+        if (s && s.parentNode) s.parentNode.removeChild(s);
+      }
+
+      s.onerror = () => {
+        if (done) return;
         cleanup();
-        reject(new Error("jsonp_error"));
+        reject(new Error("JSONP request failed"));
       };
 
-      document.head.appendChild(script);
+      document.head.appendChild(s);
+      s.src = src;
     });
   }
 
-  function buildUrl(params){
-    const base = getUrl();
-    const qs = new URLSearchParams(params);
-    return `${base}?${qs.toString()}`;
+  function call(action, extra) {
+    const url = ensureUrl();
+    const params = Object.assign({ action }, extra || {});
+    return jsonp(url, params).then(res => {
+      if (!res || res.ok !== true) {
+        const msg = (res && (res.error || res.message)) ? (res.error || res.message) : "request_failed";
+        throw new Error(msg);
+      }
+      return res;
+    });
   }
 
-  async function call(params){
-    const apiKey = getKey();
-    const full = buildUrl({ ...params, apiKey });
-    return await jsonp(full);
+  function b64urlEncode(str) {
+    const bytes = new TextEncoder().encode(str);
+    let bin = "";
+    bytes.forEach(b => bin += String.fromCharCode(b));
+    const b64 = btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+    return b64;
   }
 
-  // Public methods
-  CTData.health = async ()=> await jsonp(buildUrl({ action:"health" }));
-  CTData.listApproved = async ()=> await call({ action:"listApproved" });
-  CTData.listPending  = async ()=> await call({ action:"listPending" });
-  CTData.submit = async (payloadB64)=> await call({ action:"submit", payload: payloadB64 });
-  CTData.approve = async (id)=> await call({ action:"approve", id });
-  CTData.reject = async (id)=> await call({ action:"reject", id });
-  CTData.deleteApproved = async (id)=> await call({ action:"deleteApproved", id });
-  CTData.react = async ({id, dir})=> await call({ action:"react", id, dir });
+  window.CT_API = {
+    health: () => call("health"),
 
-  window.CTData = CTData;
+    listApproved: () => call("listApproved").then(r => r.items || []),
+    listPending:  () => call("listPending").then(r => r.items || []),
+
+    submit: (item) => {
+      const payload = b64urlEncode(JSON.stringify({ item }));
+      return call("submit", { payload }).then(() => true);
+    },
+
+    approve: (id) => call("approve", { id }).then(() => true),
+    reject:  (id) => call("reject", { id }).then(() => true),
+    deleteApproved: (id) => call("deleteApproved", { id }).then(() => true),
+
+    react: (id, dir) => call("react", { id, dir }).then(r => ({
+      reactionsUp: Number(r.reactionsUp || 0),
+      reactionsDown: Number(r.reactionsDown || 0)
+    }))
+  };
 })();
