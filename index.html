@@ -5,69 +5,248 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <meta name="color-scheme" content="dark"/>
   <title>Civic Threat</title>
-  <link rel="icon" href="./assets/logo.png"/>
-  <link rel="stylesheet" href="./styles.css"/>
+  <link rel="icon" href="/assets/logo.png"/>
+  <link rel="stylesheet" href="/styles.css"/>
+
+  <!-- Epstein hero (page-only styles, keeps global design intact) -->
+  <style>
+    .player-hero{
+      padding: 18px 0 10px;
+    }
+    .player-hero .grid{
+      display: grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 16px;
+      align-items: stretch;
+    }
+    @media (max-width: 980px){
+      .player-hero .grid{ grid-template-columns: 1fr; }
+    }
+    .player-hero h1{
+      margin: 0 0 6px;
+      font-size: clamp(26px, 4vw, 42px);
+      letter-spacing: .02em;
+    }
+    .player-hero p{
+      margin: 0 0 12px;
+      opacity: .9;
+      line-height: 1.55;
+      max-width: 70ch;
+    }
+    .player-hero .actions{
+      display:flex;
+      gap:10px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    /* Faux “mini player” preview card */
+    .ep-preview{
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.25);
+      border-radius: 0;
+      overflow: hidden;
+    }
+    .ep-preview .top{
+      display:flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 12px;
+      border-bottom: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.22);
+      font-size: 12px;
+      opacity: .95;
+    }
+    .ep-preview .top .pill{
+      border: 1px solid rgba(255,255,255,.12);
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-weight: 800;
+      letter-spacing: .03em;
+      opacity: .9;
+    }
+    .ep-preview .body{
+      padding: 12px;
+      display:flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .ep-preview .row{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap: wrap;
+    }
+    .ep-preview .fake-select{
+      flex: 1 1 240px;
+      min-width: 220px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.35);
+      padding: 10px 12px;
+      border-radius: 0;
+      opacity: .95;
+    }
+    .ep-preview .mini-controls{
+      display:flex;
+      gap:8px;
+      flex-wrap: wrap;
+    }
+    .ep-preview .mini-btn{
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.25);
+      padding: 8px 10px;
+      font-size: 13px;
+      border-radius: 0;
+      opacity: .95;
+      user-select:none;
+      pointer-events:none; /* preview only */
+    }
+    .ep-preview .screen{
+      height: 160px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: linear-gradient(180deg, rgba(0,0,0,.55), rgba(0,0,0,.2));
+      position: relative;
+      overflow:hidden;
+    }
+    .ep-preview .screen:before{
+      content:"";
+      position:absolute;
+      inset: 12px;
+      border: 1px dashed rgba(255,255,255,.14);
+      opacity: .75;
+    }
+    .ep-preview .screen .label{
+      position:absolute;
+      left: 14px;
+      bottom: 12px;
+      font-size: 12px;
+      opacity: .85;
+    }
+    .sr-only{
+      position:absolute!important;
+      width:1px;height:1px;
+      padding:0;margin:-1px;
+      overflow:hidden;
+      clip:rect(0,0,0,0);
+      white-space:nowrap;
+      border:0;
+    }
+  </style>
+
   <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-Z03YK1FYXW"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-Z03YK1FYXW');
-</script>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-Z03YK1FYXW"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-Z03YK1FYXW');
+  </script>
 </head>
+
 <body data-page="home">
   <div id="siteHeader"></div>
+
   <main>
-    
-<section class="hero">
-  <div class="wrap">
-    <h1>CIVIC THREAT</h1>
-    <p>
-      A hub for browsing and discussing posts from different platforms. Submit Facebook posts for review, then explore approved entries and get in on the discussion. We do not encourage Hate Speech! Follow Our Social Channels and get in on the latest gossip!
-    </p>
-  </div>
-</section>
 
-<section class="section">
-  <div class="wrap">
-    <div class="toolbar">
-      <div>
-        <h2>Facebook • Support</h2>
-        <p class="sub">Latest approved posts for creators and pages you want to support.</p>
+    <!-- TOP FEATURE: Epstein Files Player -->
+    <section class="hero player-hero">
+      <div class="wrap">
+        <!-- Hidden H2s for SEO (no visual impact) -->
+        <h2 class="sr-only">Released files</h2>
+        <h2 class="sr-only">Epstein files</h2>
+
+        <div class="grid">
+          <div>
+            <h1>Released Files • Epstein Files</h1>
+            <p>
+              Listen to released court PDFs with built-in text-to-speech. Choose a file, pick a voice, press Play — and use Next/Prev to move page-by-page.
+            </p>
+            <div class="actions">
+              <a class="btn blue" href="/released/epstein/epstein-reader.html">Open Epstein Files Player</a>
+              <a class="btn" href="/submit.html">Submit a Post</a>
+            </div>
+            <p style="margin-top:10px; font-size:12px; opacity:.8; line-height:1.5">
+              Adults 21+ only. Content may be sexually explicit. This tool is for accessibility and reading publicly released documents.
+            </p>
+          </div>
+
+          <a class="ep-preview" href="/released/epstein/epstein-reader.html" aria-label="Open Epstein Files Player">
+            <div class="top">
+              <div><strong>Epstein PDF Reader</strong> <span style="opacity:.75">• TTS + Viewer</span></div>
+              <span class="pill">▶ PLAY</span>
+            </div>
+            <div class="body">
+              <div class="row">
+                <div class="fake-select">Choose a PDF… <span style="opacity:.7">CL vs Epstein</span></div>
+              </div>
+              <div class="mini-controls" aria-hidden="true">
+                <div class="mini-btn">⏸ Pause</div>
+                <div class="mini-btn">⏹ Stop</div>
+                <div class="mini-btn">← Prev</div>
+                <div class="mini-btn">Next →</div>
+                <div class="mini-btn">🔇 Mute</div>
+              </div>
+              <div class="screen" aria-hidden="true">
+                <div class="label">Viewer preview (click to open)</div>
+              </div>
+            </div>
+          </a>
+        </div>
       </div>
-      <a class="btn" href="./facebook.html">View all</a>
-    </div>
-    <div id="homeSupport" class="feed-grid"></div>
-  </div>
-</section>
+    </section>
 
-<section class="section">
-  <div class="wrap">
-    <div class="toolbar">
-      <div>
-        <h2>Facebook • MAGA / Debate</h2>
-        <p class="sub">Latest Approved posts From MAGA Social Accounts open for debate and discussion.</p>
+    <!-- Your existing intro copy stays (still fine for SEO + clarity) -->
+    <section class="hero">
+      <div class="wrap">
+        <h1>CIVIC THREAT</h1>
+        <p>
+          A hub for browsing and discussing posts from different platforms. Submit Facebook posts for review, then explore approved entries and get in on the discussion.
+          We do not encourage Hate Speech! Follow Our Social Channels and get in on the latest gossip!
+        </p>
       </div>
-      <a class="btn" href="./facebook-maga.html">View all</a>
-    </div>
-    <div id="homeMaga" class="feed-grid"></div>
-  </div>
-</section>
+    </section>
 
-<section class="section">
-  <div class="wrap">
-    <h2>Submit a post</h2>
-    <p class="sub">Paste the Facebook embed code (or a direct post URL). Posts appear after review.</p>
-    <a class="btn blue" href="./submit.html">Submit</a>
-  </div>
-</section>
+    <section class="section">
+      <div class="wrap">
+        <div class="toolbar">
+          <div>
+            <h2>Facebook • Support</h2>
+            <p class="sub">Latest approved posts for creators and pages you want to support.</p>
+          </div>
+          <a class="btn" href="/facebook.html">View all</a>
+        </div>
+        <div id="homeSupport" class="feed-grid"></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="wrap">
+        <div class="toolbar">
+          <div>
+            <h2>Facebook • MAGA / Debate</h2>
+            <p class="sub">Latest Approved posts From MAGA Social Accounts open for debate and discussion.</p>
+          </div>
+          <a class="btn" href="/facebook-maga.html">View all</a>
+        </div>
+        <div id="homeMaga" class="feed-grid"></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="wrap">
+        <h2>Submit a post</h2>
+        <p class="sub">Paste the Facebook embed code (or a direct post URL). Posts appear after review.</p>
+        <a class="btn blue" href="/submit.html">Submit</a>
+      </div>
+    </section>
 
   </main>
+
   <div id="siteFooter"></div>
 
-  <script src="./config.js"></script>
-  <script src="./data-api.js"></script>
+  <script src="/config.js"></script>
+  <script src="/data-api.js"></script>
   <script src="/app.js?v=2"></script>
   <!-- Facebook embed SDK is optional for iframe embeds; leaving out keeps page lighter. -->
 </body>
