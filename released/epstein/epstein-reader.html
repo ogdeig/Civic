@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Released Files • Epstein PDF Reader (TTS) | Civic Threat</title>
+  <title>Released Files • Epstein Files | Civic Threat</title>
   <meta name="description" content="Listen to released court PDFs with text-to-speech, page-by-page controls, and a built-in viewer. For adults 21+ only." />
   <meta name="robots" content="index,follow" />
-  <meta property="og:title" content="Epstein PDF Reader (TTS) • Civic Threat" />
+  <meta property="og:title" content="Epstein Files • Civic Threat" />
   <meta property="og:description" content="Listen to released court PDFs with page-by-page TTS and a built-in viewer. Adults 21+ only." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://civicthreat.us/released/epstein/epstein-reader.html" />
@@ -159,7 +159,7 @@
 
   <main class="page-wrap">
     <header class="hero">
-      <h1>Released Files • Epstein PDF Reader (TTS)</h1>
+      <h1>Released Files • Epstein Files</h1>
       <p>Pick a PDF, choose a voice and speed, then press Play. Use Prev/Next to move one page at a time.</p>
     </header>
 
@@ -280,19 +280,14 @@
     }
     (function(){
       function qs(sel, root=document){ return root.querySelector(sel); }
-      function qsa(sel, root=document){
-        if(!root) return [];
-        return Array.from(root.querySelectorAll(sel));
-      }
+      function qsa(sel, root=document){ return root ? Array.from(root.querySelectorAll(sel)) : []; }
       function wireDropdown(dd){
         if(!dd) return;
         const btn = qs("button", dd);
         const menu = qs(".dropdown-menu", dd);
         if(!btn || !menu) return;
-
         function close(){ dd.classList.remove("open"); btn.setAttribute("aria-expanded","false"); }
         function open(){ dd.classList.add("open"); btn.setAttribute("aria-expanded","true"); }
-
         btn.addEventListener("click",(e)=>{ e.preventDefault(); dd.classList.contains("open") ? close() : open(); });
         document.addEventListener("click",(e)=>{ if(!dd.contains(e.target)) close(); });
         document.addEventListener("keydown",(e)=>{ if(e.key==="Escape") close(); });
@@ -303,7 +298,6 @@
     })();
   </script>
 
-  <!-- UPDATED cache buster -->
-  <script src="./epstein-tts.js?v=10"></script>
+  <script src="./epstein-tts.js?v=11"></script>
 </body>
 </html>
