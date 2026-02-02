@@ -8,14 +8,24 @@
   <link rel="icon" href="/assets/logo.png"/>
   <link rel="stylesheet" href="/styles.css"/>
 
-  <!-- Page-only styles for featured Epstein file card -->
+  <!-- Page-only styles for the Epstein hero split layout -->
   <style>
     /* Extra breathing room under sticky top bar */
     main{ padding-top: 14px; }
 
     .player-hero{ padding: 18px 0 10px; }
+    .player-hero .grid{
+      display:grid;
+      grid-template-columns: 1.05fr .95fr;
+      gap: 18px;
+      align-items: start;
+    }
+    @media (max-width: 980px){
+      .player-hero .grid{ grid-template-columns: 1fr; }
+    }
+
     .player-hero h1{
-      margin: 0 0 6px;
+      margin: 0 0 8px;
       font-size: clamp(26px, 4vw, 42px);
       letter-spacing: .02em;
     }
@@ -32,80 +42,74 @@
       margin-top: 10px;
     }
 
-    /* Featured file card */
-    .ep-feature{
-      margin-top: 14px;
+    .ep-meta{
+      margin-top: 12px;
+      font-size: 12px;
+      opacity: .8;
+      line-height: 1.5;
+    }
+
+    /* Right-side hero image card */
+    .ep-hero-card{
       border: 1px solid rgba(255,255,255,.12);
       background: rgba(0,0,0,.25);
       border-radius: 0;
       overflow: hidden;
     }
-    .ep-feature .top{
+    .ep-hero-card .top{
       display:flex;
       justify-content: space-between;
       align-items: center;
       gap: 10px;
-      padding: 12px 12px;
+      padding: 10px 12px;
       border-bottom: 1px solid rgba(255,255,255,.12);
       background: rgba(0,0,0,.22);
-    }
-    .ep-feature .kicker{
       font-size: 12px;
-      opacity: .85;
-      letter-spacing: .02em;
+      opacity: .9;
     }
-    .ep-feature .file{
-      font-weight: 1000;
-      letter-spacing: .02em;
-    }
-    .ep-feature .pill{
+    .ep-hero-card .badge{
       border: 1px solid rgba(255,255,255,.12);
-      padding: 6px 10px;
+      padding: 5px 10px;
       border-radius: 999px;
       font-weight: 900;
-      font-size: 12px;
       letter-spacing: .03em;
-      opacity: .9;
       white-space: nowrap;
     }
-    .ep-feature .body{
-      padding: 14px 12px;
-      display:flex;
-      flex-direction: column;
-      gap: 10px;
+
+    .ep-hero-card .media{
+      display:block;
+      width: 100%;
+      aspect-ratio: 16 / 10;
+      background: rgba(0,0,0,.45);
+      position: relative;
+      overflow:hidden;
     }
-    .ep-feature .meta{
+    .ep-hero-card img{
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display:block;
+    }
+    .ep-hero-card .fallback{
+      position:absolute;
+      inset: 0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      padding: 16px;
       font-size: 12px;
       opacity: .8;
       line-height: 1.45;
-    }
-    .ep-feature .btnrow{
-      display:flex;
-      gap:10px;
-      flex-wrap: wrap;
-      align-items: center;
-      margin-top: 4px;
-    }
-    .ep-feature .preview{
-      height: 220px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: linear-gradient(180deg, rgba(0,0,0,.60), rgba(0,0,0,.20));
-      position: relative;
-      overflow: hidden;
-    }
-    .ep-feature .preview:before{
-      content:"";
-      position:absolute;
-      inset: 14px;
       border: 1px dashed rgba(255,255,255,.16);
-      opacity: .8;
+      margin: 14px;
     }
-    .ep-feature .preview .label{
-      position:absolute;
-      left: 16px;
-      bottom: 12px;
+    .ep-hero-card .foot{
+      padding: 10px 12px;
+      border-top: 1px solid rgba(255,255,255,.12);
       font-size: 12px;
       opacity: .85;
+      line-height: 1.45;
     }
 
     /* Hidden H2s for SEO (no visual impact) */
@@ -138,52 +142,58 @@
     <!-- TOP FEATURE: Released Files / Epstein Files -->
     <section class="hero player-hero">
       <div class="wrap">
+        <!-- SEO-only headings (hidden) -->
         <h2 class="sr-only">Released files</h2>
         <h2 class="sr-only">Epstein files</h2>
 
-        <h1>Released Files • Epstein Files</h1>
-        <p>
-          Listen to released court PDFs with built-in text-to-speech. Choose a file, pick a voice, press Play — and use Next/Prev to move page-by-page.
-        </p>
+        <div class="grid">
+          <!-- LEFT: text + buttons -->
+          <div>
+            <h1>Released Files • Epstein Files</h1>
+            <p>
+              Listen to released court PDFs with built-in text-to-speech. Choose a file, pick a voice, press Play — and use Next/Prev to move page-by-page.
+            </p>
 
-        <div class="actions">
-          <a class="btn blue" href="/released/epstein/epstein-reader.html">Open Epstein Files Player</a>
-          <a class="btn" href="/submit.html">Submit a Post</a>
+            <div class="actions">
+              <a class="btn blue" href="/released/epstein/epstein-reader.html">Open Epstein Files Player</a>
+              <a class="btn" href="/submit.html">Submit a Post</a>
+            </div>
+
+            <div class="ep-meta">
+              <strong>Featured:</strong> CL vs Epstein<br>
+              Adults 21+ only — content may be sexually explicit. This tool is for accessibility and reading publicly released documents.
+            </div>
+          </div>
+
+          <!-- RIGHT: hero image -->
+          <a class="ep-hero-card" href="/released/epstein/epstein-reader.html" aria-label="Open Epstein Files Player">
+            <div class="top">
+              <div><strong>CL vs Epstein</strong> <span style="opacity:.75">• Released PDF</span></div>
+              <div class="badge">PDF • TTS • Viewer</div>
+            </div>
+
+            <div class="media">
+              <!-- Put your image here:
+                   Save an image at: /assets/epstein/epstein-hero.jpg
+                   (either a screenshot of page 1, or a courtroom-style image)
+              -->
+              <img
+                src="/assets/epstein/epstein-hero.jpg"
+                alt="Preview image representing the Epstein released PDF reader"
+                onerror="this.style.display='none'; this.parentElement.querySelector('.fallback').style.display='flex';"
+              />
+              <div class="fallback" style="display:none;">
+                Add an image at <strong style="margin-left:6px">/assets/epstein/epstein-hero.jpg</strong><br><br>
+                Recommended: screenshot of page 1 (CL vs Epstein) or a courtroom-style image.
+              </div>
+            </div>
+
+            <div class="foot">
+              Click to open the reader and press Play.
+            </div>
+          </a>
         </div>
 
-        <!-- Featured file: CL vs Epstein -->
-        <a class="ep-feature" href="/released/epstein/epstein-reader.html" aria-label="Open Epstein Files Player - CL vs Epstein">
-          <div class="top">
-            <div>
-              <div class="kicker">Featured file</div>
-              <div class="file">CL vs Epstein</div>
-            </div>
-            <div class="pill">PDF • TTS • Viewer</div>
-          </div>
-
-          <div class="body">
-            <div class="meta">
-              Tap to open the reader and press Play. (Adults 21+ only — content may be sexually explicit.)
-            </div>
-
-            <div class="preview" aria-hidden="true">
-              <div class="label">Preview (click to open)</div>
-            </div>
-
-            <div class="btnrow" aria-hidden="true">
-              <span class="btn blue">▶ Play</span>
-              <span class="btn">⏸ Pause</span>
-              <span class="btn">⏹ Stop</span>
-              <span class="btn">← Prev</span>
-              <span class="btn">Next →</span>
-              <span class="btn">🔇 Mute</span>
-            </div>
-          </div>
-        </a>
-
-        <p style="margin-top:10px; font-size:12px; opacity:.8; line-height:1.5">
-          Disclosure: This page provides text-to-speech playback of publicly released documents. Civic Threat does not endorse wrongdoing; this tool is for reading and accessibility only.
-        </p>
       </div>
     </section>
 
@@ -192,8 +202,7 @@
       <div class="wrap">
         <h1>CIVIC THREAT</h1>
         <p>
-          A hub for browsing and discussing posts from different platforms. Submit Facebook posts for review, then explore approved entries and get in on the discussion.
-          We do not encourage Hate Speech! Follow Our Social Channels and get in on the latest gossip!
+          A hub for browsing and discussing posts from different platforms. Submit Facebook posts for review, then explore approved entries and get in on the discussion. We do not encourage Hate Speech! Follow Our Social Channels and get in on the latest gossip!
         </p>
       </div>
     </section>
@@ -239,5 +248,6 @@
   <script src="/config.js"></script>
   <script src="/data-api.js"></script>
   <script src="/app.js?v=2"></script>
+  <!-- Facebook embed SDK is optional for iframe embeds; leaving out keeps page lighter. -->
 </body>
 </html>
