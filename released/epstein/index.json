@@ -1,6 +1,6 @@
 {
-  "generatedAt": 1770005509,
-  "count": 12,
+  "generatedAt": 1770008493,
+  "count": 17,
   "items": [
     {
       "file": "ANASTASIA DOE_vs_EPSTEIN_Filed 12-17-19.pdf",
@@ -18,6 +18,11 @@
       "label": "JANE DOE 1000 vs EPSTEIN Filed 11 14 19"
     },
     {
+      "file": "JANE DOE 11_vs_EPSTEIN_Filed_03-25-09.pdf",
+      "path": "released/epstein/pdfs/JANE DOE 11_vs_EPSTEIN_Filed_03-25-09.pdf",
+      "label": "JANE DOE 11 vs EPSTEIN Filed 03 25 09"
+    },
+    {
       "file": "JANE DOE No. 101_vs_EPSTEIN_Filed_04-20-09.pdf",
       "path": "released/epstein/pdfs/JANE DOE No. 101_vs_EPSTEIN_Filed_04-20-09.pdf",
       "label": "JANE DOE No. 101 vs EPSTEIN Filed 04 20 09"
@@ -26,6 +31,16 @@
       "file": "JANE DOE No. 102_vs_EPSTEIN_Filed_05-04-09.pdf",
       "path": "released/epstein/pdfs/JANE DOE No. 102_vs_EPSTEIN_Filed_05-04-09.pdf",
       "label": "JANE DOE No. 102 vs EPSTEIN Filed 05 04 09"
+    },
+    {
+      "file": "JANE DOE NO. 1_vs_EPSTEIN_Filed_01-25-08.pdf",
+      "path": "released/epstein/pdfs/JANE DOE NO. 1_vs_EPSTEIN_Filed_01-25-08.pdf",
+      "label": "JANE DOE NO. 1 vs EPSTEIN Filed 01 25 08"
+    },
+    {
+      "file": "JANE DOE NO. 2_vs_EPSTEIN_Filed_02-06-08.pdf",
+      "path": "released/epstein/pdfs/JANE DOE NO. 2_vs_EPSTEIN_Filed_02-06-08.pdf",
+      "label": "JANE DOE NO. 2 vs EPSTEIN Filed 02 06 08"
     },
     {
       "file": "JANE DOE NO. 3_vs_EPSTEIN_Filed_03-05-08.pdf",
@@ -58,9 +73,19 @@
       "label": "JULIETTE BRYANT vs EPSTEIN Filed 11 14 19"
     },
     {
+      "file": "MARIA FARMER_vs_EPSTEIN_Filed_11-12-19.pdf",
+      "path": "released/epstein/pdfs/MARIA FARMER_vs_EPSTEIN_Filed_11-12-19.pdf",
+      "label": "MARIA FARMER vs EPSTEIN Filed 11 12 19"
+    },
+    {
       "file": "TEALA DAVIES_vs_EPSTEIN_Filed_11-21-19 .pdf",
       "path": "released/epstein/pdfs/TEALA DAVIES_vs_EPSTEIN_Filed_11-21-19 .pdf",
       "label": "TEALA DAVIES vs EPSTEIN Filed 11 21 19"
+    },
+    {
+      "file": "VIRGINIA L. GIUFFRE_vs_MAXWELL_Filed_09-21-15.pdf",
+      "path": "released/epstein/pdfs/VIRGINIA L. GIUFFRE_vs_MAXWELL_Filed_09-21-15.pdf",
+      "label": "VIRGINIA L. GIUFFRE vs MAXWELL Filed 09 21 15"
     }
   ]
 }
