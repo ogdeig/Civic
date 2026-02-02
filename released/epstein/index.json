@@ -1,11 +1,31 @@
 {
-  "generatedAt": 1770004585,
-  "count": 1,
+  "generatedAt": 1770004741,
+  "count": 5,
   "items": [
+    {
+      "file": "ANASTASIA DOE_vs_EPSTEIN_Filed 12-17-19.pdf",
+      "path": "released/epstein/pdfs/ANASTASIA DOE_vs_EPSTEIN_Filed 12-17-19.pdf",
+      "label": "ANASTASIA DOE vs EPSTEIN Filed 12 17 19"
+    },
     {
       "file": "CL_vs_Epstein.pdf",
       "path": "released/epstein/pdfs/CL_vs_Epstein.pdf",
       "label": "CL vs Epstein"
+    },
+    {
+      "file": "JANE DOE 1000_vs_EPSTEIN_Filed 11-14-19.pdf",
+      "path": "released/epstein/pdfs/JANE DOE 1000_vs_EPSTEIN_Filed 11-14-19.pdf",
+      "label": "JANE DOE 1000 vs EPSTEIN Filed 11 14 19"
+    },
+    {
+      "file": "JULIETTE BRYANT_vs_EPSTEIN_Filed 11-14-19.pdf",
+      "path": "released/epstein/pdfs/JULIETTE BRYANT_vs_EPSTEIN_Filed 11-14-19.pdf",
+      "label": "JULIETTE BRYANT vs EPSTEIN Filed 11 14 19"
+    },
+    {
+      "file": "TEALA DAVIES_vs_EPSTEIN_Filed_11-21-19 .pdf",
+      "path": "released/epstein/pdfs/TEALA DAVIES_vs_EPSTEIN_Filed_11-21-19 .pdf",
+      "label": "TEALA DAVIES vs EPSTEIN Filed 11 21 19"
     }
   ]
 }
