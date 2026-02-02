@@ -6,6 +6,7 @@
 (function(){
   "use strict";
 
+  const VERSION = "v12";
   const INDEX_URL = "/released/epstein/index.json";
   const CONSENT_KEY = "ct_epstein_21_gate_v1";
 
@@ -36,6 +37,9 @@
     loadSeq: 0,
     loadingPdf: false,
   };
+
+  // Make it obvious JS is loaded (and which version)
+  window.CT_EPSTEIN_TTS = { version: VERSION };
 
   function setStatus(title, line){
     if(el.statusTitle) el.statusTitle.textContent = title || "";
@@ -69,27 +73,12 @@
     clearPlaybackBuffers();
   }
 
-  function setControlsEnabled(ready){
-    const disable = !ready;
-    const nodes = [el.btnPlay, el.btnPause, el.btnStop, el.btnPrev, el.btnNext, el.btnMute];
-    nodes.forEach(n => { if(n) n.disabled = disable; });
-
-    // Stop usable if PDF exists or is loading
-    if(el.btnStop) el.btnStop.disabled = !(state.pdfDoc || state.loadingPdf);
-
-    // Prev/Next only when a PDF is actually loaded
-    if(el.btnPrev) el.btnPrev.disabled = !(state.pdfDoc && ready);
-    if(el.btnNext) el.btnNext.disabled = !(state.pdfDoc && ready);
-
-    // Pause only useful when actively playing
-    if(el.btnPause) el.btnPause.disabled = !(state.playing && ready);
-  }
-
   function wireStopOnLeave(){
     window.addEventListener("pagehide", stopAllAudio);
     window.addEventListener("beforeunload", stopAllAudio);
     window.addEventListener("popstate", stopAllAudio);
 
+    // Stop if user clicks any real navigation link
     document.addEventListener("click", (e) => {
       const a = e.target && e.target.closest ? e.target.closest("a") : null;
       if(!a) return;
@@ -98,7 +87,7 @@
       if(href.startsWith("#")) return;
       if(/^javascript:/i.test(href)) return;
       stopAllAudio();
-    });
+    }, true);
 
     document.addEventListener("visibilitychange", () => {
       if(document.hidden) stopAllAudio();
@@ -154,7 +143,7 @@
   // ---- PDF.js ----
   async function ensurePdfJs(){
     if(window.pdfjsLib) return window.pdfjsLib;
-    throw new Error("PDF.js failed to load (pdfjsLib missing). Check that pdf.min.js loaded.");
+    throw new Error("PDF.js failed to load (pdfjsLib missing).");
   }
 
   // ---- Voices ----
@@ -226,7 +215,7 @@
 
   // ---- Index ----
   async function loadIndex(){
-    setStatus("Loading…", "Fetching PDF list…");
+    setStatus("Loading…", `(${VERSION}) Fetching PDF list…`);
 
     const data = await safeFetchJson(INDEX_URL);
     const items = Array.isArray(data.items) ? data.items : [];
@@ -243,20 +232,20 @@
       o.value = "";
       o.textContent = "No PDFs found";
       el.pdfSelect.appendChild(o);
-      setStatus("Ready.", "No PDFs found. Add PDFs to /released/epstein/pdfs/ and rebuild index.json.");
+      setStatus("Ready.", `(${VERSION}) No PDFs found.`);
       return [];
     }
 
     for(const it of items){
       const raw = String(it.path || "").replace(/^\/+/, "");
-      const full = "/" + raw; // ensures absolute site path
+      const full = "/" + raw; // absolute site path
       const o = document.createElement("option");
       o.value = full;
       o.textContent = it.label || it.file || it.path;
       el.pdfSelect.appendChild(o);
     }
 
-    setStatus("Ready.", "Select a PDF to begin.");
+    setStatus("Ready.", `(${VERSION}) Select a PDF, then press Play.`);
     return items;
   }
 
@@ -270,26 +259,6 @@
     state.pdfDoc = null;
   }
 
-  // IMPORTANT: preflight check so we can show EXACT why it won't load
-  async function preflightPdf(url){
-    try{
-      // Range request for first byte. If server blocks range, we still learn the status.
-      const r = await fetch(url, {
-        method: "GET",
-        headers: { "Range": "bytes=0-0" },
-        cache: "no-store",
-      });
-
-      // Accept 200 or 206 (partial content)
-      if(!(r.status === 200 || r.status === 206)){
-        return { ok:false, status:r.status, statusText:r.statusText };
-      }
-      return { ok:true, status:r.status };
-    }catch(err){
-      return { ok:false, status:0, statusText: err?.message ? err.message : String(err) };
-    }
-  }
-
   async function loadPdf(url, label){
     const seq = ++state.loadSeq;
 
@@ -298,25 +267,9 @@
     clearPlaybackBuffers();
 
     state.loadingPdf = true;
-    setControlsEnabled(false);
 
-    setStatus("Loading PDF…", "Checking file access…");
+    setStatus("Loading PDF…", `(${VERSION}) Loading: ${label || url}`);
     if(el.pageMeta) el.pageMeta.textContent = "Loading…";
-
-    // preflight the actual PDF URL so you see real errors
-    const pre = await preflightPdf(url);
-    if(seq !== state.loadSeq) return;
-
-    if(!pre.ok){
-      state.loadingPdf = false;
-      setControlsEnabled(false);
-      setStatus("Error", `PDF fetch failed: ${pre.status || "ERR"} ${pre.statusText || ""} — ${url}`);
-      if(el.pageMeta) el.pageMeta.textContent = "PDF not reachable.";
-      await destroyCurrentPdf();
-      return;
-    }
-
-    setStatus("Loading PDF…", "Downloading & parsing…");
 
     const pdfjsLib = await ensurePdfJs();
     try{
@@ -328,7 +281,7 @@
       await destroyCurrentPdf();
       if(seq !== state.loadSeq) return;
 
-      // FIX: disable range/stream to avoid servers that break PDF.js incremental loading
+      // IMPORTANT: disable range/stream (GitHub Pages / some CDNs can break incremental loading)
       const baseOpts = {
         url,
         withCredentials: false,
@@ -342,9 +295,9 @@
         const task = pdfjsLib.getDocument(baseOpts);
         doc = await task.promise;
       }catch(firstErr){
-        // FIX: if worker fails (CSP/crossorigin), retry without worker
+        // Retry without worker if worker/CSP/crossorigin issues
         console.warn("PDF load retry without worker:", firstErr);
-        setStatus("Loading PDF…", "Retrying (worker disabled)…");
+        setStatus("Loading PDF…", `(${VERSION}) Retrying (worker disabled)…`);
         const task2 = pdfjsLib.getDocument({ ...baseOpts, disableWorker: true });
         doc = await task2.promise;
       }
@@ -362,15 +315,14 @@
 
       await renderPage(1);
 
-      setStatus("Ready.", "Press Play to start reading page 1.");
+      setStatus("Ready.", `(${VERSION}) PDF loaded. Press Play to read page 1.`);
     }catch(err){
       console.error(err);
-      setStatus("Error", "PDF.js could not parse this PDF. See console for details.");
-      if(el.pageMeta) el.pageMeta.textContent = "Failed to parse PDF.";
+      setStatus("Error", `(${VERSION}) Failed to load/parse PDF. Check Network tab for ${url}`);
+      if(el.pageMeta) el.pageMeta.textContent = "Failed to load PDF.";
       await destroyCurrentPdf();
     }finally{
       state.loadingPdf = false;
-      setControlsEnabled(!!state.pdfDoc);
     }
   }
 
@@ -407,7 +359,7 @@
   async function getPageText(n){
     if(state.pageTextCache.has(n)) return state.pageTextCache.get(n);
 
-    setStatus("Working…", `Extracting text from page ${n}…`);
+    setStatus("Working…", `(${VERSION}) Extracting text from page ${n}…`);
     const page = await state.pdfDoc.getPage(n);
     const tc = await page.getTextContent();
 
@@ -474,7 +426,7 @@
       window.speechSynthesis.speak(u);
     }catch(err){
       console.error(err);
-      setStatus("Error", "Text-to-speech failed to start on this device/browser.");
+      setStatus("Error", `(${VERSION}) TTS failed to start on this device/browser.`);
       state.playing = false;
       state.paused = false;
     }
@@ -487,7 +439,7 @@
     cancelSpeech();
     clearPlaybackBuffers();
 
-    setStatus("Playing…", `Reading page ${n}…`);
+    setStatus("Playing…", `(${VERSION}) Reading page ${n}…`);
     const text = await getPageText(n);
 
     state.chunks = chunkText(text);
@@ -500,7 +452,7 @@
     if(!state.playing || state.paused) return;
 
     if(state.page >= (state.totalPages || 1)){
-      setStatus("Done.", "Reached the end of the PDF.");
+      setStatus("Done.", `(${VERSION}) Reached the end of the PDF.`);
       state.playing = false;
       state.paused = false;
       return;
@@ -513,7 +465,7 @@
       .then(() => startReadingPage(next))
       .catch(err => {
         console.error(err);
-        setStatus("Error", "Failed to load the next page.");
+        setStatus("Error", `(${VERSION}) Failed to load the next page.`);
         state.playing = false;
         state.paused = false;
       });
@@ -556,15 +508,24 @@
       return;
     }
 
-    setControlsEnabled(false);
-
+    // BIG FIX: Play will auto-load the selected PDF if it wasn't loaded yet.
     el.btnPlay.addEventListener("click", async () => {
+      // If user selected a PDF but it wasn't loaded (change event didn't fire), load it now.
+      if(!state.pdfDoc && !state.loadingPdf){
+        const url = el.pdfSelect.value || "";
+        const label = el.pdfSelect.options[el.pdfSelect.selectedIndex]?.textContent || "";
+        if(url){
+          await loadPdf(url, label);
+        }
+      }
+
       if(state.loadingPdf){
-        setStatus("Loading PDF…", "Please wait for the PDF to finish loading.");
+        setStatus("Loading PDF…", `(${VERSION}) Please wait…`);
         return;
       }
+
       if(!state.pdfDoc){
-        setStatus("Ready.", "Select a PDF first.");
+        setStatus("Ready.", `(${VERSION}) Select a PDF first.`);
         return;
       }
 
@@ -573,11 +534,10 @@
         state.playing = true;
         try{
           window.speechSynthesis.resume();
-          setStatus("Playing…", `Reading page ${state.page}…`);
+          setStatus("Playing…", `(${VERSION}) Reading page ${state.page}…`);
         }catch(_){
           restartReading();
         }
-        setControlsEnabled(true);
         return;
       }
 
@@ -585,7 +545,6 @@
 
       state.playing = true;
       state.paused = false;
-      setControlsEnabled(true);
 
       await renderPage(state.page);
       await startReadingPage(state.page);
@@ -595,8 +554,7 @@
       if(!state.playing) return;
       state.paused = true;
       try{ window.speechSynthesis.pause(); }catch(_){}
-      setStatus("Paused.", "Press Play to resume.");
-      setControlsEnabled(true);
+      setStatus("Paused.", `(${VERSION}) Press Play to resume.`);
     });
 
     el.btnStop.addEventListener("click", async () => {
@@ -604,11 +562,9 @@
       if(state.pdfDoc){
         state.page = 1;
         await renderPage(1);
-        setStatus("Stopped.", "Press Play to start from page 1.");
-        setControlsEnabled(true);
+        setStatus("Stopped.", `(${VERSION}) Press Play to start from page 1.`);
       }else{
-        setStatus("Ready.", "Select a PDF to begin.");
-        setControlsEnabled(false);
+        setStatus("Ready.", `(${VERSION}) Select a PDF to begin.`);
       }
     });
 
@@ -629,7 +585,7 @@
         state.paused = false;
         await startReadingPage(state.page);
       }else{
-        setStatus("Ready.", `Moved to page ${state.page}. Press Play to read.`);
+        setStatus("Ready.", `(${VERSION}) Moved to page ${state.page}. Press Play to read.`);
       }
     });
 
@@ -650,7 +606,7 @@
         state.paused = false;
         await startReadingPage(state.page);
       }else{
-        setStatus("Ready.", `Moved to page ${state.page}. Press Play to read.`);
+        setStatus("Ready.", `(${VERSION}) Moved to page ${state.page}. Press Play to read.`);
       }
     });
 
@@ -674,11 +630,11 @@
         state.loadingPdf = false;
 
         if(el.pageMeta) el.pageMeta.textContent = "No PDF loaded.";
-        setStatus("Ready.", "Select a PDF to begin.");
-        setControlsEnabled(false);
+        setStatus("Ready.", `(${VERSION}) Select a PDF to begin.`);
         return;
       }
 
+      // Load immediately on change (and Play also loads as a fallback)
       await loadPdf(url, label);
     });
   }
@@ -712,7 +668,7 @@
       wireVoices();
       wireControls();
       await loadIndex();
-      setStatus("Ready.", "Select a PDF, then press Play.");
+      setStatus("Ready.", `(${VERSION}) Select a PDF, then press Play.`);
     }catch(err){
       console.error(err);
       setStatus("Error", err?.message ? err.message : String(err));
@@ -728,6 +684,9 @@
       if(!el.btnPlay) missing.push("#btnPlay");
       showMissingIds(missing);
     }
+
+    // Show a visible "JS is alive" message right away
+    setStatus("Ready.", `(${VERSION}) JS loaded. Select a PDF, then press Play.`);
 
     wireGate(boot);
   }
