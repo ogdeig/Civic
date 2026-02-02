@@ -1,410 +1,334 @@
-/* CivicThreat.us — App */
+/* app.js — CivicThreat.us */
+(function () {
+  const CFG = window.CT_CONFIG || {};
+  const API = window.CT_API;
 
-function $(sel, root=document){ return root.querySelector(sel); }
-function $all(sel, root=document){ return Array.from(root.querySelectorAll(sel)); }
+  function byId(id){ return document.getElementById(id); }
+  function esc(s){ return String(s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
-function safeText(v){
-  return String(v ?? "")
-    .replace(/&/g,"&amp;")
-    .replace(/</g,"&lt;")
-    .replace(/>/g,"&gt;");
-}
+  function mountHeader() {
+    const host = byId("siteHeader");
+    if (!host) return;
 
-function safeAttr(v) {
-  return safeText(v).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-}
+    // absolute paths to prevent “/released/epstein/epstein” double-path issues
+    const links = {
+      home: "/",
+      fbSupport: "/facebook.html",
+      fbMaga: "/facebook-maga.html",
+      submit: "/submit.html",
+      epsteinPlayer: "/released/epstein/epstein-reader.html"
+    };
 
-function fmtDate(ts){
-  try{
-    const d = new Date(Number(ts));
-    return d.toLocaleDateString(undefined, { year:"numeric", month:"short", day:"2-digit" });
-  }catch{ return ""; }
-}
+    host.innerHTML = `
+      <header class="topbar">
+        <div class="wrap">
+          <div class="inner">
+            <a class="brand" href="${links.home}">
+              <img src="/assets/logo.png" alt="Civic Threat"/>
+              <div>
+                <span class="title">CIVIC THREAT</span>
+                <span class="sub">Debate &amp; Discuss</span>
+              </div>
+            </a>
 
-function setStatus(msg, isError=false){
-  const el = $("#status");
-  if(!el) return;
-  el.textContent = msg || "";
-  el.style.color = isError ? "#ffb4b4" : "rgba(231,238,247,.9)";
-}
-
-/* ---------------- Reactions ---------------- */
-
-const CT_REACT_COOLDOWN_MS = 5000;
-
-function reactCooldownKey_(id) { return `ct_react_${id}`; }
-
-function canReactNow_(id) {
-  try {
-    const last = Number(localStorage.getItem(reactCooldownKey_(id)) || 0);
-    const now = Date.now();
-    if (!last || (now - last) >= CT_REACT_COOLDOWN_MS) return { ok: true, waitMs: 0 };
-    return { ok: false, waitMs: CT_REACT_COOLDOWN_MS - (now - last) };
-  } catch {
-    return { ok: true, waitMs: 0 };
-  }
-}
-
-function markReactNow_(id) {
-  try { localStorage.setItem(reactCooldownKey_(id), String(Date.now())); } catch {}
-}
-
-async function handleReactClick_(btn) {
-  const id = (btn.getAttribute('data-id') || '').trim();
-  const dir = (btn.getAttribute('data-dir') || '').trim();
-  if (!id || (dir !== 'up' && dir !== 'down')) return;
-
-  const gate = canReactNow_(id);
-  if (!gate.ok) {
-    const secs = Math.max(1, Math.ceil(gate.waitMs / 1000));
-    setStatus(`Please wait ${secs}s before reacting again.`, false);
-    return;
-  }
-
-  const countEl = btn.querySelector('[data-role="count"]');
-  const before = Number(countEl ? countEl.textContent : 0) || 0;
-  if (countEl) countEl.textContent = String(before + 1);
-  btn.disabled = true;
-  markReactNow_(id);
-
-  try {
-    const res = await CTData.react({ id, dir });
-    if (!res || !res.ok) throw new Error((res && res.error) || 'react_failed');
-
-    const updated = (dir === 'up') ? (Number(res.reactionsUp) || 0) : (Number(res.reactionsDown) || 0);
-    if (countEl) countEl.textContent = String(updated);
-  } catch (err) {
-    if (countEl) countEl.textContent = String(before);
-    setStatus('Reaction failed. Please try again.', true);
-    console.error(err);
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-function wireReactions_() {
-  document.addEventListener('click', (e) => {
-    const btn = e.target && e.target.closest ? e.target.closest('.react-btn') : null;
-    if (!btn) return;
-    e.preventDefault();
-    handleReactClick_(btn);
-  });
-}
-
-/* ---------------- Header / Footer ---------------- */
-
-function mountHeaderFooter(){
-  const header = $("#siteHeader");
-  const footer = $("#siteFooter");
-
-  if(header){
-    header.innerHTML = headerHTML_();
-  }
-  if(footer){
-    footer.innerHTML = footerHTML_();
-  }
-}
-
-function headerHTML_(){
-  return `
-  <header class="topbar">
-    <div class="wrap topbar-inner">
-      <div class="brandblock">
-        <a href="/" aria-label="Home">
-          <img src="/assets/logo.png" alt="Civic Threat"/>
-        </a>
-        <div class="brandtext">
-          <div class="name">CIVIC THREAT</div>
-          <div class="tag">Debate &amp; Discuss</div>
-        </div>
-      </div>
-
-      <div class="socialblock" aria-label="Follow us">
-        <a class="iconbtn" href="https://www.facebook.com/CivicThreat/" target="_blank" rel="noopener" aria-label="Facebook">
-          ${iconFacebook_()}
-        </a>
-        <a class="iconbtn" href="https://www.youtube.com/@civicthreat" target="_blank" rel="noopener" aria-label="YouTube">
-          ${iconYouTube_()}
-        </a>
-        <a class="iconbtn" href="https://www.tiktok.com/@civicthreat" target="_blank" rel="noopener" aria-label="TikTok">
-          ${iconTikTok_()}
-        </a>
-        <a class="iconbtn" href="https://x.com/CivicThreat" target="_blank" rel="noopener" aria-label="X">
-          ${iconX_()}
-        </a>
-      </div>
-
-      <nav class="navwrap" aria-label="Main navigation">
-        <div class="navmenu">
-          <div class="dropdown">
-            <a class="navlink" href="#" onclick="return false;">Platforms</a>
-            <div class="dropdownmenu">
-              <a class="dropitem" href="/facebook.html">Facebook • Support</a>
-              <a class="dropitem" href="/facebook-maga.html">Facebook • MAGA / Debate</a>
+            <div class="socialblock" aria-label="Follow us">
+              <span class="label">FOLLOW US</span>
+              <a class="iconbtn" href="https://www.facebook.com/CivicThreat/" target="_blank" rel="noopener" aria-label="Facebook">
+                ${iconFacebook()}
+              </a>
+              <a class="iconbtn" href="https://www.youtube.com/@civicthreat" target="_blank" rel="noopener" aria-label="YouTube">
+                ${iconYoutube()}
+              </a>
+              <a class="iconbtn" href="https://www.tiktok.com/@civicthreat" target="_blank" rel="noopener" aria-label="TikTok">
+                ${iconTikTok()}
+              </a>
+              <a class="iconbtn" href="https://x.com/CivicThreat" target="_blank" rel="noopener" aria-label="X">
+                ${iconX()}
+              </a>
             </div>
+
+            <nav class="nav" aria-label="Site navigation">
+              <div class="dd" id="ddPlatforms">
+                <button type="button" id="btnPlatforms">Platforms ▾</button>
+                <div class="ddmenu" role="menu" aria-label="Platforms menu">
+                  <a href="${links.fbSupport}">Facebook • Support <span>Browse</span></a>
+                  <a href="${links.fbMaga}">Facebook • MAGA / Debate <span>Browse</span></a>
+                </div>
+              </div>
+
+              <div class="dd" id="ddReleased">
+                <button type="button" id="btnReleased">Released Files ▾</button>
+                <div class="ddmenu" role="menu" aria-label="Released files menu">
+                  <a href="${links.epsteinPlayer}">Epstein Files • PDF reader + audio <span>Open</span></a>
+                </div>
+              </div>
+
+              <a class="primary" href="${links.submit}">Submit</a>
+            </nav>
           </div>
-
-          <div class="dropdown">
-            <a class="navlink" href="#" onclick="return false;">Released Files</a>
-            <div class="dropdownmenu">
-              <a class="dropitem" href="/released/epstein/epstein-reader.html">Epstein Files • PDF reader + voice</a>
-            </div>
-          </div>
-
-          <a class="navlink" href="/submit.html">Submit</a>
         </div>
-      </nav>
-    </div>
-  </header>
-  `;
-}
+      </header>
+    `;
 
-function footerHTML_(){
-  const year = (window.CT_CONFIG && window.CT_CONFIG.COPYRIGHT_YEAR) ? window.CT_CONFIG.COPYRIGHT_YEAR : new Date().getFullYear();
-  return `
-  <footer class="sitefooter">
-    <div class="wrap">
-      <div class="footergrid">
-        <div>
-          <div style="font-weight:950;letter-spacing:.8px;">CIVIC THREAT</div>
-          <div class="footcopy">© ${year} Civic Threat. All rights reserved.</div>
-        </div>
-        <div class="footerlinks">
-          <a href="/about.html">About</a>
-          <a href="/contact.html">Contact</a>
-          <a href="/policy/privacy.html">Privacy</a>
-          <a href="/policy/terms.html">Terms</a>
-          <a href="/policy/cookies.html">Cookies</a>
-        </div>
-      </div>
-    </div>
-  </footer>
-  `;
-}
+    // dropdown behavior
+    const ddPlatforms = byId("ddPlatforms");
+    const ddReleased  = byId("ddReleased");
+    const btnPlatforms = byId("btnPlatforms");
+    const btnReleased  = byId("btnReleased");
 
-/* ---------------- Icons ---------------- */
-
-function iconFacebook_(){
-  return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.5 22v-8h2.7l.4-3H13.5V9.1c0-.9.3-1.6 1.7-1.6H16.7V4.8c-.3 0-1.4-.1-2.7-.1-2.7 0-4.6 1.6-4.6 4.7V11H6.8v3h2.6v8h4.1z"/></svg>`;
-}
-function iconYouTube_(){
-  return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.7 7.2s-.2-1.6-.9-2.3c-.9-.9-1.9-.9-2.3-.9C15.3 3.7 12 3.7 12 3.7h0s-3.3 0-6.5.3c-.4 0-1.4 0-2.3.9-.7.7-.9 2.3-.9 2.3S2 9 2 10.8v2.3c0 1.8.3 3.6.3 3.6s.2 1.6.9 2.3c.9.9 2.1.9 2.7 1 2 .2 6.1.3 6.1.3s3.3 0 6.5-.3c.4 0 1.4 0 2.3-.9.7-.7.9-2.3.9-2.3S22 15 22 13.2v-2.3c0-1.8-.3-3.6-.3-3.6zM10 15.3V8.7l6.2 3.3L10 15.3z"/></svg>`;
-}
-function iconTikTok_(){
-  return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.7 3c.5 2.9 2.3 4.7 5.3 5v3c-1.9.1-3.6-.5-5.3-1.6v6.9c0 3.5-2.9 6.4-6.4 6.4S4 19.8 4 16.3s2.9-6.4 6.4-6.4c.4 0 .8 0 1.2.1v3.3c-.4-.1-.8-.2-1.2-.2-1.7 0-3.1 1.4-3.1 3.1s1.4 3.1 3.1 3.1 3.2-1.4 3.2-3.1V3h3.1z"/></svg>`;
-}
-function iconX_(){
-  return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.8 2H22l-7.1 8.1L23 22h-6.7l-5.2-6.7L5.2 22H2l7.7-8.8L1 2h6.8l4.7 6.1L18.8 2zm-1.2 18h1.8L6.3 3.9H4.4L17.6 20z"/></svg>`;
-}
-
-/* ---------------- Facebook embeds ---------------- */
-
-function fbEmbedLazy(postUrl){
-  const url = safeAttr(postUrl);
-  return `<div class="fb-lazy" data-href="${url}">
-    <div style="font-weight:900;margin-bottom:8px;">Preview</div>
-    <div style="opacity:.85;">Tap/scroll to load the Facebook embed.</div>
-  </div>`;
-}
-
-function hydrateFacebookEmbed(node){
-  const href = node.getAttribute("data-href");
-  if(!href) return;
-  const pluginUrl = "https://www.facebook.com/plugins/post.php?href=" + encodeURIComponent(href) + "&show_text=true&width=500";
-  node.innerHTML = `<iframe class="fb-iframe" scrolling="no" allow="encrypted-media" src="${pluginUrl}"></iframe>`;
-}
-
-function lazyLoadFacebookEmbeds(root=document){
-  const nodes = $all(".fb-lazy", root);
-  if(!nodes.length) return;
-
-  const io = new IntersectionObserver((entries)=>{
-    entries.forEach(ent=>{
-      if(ent.isIntersecting){
-        hydrateFacebookEmbed(ent.target);
-        io.unobserve(ent.target);
-      }
-    });
-  }, { rootMargin:"400px" });
-
-  nodes.forEach(n=> io.observe(n));
-}
-
-/* ---------------- Cards ---------------- */
-
-function renderPostCard(item, opts = {}) {
-  const title = safeText(item.title || '');
-  const platform = safeText(item.platform || 'facebook');
-  const category = safeText(item.category || '');
-  const date = item.approvedAt ? fmtDate(item.approvedAt) : (item.submittedAt ? fmtDate(item.submittedAt) : '');
-  const by = safeText(item.submitterName || 'Anonymous');
-  const byLink = (item.submitterLink || '').toString().trim();
-  const postUrl = (item.postUrl || '').toString().trim();
-
-  const isSupport = (category === 'support');
-  const reactDir = isSupport ? 'up' : 'down';
-  const reactEmoji = isSupport ? '❤️' : '🖕';
-  const reactText = isSupport ? 'Support' : 'Debate';
-  const count = isSupport ? (Number(item.reactionsUp) || 0) : (Number(item.reactionsDown) || 0);
-
-  const tagLabel = platform.charAt(0).toUpperCase() + platform.slice(1);
-  const catLabel = category ? (category.charAt(0).toUpperCase() + category.slice(1)) : '';
-  const metaLine = [tagLabel, catLabel, date].filter(Boolean).join(' • ');
-
-  const embed = postUrl ? fbEmbedLazy(postUrl) : `<div class="embed-fallback">Missing post URL.</div>`;
-
-  const submitterHtml = byLink
-    ? `<a class="subby" href="${byLink}" target="_blank" rel="noopener">Submitted by: ${by}</a>`
-    : `<div class="subby">Submitted by: ${by}</div>`;
-
-  const openBtn = postUrl
-    ? `<a class="btn small blue" href="${postUrl}" target="_blank" rel="noopener">Open on Facebook</a>`
-    : '';
-
-  const browseBtn = opts.browseHref
-    ? `<a class="btn small" href="${opts.browseHref}">Browse all</a>`
-    : '';
-
-  const reactBtn = `
-    <button class="react-btn ${isSupport ? 'up' : 'down'}"
-            type="button"
-            data-id="${safeAttr(item.id || '')}"
-            data-dir="${reactDir}"
-            aria-label="${reactText}">
-      <span class="react-emoji" aria-hidden="true">${reactEmoji}</span>
-      <span class="react-label">${reactText}</span>
-      <span class="react-count" data-role="count">${count}</span>
-    </button>
-  `;
-
-  return `
-    <article class="card postcard" data-id="${safeAttr(item.id || '')}">
-      <div class="card-top">
-        <div class="pill">${metaLine}</div>
-      </div>
-
-      <h3 class="card-title">${title}</h3>
-
-      <div class="embedwrap">
-        ${embed}
-      </div>
-
-      <div class="card-actions">
-        <div class="card-actions-left">
-          ${reactBtn}
-        </div>
-        <div class="card-actions-right">
-          ${openBtn}
-          ${browseBtn}
-        </div>
-      </div>
-
-      <div class="card-bottom">
-        ${submitterHtml}
-      </div>
-    </article>
-  `;
-}
-
-/* ---------------- Pages ---------------- */
-
-async function loadHome(){
-  const supportEl = $("#homeSupport");
-  const magaEl = $("#homeMaga");
-  if(!supportEl || !magaEl) return;
-
-  setStatus("Loading posts…");
-
-  const res = await CTData.listApproved();
-  if(!res || !res.ok){
-    setStatus("Failed loading posts.", true);
-    return;
-  }
-
-  const items = Array.isArray(res.items) ? res.items : [];
-  const support = items.filter(x=> x.category === "support").slice(0, 6);
-  const maga = items.filter(x=> x.category === "maga").slice(0, 6);
-
-  supportEl.innerHTML = support.map(it => renderPostCard(it, { browseHref: "/facebook.html" })).join("");
-  magaEl.innerHTML = maga.map(it => renderPostCard(it, { browseHref: "/facebook-maga.html" })).join("");
-
-  lazyLoadFacebookEmbeds(document);
-  setStatus("");
-}
-
-async function initFeed(pageCategory){
-  const feed = $("#feedGrid");
-  const search = $("#search");
-  const countApproved = $("#countApproved");
-  const countPending = $("#countPending");
-  if(!feed) return;
-
-  setStatus("Loading approved posts…");
-
-  const res = await CTData.listApproved();
-  if(!res || !res.ok){
-    setStatus("Failed loading posts.", true);
-    return;
-  }
-
-  const itemsAll = Array.isArray(res.items) ? res.items : [];
-  const items = itemsAll.filter(x=> x.category === pageCategory);
-
-  if(countApproved) countApproved.textContent = String(items.length);
-
-  function renderList(list){
-    feed.innerHTML = list.map(it => renderPostCard(it, { browseHref: pageCategory === "support" ? "/facebook.html" : "/facebook-maga.html" })).join("");
-    lazyLoadFacebookEmbeds(feed);
-  }
-
-  function applyFilter(){
-    const q = (search && search.value ? search.value : "").toLowerCase().trim();
-    if(!q){
-      renderList(items);
-      setStatus("");
-      return;
+    function closeAll(){
+      ddPlatforms && ddPlatforms.classList.remove("open");
+      ddReleased && ddReleased.classList.remove("open");
     }
-    const filtered = items.filter(it=>{
-      const hay = [
-        it.title, it.postUrl, it.submitterName, it.submitterLink
-      ].filter(Boolean).join(" ").toLowerCase();
-      return hay.includes(q);
+
+    btnPlatforms && btnPlatforms.addEventListener("click", (e) => {
+      e.preventDefault();
+      const isOpen = ddPlatforms.classList.contains("open");
+      closeAll();
+      if (!isOpen) ddPlatforms.classList.add("open");
     });
-    renderList(filtered);
-    setStatus(filtered.length ? "" : "No matches found.");
+
+    btnReleased && btnReleased.addEventListener("click", (e) => {
+      e.preventDefault();
+      const isOpen = ddReleased.classList.contains("open");
+      closeAll();
+      if (!isOpen) ddReleased.classList.add("open");
+    });
+
+    document.addEventListener("click", (e) => {
+      const t = e.target;
+      if (!t) return;
+      if (ddPlatforms && ddPlatforms.contains(t)) return;
+      if (ddReleased && ddReleased.contains(t)) return;
+      closeAll();
+    }, { passive:true });
   }
 
-  renderList(items);
-  setStatus("");
-
-  if(search){
-    search.addEventListener("input", applyFilter);
+  function mountFooter() {
+    const host = byId("siteFooter");
+    if (!host) return;
+    host.innerHTML = `
+      <footer>
+        <div class="wrap">
+          <div class="cols">
+            <div>© ${new Date().getFullYear()} Civic Threat. All rights reserved.</div>
+            <div style="display:flex;gap:14px;flex-wrap:wrap">
+              <a href="/about.html">About</a>
+              <a href="/contact.html">Contact</a>
+              <a href="/policy/privacy">Privacy</a>
+              <a href="/policy/terms">Terms</a>
+            </div>
+          </div>
+        </div>
+      </footer>
+    `;
   }
 
-  // pending count (optional; doesn’t block page)
-  try{
-    const pend = await CTData.listPending();
-    const pendItems = (pend && pend.ok && Array.isArray(pend.items)) ? pend.items : [];
-    if(countPending) countPending.textContent = String(pendItems.length);
-  }catch{}
-
-}
-
-function init(){
-  mountHeaderFooter();
-  wireReactions_();
-
-  const page = (document.body.getAttribute("data-page") || "").trim();
-
-  if(page === "home"){
-    loadHome();
+  /* ---------- Facebook embed URL helper ---------- */
+  function getFacebookEmbedUrl(postUrl) {
+    // Facebook plugin embed (works for public posts/reels; depends on FB availability)
+    const u = encodeURIComponent(postUrl);
+    return `https://www.facebook.com/plugins/post.php?href=${u}&show_text=true&width=500`;
   }
-  if(page === "facebook-support"){
-    initFeed("support");
-  }
-  if(page === "facebook-maga"){
-    initFeed("maga");
-  }
-}
 
-document.addEventListener("DOMContentLoaded", init);
+  /* ---------- Reactions (cooldown 5s per browser) ---------- */
+  function canReactNow() {
+    const ms = Number(CFG.REACTION_COOLDOWN_MS || 5000);
+    const key = "ct_react_last_ts";
+    const last = Number(localStorage.getItem(key) || 0);
+    const now = Date.now();
+    if ((now - last) < ms) return { ok:false, waitMs: ms - (now-last) };
+    localStorage.setItem(key, String(now));
+    return { ok:true, waitMs: 0 };
+  }
+
+  async function onReact(item, dir, countElUp, countElDown) {
+    const gate = canReactNow();
+    if (!gate.ok) return; // silently ignore (prevents spam)
+
+    // optimistic UI bump
+    const up = Number(item.reactionsUp || 0);
+    const dn = Number(item.reactionsDown || 0);
+    if (dir === "up") {
+      item.reactionsUp = up + 1;
+      if (countElUp) countElUp.textContent = String(item.reactionsUp);
+    } else {
+      item.reactionsDown = dn + 1;
+      if (countElDown) countElDown.textContent = String(item.reactionsDown);
+    }
+
+    try {
+      const res = await API.react(item.id, dir);
+      item.reactionsUp = res.reactionsUp;
+      item.reactionsDown = res.reactionsDown;
+      if (countElUp) countElUp.textContent = String(item.reactionsUp || 0);
+      if (countElDown) countElDown.textContent = String(item.reactionsDown || 0);
+    } catch (e) {
+      // revert if server failed
+      if (dir === "up") item.reactionsUp = up;
+      else item.reactionsDown = dn;
+      if (countElUp) countElUp.textContent = String(item.reactionsUp || 0);
+      if (countElDown) countElDown.textContent = String(item.reactionsDown || 0);
+    }
+  }
+
+  /* ---------- Card renderer ---------- */
+  function renderPostCard(item) {
+    const card = document.createElement("div");
+    card.className = "card";
+
+    const categoryLabel = (item.category || "").toLowerCase() === "maga"
+      ? "Facebook • MAGA / Debate"
+      : "Facebook • Support";
+
+    const title = item.title ? esc(item.title) : "Facebook Post";
+    const submittedBy = item.submitterName ? esc(item.submitterName) : "Anonymous";
+    const dateMs = Number(item.approvedAt || item.submittedAt || 0);
+    const dateStr = dateMs ? new Date(dateMs).toLocaleDateString(undefined, { year:"numeric", month:"short", day:"2-digit" }) : "";
+
+    const embedUrl = getFacebookEmbedUrl(item.postUrl);
+
+    card.innerHTML = `
+      <div class="pad">
+        <div class="kicker">
+          <span>${categoryLabel}</span>
+          <span style="opacity:.8">${dateStr}</span>
+        </div>
+        <h3>${title}</h3>
+        <div class="meta">Submitted by: ${submittedBy}</div>
+      </div>
+
+      <div class="embedbox">
+        <iframe
+          src="${embedUrl}"
+          allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+          loading="lazy"
+          scrolling="no"
+        ></iframe>
+      </div>
+
+      <div class="actions">
+        <a class="btn blue" href="${esc(item.postUrl)}" target="_blank" rel="noopener">Go to Post</a>
+        <a class="btn" href="${esc(item.postUrl)}" target="_blank" rel="noopener">Browse</a>
+      </div>
+
+      <div class="reactions">
+        <button class="reactbtn" data-react="up" type="button" aria-label="Support">
+          ❤️ <span class="count" data-count="up">${Number(item.reactionsUp||0)}</span>
+        </button>
+        <button class="reactbtn" data-react="down" type="button" aria-label="Disagree">
+          🖕 <span class="count" data-count="down">${Number(item.reactionsDown||0)}</span>
+        </button>
+      </div>
+    `;
+
+    const upBtn = card.querySelector('[data-react="up"]');
+    const dnBtn = card.querySelector('[data-react="down"]');
+    const upCount = card.querySelector('[data-count="up"]');
+    const dnCount = card.querySelector('[data-count="down"]');
+
+    // Only show ❤️ on support posts, 🖕 on maga posts
+    const isMaga = (item.category || "").toLowerCase() === "maga";
+    if (isMaga) {
+      // hide ❤️
+      if (upBtn) upBtn.style.display = "none";
+      if (dnBtn) dnBtn.style.flex = "1";
+    } else {
+      // hide 🖕
+      if (dnBtn) dnBtn.style.display = "none";
+      if (upBtn) upBtn.style.flex = "1";
+    }
+
+    upBtn && upBtn.addEventListener("click", () => onReact(item, "up", upCount, dnCount));
+    dnBtn && dnBtn.addEventListener("click", () => onReact(item, "down", upCount, dnCount));
+
+    return card;
+  }
+
+  /* ---------- Page loaders ---------- */
+  async function loadHome() {
+    const supportHost = byId("homeSupport");
+    const magaHost = byId("homeMaga");
+    if (!supportHost && !magaHost) return;
+
+    const items = await API.listApproved();
+    const support = items.filter(x => (x.category || "").toLowerCase() !== "maga").slice(0, 6);
+    const maga = items.filter(x => (x.category || "").toLowerCase() === "maga").slice(0, 6);
+
+    if (supportHost) {
+      supportHost.innerHTML = "";
+      support.forEach(item => supportHost.appendChild(renderPostCard(item)));
+    }
+    if (magaHost) {
+      magaHost.innerHTML = "";
+      maga.forEach(item => magaHost.appendChild(renderPostCard(item)));
+    }
+  }
+
+  async function loadFeedPage(categoryWanted) {
+    const grid = byId("feedGrid");
+    const countApproved = byId("countApproved");
+    const countPending = byId("countPending");
+    const search = byId("search");
+    if (!grid) return;
+
+    const [approved, pending] = await Promise.all([
+      API.listApproved(),
+      API.listPending().catch(() => [])
+    ]);
+
+    const filtered = approved.filter(x => {
+      const cat = (x.category || "").toLowerCase();
+      return categoryWanted === "maga" ? cat === "maga" : cat !== "maga";
+    });
+
+    if (countApproved) countApproved.textContent = String(filtered.length);
+    if (countPending) countPending.textContent = String(pending.length);
+
+    function draw(list) {
+      grid.innerHTML = "";
+      list.forEach(item => grid.appendChild(renderPostCard(item)));
+    }
+
+    draw(filtered);
+
+    if (search) {
+      search.addEventListener("input", () => {
+        const q = (search.value || "").trim().toLowerCase();
+        if (!q) return draw(filtered);
+        const list = filtered.filter(x => {
+          const hay = `${x.title||""} ${x.postUrl||""} ${x.submitterName||""} ${x.submitterLink||""}`.toLowerCase();
+          return hay.includes(q);
+        });
+        draw(list);
+      });
+    }
+  }
+
+  /* ---------- Icons ---------- */
+  function iconFacebook(){ return `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M22 12a10 10 0 1 0-11.6 9.9v-7H8v-3h2.4V9.8c0-2.4 1.4-3.7 3.6-3.7 1 0 2.1.2 2.1.2v2.3h-1.2c-1.2 0-1.6.7-1.6 1.5V12H16l-.4 3h-2.3v7A10 10 0 0 0 22 12z"/></svg>`; }
+  function iconYoutube(){ return `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.6 7.2a3 3 0 0 0-2.1-2.1C17.7 4.6 12 4.6 12 4.6s-5.7 0-7.5.5A3 3 0 0 0 2.4 7.2 31.5 31.5 0 0 0 2 12a31.5 31.5 0 0 0 .4 4.8 3 3 0 0 0 2.1 2.1c1.8.5 7.5.5 7.5.5s5.7 0 7.5-.5a3 3 0 0 0 2.1-2.1A31.5 31.5 0 0 0 22 12a31.5 31.5 0 0 0-.4-4.8zM10 15.5v-7l6 3.5-6 3.5z"/></svg>`; }
+  function iconTikTok(){ return `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.7 5.3c1 .8 2.2 1.3 3.5 1.4v3.2c-1.7 0-3.3-.5-4.6-1.4v6.6c0 3-2.5 5.5-5.5 5.5S4.6 18 4.6 15s2.5-5.5 5.5-5.5c.5 0 1 .1 1.4.2v3.4c-.4-.2-.9-.3-1.4-.3-1.2 0-2.2 1-2.2 2.2s1 2.2 2.2 2.2 2.2-1 2.2-2.2V2h3c.1 1.3.7 2.5 1.4 3.3z"/></svg>`; }
+  function iconX(){ return `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.9 2H22l-6.8 7.8L23 22h-6.4l-5-6.5L6 22H2.9l7.3-8.4L1 2h6.6l4.5 5.9L18.9 2zm-1.1 18h1.7L6.7 3.9H5L17.8 20z"/></svg>`; }
+
+  /* ---------- Init ---------- */
+  async function init() {
+    mountHeader();
+    mountFooter();
+
+    if (!API) return;
+
+    const page = (document.body.getAttribute("data-page") || "").toLowerCase();
+
+    try {
+      if (page === "home") await loadHome();
+      if (page === "fb_support") await loadFeedPage("support");
+      if (page === "fb_maga") await loadFeedPage("maga");
+    } catch (e) {
+      // don’t kill header/footer on feed errors
+      console.error(e);
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", init);
+})();
