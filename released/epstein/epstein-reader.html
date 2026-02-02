@@ -3,181 +3,185 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-
-  <title>Epstein Files Reader (TTS) • Civic Threat</title>
-  <meta name="description" content="Listen to and view released PDF documents with text-to-speech. Choose voice, speed, and navigate pages." />
+  <title>Released Files • Epstein PDF Reader (TTS) | Civic Threat</title>
+  <meta name="description" content="Listen to released court PDFs with text-to-speech, page-by-page controls, and a built-in viewer. For adults 21+ only." />
   <meta name="robots" content="index,follow" />
-
-  <link rel="icon" href="/assets/logo.png" type="image/png" />
-  <link rel="stylesheet" href="/styles.css?v=1" />
-
+  <meta property="og:title" content="Epstein PDF Reader (TTS) • Civic Threat" />
+  <meta property="og:description" content="Listen to released court PDFs with page-by-page TTS and a built-in viewer. Adults 21+ only." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://civicthreat.us/released/epstein/epstein-reader.html" />
+  <meta property="og:image" content="https://civicthreat.us/assets/civicthreat-social-1200x630.jpg" />
+  <link rel="icon" href="/assets/favicon.ico" />
+  <link rel="stylesheet" href="/styles.css" />
   <style>
-    .ep-wrap{ max-width: 1200px; margin: 0 auto; padding: 28px 18px 42px; }
-    .ep-hero{ margin-bottom: 18px; }
-    .ep-hero h1{ margin: 0 0 8px; font-size: 34px; letter-spacing: .2px; }
-    .ep-hero p{ margin: 0; color: rgba(255,255,255,.78); max-width: 900px; }
+    .page-wrap{ max-width: 1120px; margin: 0 auto; padding: 22px 16px 42px; }
+    .hero{ padding: 18px 0 10px; }
+    .hero h1{ margin: 0 0 6px; font-size: clamp(26px, 4vw, 38px); letter-spacing:.02em; }
+    .hero p{ margin: 0; opacity: .9; line-height: 1.5; }
 
-    .ep-grid{ display: grid; grid-template-columns: 1.05fr .95fr; gap: 16px; align-items: start; margin-top: 18px; }
+    /* Square containers (match rest of site) */
+    .ep-box{ border-radius: 0 !important; }
+    .ep-grid{ display:grid; grid-template-columns: 1.15fr .85fr; gap: 16px; margin-top: 16px; }
     @media (max-width: 980px){ .ep-grid{ grid-template-columns: 1fr; } }
 
-    .ep-card{ border: 1px solid rgba(255,255,255,.12); background: rgba(0,0,0,.30); border-radius: 12px; overflow: hidden; }
-    .ep-card .ep-hd{ padding: 14px; border-bottom: 1px solid rgba(255,255,255,.10); display:flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .ep-card .ep-hd strong{ font-size: 14px; letter-spacing: .2px; }
-    .ep-card .ep-bd{ padding: 14px; }
+    .ep-panel{ border: 1px solid rgba(255,255,255,.12); background: rgba(0,0,0,.25); }
+    .ep-panel .pad{ padding: 14px; }
 
-    .ep-row{ display:flex; gap: 12px; flex-wrap: wrap; align-items: end; }
-    .ep-field{ flex: 1 1 280px; min-width: 240px; }
-    .ep-field.small{ flex: 0 1 160px; min-width: 150px; }
+    .ep-label{ font-size: 12px; opacity: .85; margin: 0 0 6px; }
+    .ep-row{ display:flex; gap:12px; flex-wrap: wrap; align-items: end; }
+    .ep-row > .field{ flex: 1 1 240px; min-width: 220px; }
+    .ep-row > .field.small{ flex: 0 0 180px; min-width: 160px; }
 
-    .ep-field label{ display:block; font-size: 12px; color: rgba(255,255,255,.66); margin: 0 0 6px; }
-    .ep-field select{ width: 100%; background: rgba(0,0,0,.35); color: #fff; border: 1px solid rgba(255,255,255,.14); border-radius: 10px; padding: 10px; outline: none; }
+    select{
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.35);
+      color: #fff;
+      outline: none;
+      border-radius: 0;
+    }
 
-    .ep-controls{ display:flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+    .ep-controls{ display:flex; gap:10px; flex-wrap: wrap; margin-top: 12px; }
+    .ep-controls .btn{ border-radius: 0 !important; }
 
     .ep-status{
-      margin-top: 12px; padding: 14px; border-radius: 12px;
-      border: 1px solid rgba(255,255,255,.12); background: rgba(0,0,0,.32);
-      font-size: 18px; font-weight: 900; letter-spacing: .2px;
+      margin-top: 12px;
+      padding: 12px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.35);
+      border-radius: 0;
+      min-height: 54px;
     }
-    .ep-status small{ display:block; margin-top: 6px; font-weight: 700; font-size: 13px; color: rgba(255,255,255,.68); }
+    .ep-status strong{ display:block; margin-bottom: 4px; }
+    .ep-status .big{ font-size: 16px; font-weight: 900; letter-spacing:.02em; }
 
-    .ep-view-meta{ color: rgba(255,255,255,.72); font-size: 13px; }
+    .viewer-wrap{ display:flex; flex-direction: column; gap: 10px; }
+    .viewer-top{ display:flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+    .viewer-top .meta{ font-size: 12px; opacity: .85; }
+    .viewer-canvas{
+      width: 100%;
+      background: #000;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 0;
+      min-height: 420px;
+      display:block;
+    }
 
-    .ep-canvasWrap{ padding: 12px; display:grid; place-items: center; background: rgba(0,0,0,.22); }
-    #pdfCanvas{ width: 100%; height: auto; border-radius: 10px; border: 1px solid rgba(255,255,255,.10); background: #111; }
-
-    .ep-note{ margin-top: 10px; color: rgba(255,255,255,.62); font-size: 12px; line-height: 1.45; }
-
-    /* 21+ Gate */
-    .ep-gate{
+    /* 21+ gate */
+    .gate{
       position: fixed; inset: 0; z-index: 9999;
-      display: grid; place-items: center; padding: 18px;
-      background: rgba(0,0,0,.86);
+      background: rgba(0,0,0,.78);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
     }
-    .ep-gateCard{
-      width: min(820px, 100%);
+    .gate .card{
+      width: min(720px, 100%);
       border: 1px solid rgba(255,255,255,.14);
-      background: rgba(0,0,0,.60);
-      border-radius: 14px;
-      overflow: hidden;
+      background: rgba(10,10,10,.92);
+      border-radius: 0;
+      padding: 18px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.6);
     }
-    .ep-gateCard .g-hd{
-      padding: 16px;
-      border-bottom: 1px solid rgba(255,255,255,.12);
-      background: rgba(255,0,80,.12);
-    }
-    .ep-gateCard .g-hd h2{ margin: 0; font-size: 18px; letter-spacing: .2px; }
-    .ep-gateCard .g-bd{ padding: 16px; color: rgba(255,255,255,.78); }
-    .ep-gateCard ul{ margin: 10px 0 0 18px; }
-    .ep-gateCard li{ margin: 6px 0; }
-    .ep-gateCard .g-actions{
-      padding: 14px 16px;
-      border-top: 1px solid rgba(255,255,255,.12);
-      display:flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap;
-      background: rgba(0,0,0,.25);
-    }
-    .hidden{ display:none !important; }
+    .gate h2{ margin: 0 0 10px; font-size: 22px; }
+    .gate p{ margin: 0 0 10px; opacity: .9; line-height: 1.55; }
+    .gate .row{ display:flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+    .gate label{ display:flex; gap:10px; align-items:center; cursor:pointer; }
+    .gate input[type="checkbox"]{ width: 18px; height: 18px; }
+    .gate .actions{ display:flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; margin-top: 14px; }
+    .gate .btn{ border-radius: 0 !important; }
+    .legal{ margin-top: 10px; font-size: 12px; opacity: .8; line-height: 1.45; }
   </style>
 </head>
 
-<body data-page="">
-  <div id="siteHeader"></div>
+<body>
+  <!-- Site header (root-relative links to avoid subfolder 404s) -->
+  <div id="siteHeader">
+    <div class="topbar">
+      <div class="wrap">
+        <div class="inner">
+          <div class="brandblock">
+            <a class="brand" href="/index.html" aria-label="Home">
+              <img src="/assets/logo.png" alt="Civic Threat logo"/>
+              <div class="text">
+                <strong>CIVIC THREAT</strong>
+                <span>Debate &amp; Discuss</span>
+              </div>
+            </a>
 
-  <!-- 21+ Gate -->
-  <div id="gate" class="ep-gate">
-    <div class="ep-gateCard">
-      <div class="g-hd">
-        <h2>Age Verification Required</h2>
-      </div>
-      <div class="g-bd">
-        This page contains material that may include sexually explicit content and sensitive subject matter.
-        <ul>
-          <li>You must be <strong>21 years of age or older</strong> to continue.</li>
-          <li>By continuing, you confirm you meet this age requirement.</li>
-          <li>This content is provided for informational purposes; viewer discretion is advised.</li>
-        </ul>
-      </div>
-      <div class="g-actions">
-        <button class="btn" id="leaveBtn" type="button">Leave</button>
-        <button class="btn blue" id="agreeBtn" type="button">I’m 21+ — Continue</button>
+            <div class="socialblock" aria-label="Follow Civic Threat on social media">
+              <div class="followcta" aria-hidden="true">
+                <span class="followtext">Follow us</span>
+                <span class="followarrow">➜</span>
+              </div>
+              <div class="iconrow" aria-label="Social links">
+                <a class="iconbtn" href="https://www.facebook.com/CivicThreat/" target="_blank" rel="noopener" aria-label="Facebook">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12a10 10 0 1 0-11.6 9.9v-7H8v-2.9h2.4V9.8c0-2.4 1.4-3.7 3.6-3.7 1 0 2 .2 2 .2v2.2h-1.1c-1.1 0-1.5.7-1.5 1.4v1.7H16l-.4 2.9h-2.2v7A10 10 0 0 0 22 12z"/></svg>
+                </a>
+                <a class="iconbtn" href="https://www.youtube.com/@civicthreat" target="_blank" rel="noopener" aria-label="YouTube">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.6 7.2a3 3 0 0 0-2.1-2.1C17.7 4.6 12 4.6 12 4.6s-5.7 0-7.5.5A3 3 0 0 0 2.4 7.2 31.7 31.7 0 0 0 2 12a31.7 31.7 0 0 0 .4 4.8 3 3 0 0 0 2.1 2.1c1.8.5 7.5.5 7.5.5s5.7 0 7.5-.5a3 3 0 0 0 2.1-2.1A31.7 31.7 0 0 0 22 12a31.7 31.7 0 0 0-.4-4.8zM10 15.5v-7l6 3.5-6 3.5z"/></svg>
+                </a>
+                <a class="iconbtn" href="https://www.tiktok.com/@civicthreat" target="_blank" rel="noopener" aria-label="TikTok">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.6 3c.5 2.7 2.3 4.8 5 5.2v3.2c-1.9 0-3.6-.6-5-1.7v6.2c0 3.1-2.5 5.6-5.6 5.6S5.4 19 5.4 15.9s2.5-5.6 5.6-5.6c.5 0 1 .1 1.4.2v3.2c-.4-.2-.9-.3-1.4-.3-1.3 0-2.3 1-2.3 2.3s1 2.3 2.3 2.3 2.3-1 2.3-2.3V3h3.3z"/></svg>
+                </a>
+                <a class="iconbtn" href="https://x.com/CivicThreat" target="_blank" rel="noopener" aria-label="X">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.9 2H22l-6.9 7.9L23 22h-6.6l-5.2-6.7L5.4 22H2.3l7.4-8.5L1 2h6.8l4.7 6.1L18.9 2zm-1.1 18h1.7L6.1 3.9H4.3L17.8 20z"/></svg>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div class="nav">
+            <div class="dropdown" id="platformsDD">
+              <button class="btn" type="button" aria-haspopup="true" aria-expanded="false">Platforms ▾</button>
+              <div class="dropdown-menu" role="menu" aria-label="Platforms menu">
+                <div class="dd-title">Facebook</div>
+                <a class="dd-item" role="menuitem" href="/facebook.html"><span>Support</span><small>Browse</small></a>
+                <a class="dd-item" role="menuitem" href="/facebook-maga.html"><span>MAGA / Debate</span><small>Browse</small></a>
+              </div>
+            </div>
+
+            <div class="dropdown" id="releasedDD">
+              <button class="btn" type="button" aria-haspopup="true" aria-expanded="false">Released Files ▾</button>
+              <div class="dropdown-menu" role="menu" aria-label="Released Files menu">
+                <a class="dd-item" role="menuitem" href="/released/epstein/epstein-reader.html"><span>Epstein Files</span><small>PDF Reader (TTS)</small></a>
+              </div>
+            </div>
+
+            <a class="btn blue" href="/submit.html">Submit</a>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- ✅ Bulletproof gate handler (works even if epstein-tts.js fails) -->
-  <script>
-    (function(){
-      const gate = document.getElementById("gate");
-      const agree = document.getElementById("agreeBtn");
-      const leave = document.getElementById("leaveBtn");
-
-      function remember(){
-        document.cookie = "ct_epstein_21=1; Path=/; SameSite=Lax";
-      }
-      function hide(){
-        if(gate) gate.classList.add("hidden");
-      }
-
-      // If user comes in with ?ct21=1, auto-accept once
-      try{
-        const qs = new URLSearchParams(location.search);
-        if(qs.get("ct21") === "1"){
-          remember(); hide();
-          history.replaceState({}, "", location.pathname);
-        }
-      }catch{}
-
-      if(agree){
-        agree.addEventListener("click", function(){
-          remember();
-          hide();
-        });
-      }
-      if(leave){
-        leave.addEventListener("click", function(){
-          location.href = "/";
-        });
-      }
-
-      // If cookie already exists, hide gate immediately
-      if((document.cookie||"").includes("ct_epstein_21=1")) hide();
-    })();
-  </script>
-
-  <main class="ep-wrap">
-    <section class="ep-hero">
-      <h1>Epstein Files Reader (TTS)</h1>
-      <p>
-        Select a released PDF to view it and have it read aloud. Choose a voice and reading speed,
-        then use Play / Pause / Stop. Prev/Next moves one page at a time.
-      </p>
-    </section>
+  <main class="page-wrap">
+    <header class="hero">
+      <h1>Released Files • Epstein PDF Reader (TTS)</h1>
+      <p>Pick a PDF, choose a voice and speed, then press Play. Use Prev/Next to move one page at a time.</p>
+    </header>
 
     <section class="ep-grid">
-      <div class="ep-card">
-        <div class="ep-hd">
-          <strong>Controls</strong>
-          <span style="color:rgba(255,255,255,.55);font-size:12px">Text-to-Speech + PDF Viewer</span>
-        </div>
-        <div class="ep-bd">
+      <div class="ep-panel ep-box">
+        <div class="pad">
           <div class="ep-row">
-            <div class="ep-field">
-              <label for="pdfSelect">Choose a PDF</label>
-              <select id="pdfSelect">
+            <div class="field">
+              <div class="ep-label">Choose a PDF</div>
+              <select id="pdfSelect" aria-label="Choose a PDF">
                 <option value="">Loading PDFs…</option>
               </select>
             </div>
-
-            <div class="ep-field">
-              <label for="voiceSelect">Voice</label>
-              <select id="voiceSelect">
+            <div class="field">
+              <div class="ep-label">Voice</div>
+              <select id="voiceSelect" aria-label="Choose a voice">
                 <option value="">Loading voices…</option>
               </select>
             </div>
-
-            <div class="ep-field small">
-              <label for="speedSelect">Speed</label>
-              <select id="speedSelect">
+            <div class="field small">
+              <div class="ep-label">Speed</div>
+              <select id="speedSelect" aria-label="Choose reading speed">
                 <option value="1">1.0×</option>
                 <option value="1.25">1.25×</option>
                 <option value="1.5">1.5×</option>
@@ -186,65 +190,112 @@
             </div>
           </div>
 
-          <div class="ep-controls">
-            <button class="btn blue" id="playBtn" type="button">▶ Play</button>
-            <button class="btn" id="pauseBtn" type="button" disabled>⏸ Pause</button>
-            <button class="btn" id="stopBtn" type="button" disabled>⏹ Stop</button>
-
-            <button class="btn" id="prevBtn" type="button" disabled>← Prev Page</button>
-            <button class="btn" id="nextBtn" type="button" disabled>Next Page →</button>
-
-            <button class="btn" id="muteBtn" type="button" disabled>🔇 Mute</button>
+          <div class="ep-controls" role="group" aria-label="Playback controls">
+            <button class="btn blue" id="btnPlay" type="button">▶ Play</button>
+            <button class="btn" id="btnPause" type="button">⏸ Pause</button>
+            <button class="btn" id="btnStop" type="button">⏹ Stop</button>
+            <button class="btn" id="btnPrev" type="button">← Prev Page</button>
+            <button class="btn" id="btnNext" type="button">Next Page →</button>
+            <button class="btn" id="btnMute" type="button">🔇 Mute</button>
           </div>
 
-          <div class="ep-status" id="statusBox">
-            Loading reader…
-            <small id="statusSub">Please wait.</small>
+          <div class="ep-status ep-box" id="statusBox" aria-live="polite">
+            <strong class="big" id="statusTitle">Ready.</strong>
+            <div id="statusLine">Select a PDF to begin.</div>
           </div>
 
-          <div class="ep-note">
-            <strong>Disclosure:</strong> This page contains sensitive content. All voices and playback are provided by your device/browser.
-            Some PDFs may be scanned (image-only) and may not contain extractable text for reading.
+          <div class="legal">
+            <strong>Disclosure:</strong> This page provides text-to-speech playback of publicly released documents. Content may contain sexually explicit material and is intended for adults.
+            Civic Threat does not endorse wrongdoing; this tool is for reading and accessibility only.
           </div>
         </div>
       </div>
 
-      <div class="ep-card">
-        <div class="ep-hd">
-          <strong>Viewer</strong>
-          <span class="ep-view-meta" id="viewerMeta">No PDF loaded.</span>
-        </div>
-        <div class="ep-canvasWrap">
-          <canvas id="pdfCanvas" width="900" height="1200"></canvas>
-        </div>
-        <div style="padding: 12px 14px; border-top:1px solid rgba(255,255,255,.10); display:flex; justify-content:flex-end;">
-          <a class="btn" id="openPdfBtn" href="#" target="_blank" rel="noopener" style="display:none;">Open PDF</a>
+      <div class="ep-panel ep-box">
+        <div class="pad viewer-wrap">
+          <div class="viewer-top">
+            <div><strong>Viewer</strong></div>
+            <div class="meta" id="pageMeta">No PDF loaded.</div>
+          </div>
+          <canvas id="pdfCanvas" class="viewer-canvas" width="1000" height="1400"></canvas>
         </div>
       </div>
     </section>
   </main>
 
-  <div id="siteFooter"></div>
+  <div id="siteFooter">
+    <footer class="site-footer">
+      <div class="wrap">
+        <div class="inner">
+          <div>
+            <div class="footer-brand">
+              <img src="/assets/logo.png" alt="Civic Threat logo"/>
+              <div class="t">
+                <strong>CIVIC THREAT</strong>
+                <span>Debate &amp; Discuss</span>
+              </div>
+            </div>
+            <div class="footer-copy">© 2026 Civic Threat. All rights reserved.</div>
+            <div class="footer-links" style="margin-top:10px">
+              <a href="/about.html">About</a>
+              <a href="/advertising-disclosure.html">Advertising Disclosure</a>
+              <a href="/privacy.html">Privacy</a>
+              <a href="/terms.html">Terms</a>
+              <a href="/cookies.html">Cookies</a>
+              <a href="/contact.html">Contact</a>
+            </div>
+          </div>
+          <div></div>
+        </div>
+      </div>
+    </footer>
+  </div>
 
-  <script src="/config.js?v=1"></script>
-  <script src="/data-api.js?v=1"></script>
-  <script src="/app.js?v=1"></script>
+  <!-- 21+ gate -->
+  <div class="gate" id="ageGate" role="dialog" aria-modal="true" aria-labelledby="gateTitle">
+    <div class="card ep-box">
+      <h2 id="gateTitle">Adults 21+ Only</h2>
+      <p>This section may contain sexually explicit descriptions. You must confirm you are twenty-one (21) or older to view and use the reader.</p>
+      <div class="row">
+        <label for="gateCheck">
+          <input id="gateCheck" type="checkbox" />
+          <span>I confirm that I am 21 or older.</span>
+        </label>
+      </div>
+      <div class="actions">
+        <button class="btn" id="gateLeave" type="button">Leave</button>
+        <button class="btn blue" id="gateEnter" type="button" disabled>Continue</button>
+      </div>
+      <div class="legal">
+        By continuing, you agree you are 21+ and understand the content may be explicit.
+      </div>
+    </div>
+  </div>
 
-  <!-- PDF.js ES module loader -->
-  <script type="module">
-    try{
-      const v = "4.10.38";
-      const pdfjs = await import(`https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${v}/pdf.min.mjs`);
-      pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${v}/pdf.worker.min.mjs`;
-      window.pdfjsLib = pdfjs;
-      window.dispatchEvent(new Event("pdfjs-ready"));
-    }catch(e){
-      console.error("PDF.js module load failed", e);
-      window.__pdfjs_load_error = e;
-      window.dispatchEvent(new Event("pdfjs-failed"));
+  <!-- PDF.js -->
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js" crossorigin="anonymous"></script>
+  <script>
+    if(window.pdfjsLib){
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
     }
+    (function(){
+      function qs(sel, root=document){ return root.querySelector(sel); }
+      function qsa(sel, root=document){ return Array.from(root.querySelectorAll(sel)); }
+      function wireDropdown(dd){
+        if(!dd) return;
+        const btn = qs("button", dd);
+        const menu = qs(".dropdown-menu", dd);
+        function close(){ dd.classList.remove("open"); btn.setAttribute("aria-expanded","false"); }
+        function open(){ dd.classList.add("open"); btn.setAttribute("aria-expanded","true"); }
+        btn.addEventListener("click",(e)=>{ e.preventDefault(); dd.classList.contains("open") ? close() : open(); });
+        document.addEventListener("click",(e)=>{ if(!dd.contains(e.target)) close(); });
+        document.addEventListener("keydown",(e)=>{ if(e.key==="Escape") close(); });
+        qsa("a", menu).forEach(a=>a.addEventListener("click", close));
+      }
+      wireDropdown(qs("#platformsDD"));
+      wireDropdown(qs("#releasedDD"));
+    })();
   </script>
-
-  <script src="./epstein-tts.js?v=10" defer></script>
+  <script src="./epstein-tts.js?v=9"></script>
 </body>
 </html>
