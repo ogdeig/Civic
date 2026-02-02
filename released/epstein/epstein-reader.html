@@ -280,13 +280,19 @@
     }
     (function(){
       function qs(sel, root=document){ return root.querySelector(sel); }
-      function qsa(sel, root=document){ return Array.from(root.querySelectorAll(sel)); }
+      function qsa(sel, root=document){
+        if(!root) return [];
+        return Array.from(root.querySelectorAll(sel));
+      }
       function wireDropdown(dd){
         if(!dd) return;
         const btn = qs("button", dd);
         const menu = qs(".dropdown-menu", dd);
+        if(!btn || !menu) return;
+
         function close(){ dd.classList.remove("open"); btn.setAttribute("aria-expanded","false"); }
         function open(){ dd.classList.add("open"); btn.setAttribute("aria-expanded","true"); }
+
         btn.addEventListener("click",(e)=>{ e.preventDefault(); dd.classList.contains("open") ? close() : open(); });
         document.addEventListener("click",(e)=>{ if(!dd.contains(e.target)) close(); });
         document.addEventListener("keydown",(e)=>{ if(e.key==="Escape") close(); });
@@ -296,6 +302,8 @@
       wireDropdown(qs("#releasedDD"));
     })();
   </script>
-  <script src="./epstein-tts.js?v=9"></script>
+
+  <!-- UPDATED cache buster -->
+  <script src="./epstein-tts.js?v=10"></script>
 </body>
 </html>
