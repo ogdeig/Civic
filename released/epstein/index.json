@@ -1,6 +1,6 @@
 {
-  "generatedAt": 1770008493,
-  "count": 17,
+  "generatedAt": 1770009324,
+  "count": 22,
   "items": [
     {
       "file": "ANASTASIA DOE_vs_EPSTEIN_Filed 12-17-19.pdf",
@@ -13,6 +13,11 @@
       "label": "CL vs Epstein"
     },
     {
+      "file": "IN RE- Grand Jury Filed_07-23-25.pdf",
+      "path": "released/epstein/pdfs/IN RE- Grand Jury Filed_07-23-25.pdf",
+      "label": "IN RE Grand Jury Filed 07 23 25"
+    },
+    {
       "file": "JANE DOE 1000_vs_EPSTEIN_Filed 11-14-19.pdf",
       "path": "released/epstein/pdfs/JANE DOE 1000_vs_EPSTEIN_Filed 11-14-19.pdf",
       "label": "JANE DOE 1000 vs EPSTEIN Filed 11 14 19"
@@ -21,6 +26,11 @@
       "file": "JANE DOE 11_vs_EPSTEIN_Filed_03-25-09.pdf",
       "path": "released/epstein/pdfs/JANE DOE 11_vs_EPSTEIN_Filed_03-25-09.pdf",
       "label": "JANE DOE 11 vs EPSTEIN Filed 03 25 09"
+    },
+    {
+      "file": "JANE DOE 43_vs_EPSTEIN_Filed_01-26-17.pdf",
+      "path": "released/epstein/pdfs/JANE DOE 43_vs_EPSTEIN_Filed_01-26-17.pdf",
+      "label": "JANE DOE 43 vs EPSTEIN Filed 01 26 17"
     },
     {
       "file": "JANE DOE No. 101_vs_EPSTEIN_Filed_04-20-09.pdf",
@@ -73,6 +83,16 @@
       "label": "JULIETTE BRYANT vs EPSTEIN Filed 11 14 19"
     },
     {
+      "file": "L.M._vs_EPSTEIN_Filed_07-27-09.pdf",
+      "path": "released/epstein/pdfs/L.M._vs_EPSTEIN_Filed_07-27-09.pdf",
+      "label": "L.M. vs EPSTEIN Filed 07 27 09"
+    },
+    {
+      "file": "M.J_vs_EPSTEIN_Filed_09-17-10.pdf",
+      "path": "released/epstein/pdfs/M.J_vs_EPSTEIN_Filed_09-17-10.pdf",
+      "label": "M.J vs EPSTEIN Filed 09 17 10"
+    },
+    {
       "file": "MARIA FARMER_vs_EPSTEIN_Filed_11-12-19.pdf",
       "path": "released/epstein/pdfs/MARIA FARMER_vs_EPSTEIN_Filed_11-12-19.pdf",
       "label": "MARIA FARMER vs EPSTEIN Filed 11 12 19"
@@ -81,6 +101,11 @@
       "file": "TEALA DAVIES_vs_EPSTEIN_Filed_11-21-19 .pdf",
       "path": "released/epstein/pdfs/TEALA DAVIES_vs_EPSTEIN_Filed_11-21-19 .pdf",
       "label": "TEALA DAVIES vs EPSTEIN Filed 11 21 19"
+    },
+    {
+      "file": "TERESA HELM_vs_EPSTEIN_Filed_11-12-19.pdf",
+      "path": "released/epstein/pdfs/TERESA HELM_vs_EPSTEIN_Filed_11-12-19.pdf",
+      "label": "TERESA HELM vs EPSTEIN Filed 11 12 19"
     },
     {
       "file": "VIRGINIA L. GIUFFRE_vs_MAXWELL_Filed_09-21-15.pdf",
