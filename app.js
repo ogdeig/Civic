@@ -23,9 +23,8 @@
   function qsa(sel, root=document){ return Array.from(root.querySelectorAll(sel)); }
   function esc(s){ return (s||"").replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
-  function basePath(){
-    return location.pathname.includes("/admin/") ? "../" : "./";
-  }
+  // ✅ FIX: Always use root-relative paths so links work from any folder (/released/... etc.)
+  function basePath(){ return "/"; }
 
   // ---------- Remote API (required) ----------
   function remoteApi(){
@@ -107,22 +106,21 @@
                 </div>
               </a>
 
-              
-  <div class="socialblock" aria-label="Follow Civic Threat on social media">
-    <div class="followcta" aria-hidden="true">
-      <span class="followtext">Follow us</span>
-      <span class="followarrow">➜</span>
-    </div>
-    <div class="iconrow" aria-label="Social links">
-      ${socialIcon("facebook")}
-      ${socialIcon("youtube")}
-      ${socialIcon("tiktok")}
-      ${socialIcon("x")}
-    </div>
-  </div>
-</div>
+              <div class="socialblock" aria-label="Follow Civic Threat on social media">
+                <div class="followcta" aria-hidden="true">
+                  <span class="followtext">Follow us</span>
+                  <span class="followarrow">➜</span>
+                </div>
+                <div class="iconrow" aria-label="Social links">
+                  ${socialIcon("facebook")}
+                  ${socialIcon("youtube")}
+                  ${socialIcon("tiktok")}
+                  ${socialIcon("x")}
+                </div>
+              </div>
+            </div>
 
-<div class="nav">
+            <div class="nav">
               <div class="dropdown" id="platformsDD">
                 <button class="btn" type="button" id="platformsBtn" aria-haspopup="true" aria-expanded="false">Platforms ▾</button>
                 <div class="dropdown-menu" role="menu" aria-label="Platforms menu">
@@ -131,13 +129,14 @@
                   <a class="dd-item" role="menuitem" href="${bp}facebook-maga.html"><span>MAGA / Debate</span><small>Browse</small></a>
                 </div>
               </div>
-              
-<div class="dropdown" id="ReleasedsDD">
-  <button class="btn" type="button" id="ReleasedsBtn" aria-haspopup="true" aria-expanded="false">Released Files ▾</button>
-  <div class="dropdown-menu" role="menu" aria-label="Released files menu">
-    <a class="dd-item" role="menuitem" href="${bp}released/epstein/epstein-reader.html"><span>Epstein Files</span><small>PDF reader + audio</small></a>
-  </div>
-</div>
+
+              <div class="dropdown" id="ReleasedsDD">
+                <button class="btn" type="button" id="ReleasedsBtn" aria-haspopup="true" aria-expanded="false">Released Files ▾</button>
+                <div class="dropdown-menu" role="menu" aria-label="Released files menu">
+                  <a class="dd-item" role="menuitem" href="${bp}released/epstein/epstein-reader.html"><span>Epstein Files</span><small>PDF reader + audio</small></a>
+                </div>
+              </div>
+
               <a class="btn blue" href="${bp}submit.html">Submit</a>
             </div>
           </div>
@@ -224,7 +223,7 @@
           <a href="${bp}cookies.html">Cookie Policy</a>
         </p>
         <div class="actions">
-          <button class="btn" type="button" data-cookie="reject">Reject non‑essential</button>
+          <button class="btn" type="button" data-cookie="reject">Reject non-essential</button>
           <button class="btn blue" type="button" data-cookie="accept">Accept</button>
         </div>
       </div>
@@ -383,7 +382,7 @@
           ${by}
           <div class="post-actions">
             ${goTo}
-            <a class="btn" href="${item.category === "support" ? "./facebook.html" : "./facebook-maga.html"}">Browse</a>
+            <a class="btn" href="${item.category === "support" ? "/facebook.html" : "/facebook-maga.html"}">Browse</a>
           </div>
         </div>
       </article>
@@ -405,11 +404,11 @@
 
       if(supportHost) supportHost.innerHTML = support.length
         ? support.map(x=>renderPostCard(x,{small:true})).join("")
-        : `<div class="smallnote">No approved posts yet. <a href="./submit.html">Submit one</a>.</div>`;
+        : `<div class="smallnote">No approved posts yet. <a href="/submit.html">Submit one</a>.</div>`;
 
       if(magaHost) magaHost.innerHTML = maga.length
         ? maga.map(x=>renderPostCard(x,{small:true})).join("")
-        : `<div class="smallnote">No approved posts yet. <a href="./submit.html">Submit one</a>.</div>`;
+        : `<div class="smallnote">No approved posts yet. <a href="/submit.html">Submit one</a>.</div>`;
 
       initLazyFacebookEmbeds(document);
     }catch(err){
@@ -443,7 +442,7 @@
         if(!grid) return;
         grid.innerHTML = list.length
           ? list.map(x=>renderPostCard(x)).join("")
-          : `<div class="smallnote">Nothing here yet. <a href="./submit.html">Submit a post</a>.</div>`;
+          : `<div class="smallnote">Nothing here yet. <a href="/submit.html">Submit a post</a>.</div>`;
         initLazyFacebookEmbeds(grid);
       }
 
