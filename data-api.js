@@ -1,93 +1,107 @@
-/* global window, document */
+/*
+  CivicThreat.us — data-api.js
+  JSONP client for Google Apps Script backend.
+
+  Expected config (config.js):
+    window.CT_CONFIG = {
+      REMOTE_DB: { enabled:true, appsScriptUrl:".../exec", apiKey:"..." }
+    }
+
+  Backwards-compat:
+    - If CT_CONFIG.API_URL exists, it will be used as appsScriptUrl.
+    - If CT_CONFIG.API_KEY exists, it will be used as apiKey.
+*/
+
 (function(){
   "use strict";
 
-  function getConfig(){
-    if(!window.CT_CONFIG) throw new Error("CT_CONFIG missing (config.js not loaded?)");
-    return window.CT_CONFIG;
+  function getCfg_(){
+    const cfg = window.CT_CONFIG || {};
+    const rdb = cfg.REMOTE_DB || {};
+    const appsScriptUrl = (rdb.appsScriptUrl || cfg.API_URL || "").trim();
+    const apiKey = (rdb.apiKey || cfg.API_KEY || "").trim();
+    const enabled = (typeof rdb.enabled === "boolean") ? rdb.enabled : true;
+
+    if (!appsScriptUrl) throw new Error("CT_CONFIG.REMOTE_DB.appsScriptUrl missing");
+    if (!apiKey) throw new Error("CT_CONFIG.REMOTE_DB.apiKey missing");
+    if (!enabled) throw new Error("REMOTE_DB disabled");
+
+    return { appsScriptUrl, apiKey };
   }
 
-  function getRemote(){
-    const cfg = getConfig();
+  function jsonp_(url, params){
+    return new Promise((resolve, reject) => {
+      const cbName = "__ct_cb_" + Math.random().toString(36).slice(2);
+      params = params || {};
+      params.callback = cbName;
 
-    // Prefer REMOTE_DB, but allow old keys too
-    const appsScriptUrl =
-      (cfg.REMOTE_DB && cfg.REMOTE_DB.appsScriptUrl) ||
-      cfg.API_URL ||
-      "";
+      const qs = Object.keys(params)
+        .map(k => encodeURIComponent(k) + "=" + encodeURIComponent(String(params[k])))
+        .join("&");
 
-    const apiKey =
-      (cfg.REMOTE_DB && cfg.REMOTE_DB.apiKey) ||
-      cfg.API_KEY ||
-      "";
+      const src = url + (url.includes("?") ? "&" : "?") + qs;
 
-    const enabled = !!(cfg.REMOTE_DB ? cfg.REMOTE_DB.enabled : true);
+      const script = document.createElement("script");
+      let done = false;
 
-    if(!appsScriptUrl) throw new Error("Apps Script URL missing (CT_CONFIG.REMOTE_DB.appsScriptUrl / CT_CONFIG.API_URL)");
-    return { enabled, appsScriptUrl, apiKey };
-  }
+      window[cbName] = function(payload){
+        done = true;
+        cleanup_();
+        resolve(payload);
+      };
 
-  function b64urlEncode(str){
-    const bytes = new TextEncoder().encode(str);
-    let bin = "";
-    bytes.forEach(b => bin += String.fromCharCode(b));
-    const b64 = btoa(bin);
-    return b64.replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-  }
-
-  function jsonp(url, timeoutMs=20000){
-    return new Promise((resolve, reject)=>{
-      const cb = "ct_jsonp_" + Math.random().toString(36).slice(2);
-      const s = document.createElement("script");
-      const t = setTimeout(()=>cleanup(new Error("timeout")), timeoutMs);
-
-      function cleanup(err){
-        clearTimeout(t);
-        try { delete window[cb]; } catch(_){}
-        if(s && s.parentNode) s.parentNode.removeChild(s);
-        err ? reject(err) : null;
+      function cleanup_(){
+        try { delete window[cbName]; } catch(e){ window[cbName] = undefined; }
+        if (script && script.parentNode) script.parentNode.removeChild(script);
       }
 
-      window[cb] = (data)=>{ cleanup(); resolve(data); };
-      s.onerror = ()=>cleanup(new Error("jsonp failed"));
-      s.src = url + (url.includes("?") ? "&" : "?") + "callback=" + encodeURIComponent(cb);
-      document.head.appendChild(s);
+      script.onerror = function(){
+        if (done) return;
+        cleanup_();
+        reject(new Error("JSONP request failed"));
+      };
+
+      script.src = src;
+      document.head.appendChild(script);
     });
   }
 
-  async function call(params){
-    const remote = getRemote();
-    if(!remote.enabled) return { ok:false, error:"remote_disabled" };
-
-    const qs = new URLSearchParams();
-    Object.keys(params || {}).forEach(k=>{
-      const v = params[k];
-      if(v === undefined || v === null) return;
-      if(typeof v === "object"){
-        qs.set(k, b64urlEncode(JSON.stringify(v)));
-      } else {
-        qs.set(k, String(v));
+  function call_(action, extra){
+    const { appsScriptUrl, apiKey } = getCfg_();
+    const params = Object.assign({ action, apiKey }, (extra || {}));
+    return jsonp_(appsScriptUrl, params).then(res => {
+      if (!res || res.ok !== true){
+        const err = (res && (res.error || res.message)) ? (res.error || res.message) : "unknown_error";
+        throw new Error(err);
       }
+      return res;
     });
-
-    if(remote.apiKey) qs.set("apiKey", remote.apiKey);
-
-    const url = remote.appsScriptUrl + (remote.appsScriptUrl.includes("?") ? "&" : "?") + qs.toString();
-    const res = await jsonp(url);
-    return res;
   }
 
-  window.CT_REMOTE = {
-    __transport: "jsonp",
-    listApproved: async ()=> (await call({ action:"listApproved" })).items || [],
-    listPending:  async ()=> (await call({ action:"listPending"  })).items || [],
+  function b64url_(obj){
+    const json = JSON.stringify(obj);
+    // websafe base64
+    return btoa(unescape(encodeURIComponent(json)))
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/g, "");
+  }
 
-    submit:  async (item)=> await call({ action:"submit", payload:{ item } }),
-    approve: async (id)=> await call({ action:"approve", id }),
-    reject:  async (id)=> await call({ action:"reject", id }),
-    deleteApproved: async (id)=> await call({ action:"deleteApproved", id }),
+  window.CT_API = {
+    health: () => call_("health"),
+    listApproved: () => call_("listApproved").then(r => r.items || []),
+    listPending:  () => call_("listPending").then(r => r.items || []),
 
-    // NEW: reactions
-    react: async (id, dir)=> await call({ action:"react", id, dir })
+    submit: (item) => {
+      const payload = b64url_({ item });
+      return call_("submit", { payload });
+    },
+
+    approve: (id) => call_("approve", { id }),
+    reject:  (id) => call_("reject", { id }),
+    deleteApproved: (id) => call_("deleteApproved", { id }),
+
+    react: (id, dir) => call_("react", { id, dir })
+      .then(r => ({ reactionsUp: Number(r.reactionsUp||0), reactionsDown: Number(r.reactionsDown||0) })),
   };
 })();
