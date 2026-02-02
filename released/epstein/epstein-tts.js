@@ -6,9 +6,13 @@
 (function(){
   "use strict";
 
-  const VERSION = "v13";
+  const VERSION = "v14";
   const INDEX_URL = "/released/epstein/index.json";
   const CONSENT_KEY = "ct_epstein_21_gate_v1";
+
+  // Ignore repeated PDF header/footer regions for TTS (does not affect viewer)
+  const TTS_IGNORE_TOP_PCT = 0.08;     // top 8% of page
+  const TTS_IGNORE_BOTTOM_PCT = 0.06;  // bottom 6% of page
 
   const $ = (sel, root=document) => root.querySelector(sel);
 
@@ -36,15 +40,15 @@
     loadSeq: 0,
     loadingPdf: false,
 
-    // --- NEW: render serialization / cancellation ---
+    // render serialization / cancellation
     renderTask: null,
     renderQueue: Promise.resolve(),
     renderSeq: 0,
 
-    // --- NEW: speech callback guard ---
+    // speech callback guard
     speechSeq: 0,
 
-    // --- NEW: navigation guard ---
+    // navigation guard
     navSeq: 0,
     navBusy: false,
   };
@@ -343,7 +347,6 @@
     }
   }
 
-  // --- NEW: render queue to prevent overlapping render() operations ---
   function renderPageQueued(n){
     state.renderQueue = state.renderQueue.then(() => renderPageInternal(n));
     return state.renderQueue;
@@ -380,19 +383,16 @@
     ctx.fillStyle = "#000";
     ctx.fillRect(0,0,canvas.width, canvas.height);
 
-    // Start render and keep a reference so we can cancel it
     const task = page.render({ canvasContext: ctx, viewport: vp });
     state.renderTask = task;
 
     try{
       await task.promise;
     }catch(err){
-      // Ignore cancellation / stale renders
       const msg = String(err && err.message ? err.message : err);
       if(/cancel/i.test(msg) || /RenderingCancelledException/i.test(msg)){
         return;
       }
-      // If another render has started since, ignore
       if(mySeq !== state.renderSeq) return;
       throw err;
     }finally{
@@ -400,16 +400,44 @@
     }
   }
 
+  // ✅ UPDATED: filters out repeated header/footer text by position
   async function getPageText(n){
     if(state.pageTextCache.has(n)) return state.pageTextCache.get(n);
 
     setStatus("Working…", `(${VERSION}) Extracting text from page ${n}…`);
+
     const page = await state.pdfDoc.getPage(n);
+    const viewport = page.getViewport({ scale: 1 });
+
+    const topCut = viewport.height * (1 - TTS_IGNORE_TOP_PCT);
+    const bottomCut = viewport.height * (TTS_IGNORE_BOTTOM_PCT);
+
     const tc = await page.getTextContent();
 
-    const parts = (tc.items || []).map(it => (it.str || "").trim()).filter(Boolean);
-    const text = parts.join(" ");
+    const parts = [];
+    for(const it of (tc.items || [])){
+      const str = (it.str || "").trim();
+      if(!str) continue;
 
+      // Convert to viewport coords so we can filter by y-position.
+      let y = null;
+      try{
+        const tx = window.pdfjsLib.Util.transform(viewport.transform, it.transform);
+        y = tx[5];
+      }catch(_){
+        // If conversion fails, keep text rather than lose content
+        parts.push(str);
+        continue;
+      }
+
+      // Skip header/footer bands
+      if(y >= topCut) continue;
+      if(y <= bottomCut) continue;
+
+      parts.push(str);
+    }
+
+    const text = parts.join(" ");
     state.pageTextCache.set(n, text);
     return text;
   }
@@ -484,7 +512,6 @@
 
     n = clamp(n, 1, state.totalPages || 1);
 
-    // Invalidate any previous utterance callbacks
     cancelSpeech();
     clearPlaybackBuffers();
 
@@ -508,7 +535,6 @@
 
     state.navBusy = true;
 
-    // Stop speech immediately to prevent auto-next racing your click
     cancelSpeech();
     clearPlaybackBuffers();
 
@@ -548,7 +574,6 @@
       return;
     }
 
-    // Auto-advance uses the same navigation pipeline (prevents double-renders and double-steps)
     const next = clamp(state.page + 1, 1, state.totalPages);
     gotoPage(next, { keepPlaying: true });
   }
@@ -734,7 +759,6 @@
     }
 
     setStatus("Ready.", `(${VERSION}) JS loaded. Select a PDF, then press Play.`);
-
     wireGate(boot);
   }
 
