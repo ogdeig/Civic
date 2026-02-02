@@ -1,106 +1,82 @@
-/*
-  CivicThreat.us — data-api.js
-  JSONP client for Google Apps Script backend.
+/* CivicThreat.us — Data API client (JSONP) */
+(function(){
+  const CTData = {};
 
-  Config (config.js):
-    window.CT_CONFIG.REMOTE_DB.appsScriptUrl  (required)
-    window.CT_CONFIG.REMOTE_DB.apiKey        (optional)
-*/
-
-(function () {
-  "use strict";
-
-  function getCfg_() {
-    const cfg = window.CT_CONFIG || {};
-    const rdb = cfg.REMOTE_DB || {};
-
-    // Support older config names if you had them
-    const appsScriptUrl = (rdb.appsScriptUrl || cfg.API_URL || cfg.APP_SCRIPT_URL || "").trim();
-    const apiKey = (rdb.apiKey || cfg.API_KEY || "").trim();
-    const enabled = (typeof rdb.enabled === "boolean") ? rdb.enabled : true;
-
-    if (!enabled) throw new Error("REMOTE_DB disabled");
-    if (!appsScriptUrl) throw new Error("CT_CONFIG.REMOTE_DB.appsScriptUrl missing");
-
-    return { appsScriptUrl, apiKey };
+  function CFG(){ return (window.CT_CONFIG || {}); }
+  function getKey(){
+    const cfg = CFG();
+    const k = (cfg.REMOTE_DB && cfg.REMOTE_DB.apiKey) ? cfg.REMOTE_DB.apiKey : '';
+    return String(k || '').trim();
   }
 
-  function jsonp_(url, params) {
-    return new Promise((resolve, reject) => {
-      const cbName = "__ct_cb_" + Math.random().toString(36).slice(2);
+  function getUrl(){
+    const cfg = CFG();
 
-      params = params || {};
-      params.callback = cbName;
+    // Preferred (current)
+    const v1 = cfg && cfg.REMOTE_DB && cfg.REMOTE_DB.appsScriptUrl;
+    if (v1) return String(v1).trim();
 
-      const qs = Object.keys(params)
-        .filter(k => params[k] !== undefined && params[k] !== null && String(params[k]).length > 0)
-        .map(k => encodeURIComponent(k) + "=" + encodeURIComponent(String(params[k])))
-        .join("&");
+    // Backward-compat (older configs people may still have deployed)
+    const v2 = cfg && (cfg.API_URL || cfg.APPS_SCRIPT_URL || cfg.appsScriptUrl);
+    if (v2) return String(v2).trim();
 
-      const src = url + (url.includes("?") ? "&" : "?") + qs;
+    throw new Error("CT_CONFIG.REMOTE_DB.appsScriptUrl missing");
+  }
 
+  function jsonp(url){
+    return new Promise((resolve, reject)=>{
+      const cb = `__ct_jsonp_${Date.now()}_${Math.floor(Math.random()*1e9)}`;
       const script = document.createElement("script");
-      let done = false;
+      const sep = url.includes("?") ? "&" : "?";
+      script.src = `${url}${sep}callback=${cb}`;
+      script.async = true;
 
-      window[cbName] = function (payload) {
-        done = true;
-        cleanup_();
-        resolve(payload);
-      };
+      const t = setTimeout(()=>{
+        cleanup();
+        reject(new Error("timeout"));
+      }, 15000);
 
-      function cleanup_() {
-        try { delete window[cbName]; } catch (e) { window[cbName] = undefined; }
+      function cleanup(){
+        clearTimeout(t);
+        try{ delete window[cb]; }catch{}
         if (script && script.parentNode) script.parentNode.removeChild(script);
       }
 
-      script.onerror = function () {
-        if (done) return;
-        cleanup_();
-        reject(new Error("JSONP request failed"));
+      window[cb] = (data)=>{
+        cleanup();
+        resolve(data);
       };
 
-      script.src = src;
+      script.onerror = ()=>{
+        cleanup();
+        reject(new Error("jsonp_error"));
+      };
+
       document.head.appendChild(script);
     });
   }
 
-  function call_(action, extra) {
-    const { appsScriptUrl, apiKey } = getCfg_();
-    const params = Object.assign({ action }, (extra || {}));
-
-    // Only send apiKey if it exists
-    if (apiKey) params.apiKey = apiKey;
-
-    return jsonp_(appsScriptUrl, params).then(res => {
-      if (!res || res.ok !== true) {
-        const err = (res && (res.error || res.message)) ? (res.error || res.message) : "unknown_error";
-        throw new Error(err);
-      }
-      return res;
-    });
+  function buildUrl(params){
+    const base = getUrl();
+    const qs = new URLSearchParams(params);
+    return `${base}?${qs.toString()}`;
   }
 
-  function b64url_(obj) {
-    const json = JSON.stringify(obj);
-    return btoa(unescape(encodeURIComponent(json)))
-      .replace(/\+/g, "-")
-      .replace(/\//g, "_")
-      .replace(/=+$/g, "");
+  async function call(params){
+    const apiKey = getKey();
+    const full = buildUrl({ ...params, apiKey });
+    return await jsonp(full);
   }
 
-  window.CT_API = {
-    health: () => call_("health"),
+  // Public methods
+  CTData.health = async ()=> await jsonp(buildUrl({ action:"health" }));
+  CTData.listApproved = async ()=> await call({ action:"listApproved" });
+  CTData.listPending  = async ()=> await call({ action:"listPending" });
+  CTData.submit = async (payloadB64)=> await call({ action:"submit", payload: payloadB64 });
+  CTData.approve = async (id)=> await call({ action:"approve", id });
+  CTData.reject = async (id)=> await call({ action:"reject", id });
+  CTData.deleteApproved = async (id)=> await call({ action:"deleteApproved", id });
+  CTData.react = async ({id, dir})=> await call({ action:"react", id, dir });
 
-    // Public
-    listApproved: () => call_("listApproved").then(r => r.items || []),
-    react: (id, dir) => call_("react", { id, dir })
-      .then(r => ({ reactionsUp: Number(r.reactionsUp || 0), reactionsDown: Number(r.reactionsDown || 0) })),
-
-    // Admin / protected (requires apiKey if your Code.gs enforces it)
-    listPending: () => call_("listPending").then(r => r.items || []),
-    submit: (item) => call_("submit", { payload: b64url_({ item }) }),
-    approve: (id) => call_("approve", { id }),
-    reject: (id) => call_("reject", { id }),
-    deleteApproved: (id) => call_("deleteApproved", { id }),
-  };
+  window.CTData = CTData;
 })();
