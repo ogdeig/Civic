@@ -1,447 +1,532 @@
-/* CivicThreat.us — Epstein PDF Reader (TTS) — v10 */
+/* Epstein Reader (TTS) — CivicThreat.us
+   Structure:
+   - /released/epstein/index.json
+   - /released/epstein/pdfs/<file>.pdf
+*/
 (function(){
   "use strict";
 
-  // NEW structure
-  const INDEX_URL = "./index.json"; // released/epstein/index.json
-  const PDF_BASE  = "./pdfs/";      // released/epstein/pdfs/
+  const INDEX_URL = "/released/epstein/index.json";
+  const CONSENT_KEY = "ct_epstein_21_gate_v1";
 
-  const $ = (s, r=document) => r.querySelector(s);
+  const $ = (sel, root=document) => root.querySelector(sel);
 
-  const gateEl      = $("#gate");
-  const agreeBtn    = $("#agreeBtn");
-  const leaveBtn    = $("#leaveBtn");
+  const el = {
+    gate: $("#ageGate"),
+    gateCheck: $("#gateCheck"),
+    gateEnter: $("#gateEnter"),
+    gateLeave: $("#gateLeave"),
 
-  const pdfSelect   = $("#pdfSelect");
-  const voiceSelect = $("#voiceSelect");
-  const speedSelect = $("#speedSelect");
+    pdfSelect: $("#pdfSelect"),
+    voiceSelect: $("#voiceSelect"),
+    speedSelect: $("#speedSelect"),
 
-  const playBtn     = $("#playBtn");
-  const pauseBtn    = $("#pauseBtn");
-  const stopBtn     = $("#stopBtn");
-  const prevBtn     = $("#prevBtn");
-  const nextBtn     = $("#nextBtn");
-  const muteBtn     = $("#muteBtn");
+    btnPlay: $("#btnPlay"),
+    btnPause: $("#btnPause"),
+    btnStop: $("#btnStop"),
+    btnPrev: $("#btnPrev"),
+    btnNext: $("#btnNext"),
+    btnMute: $("#btnMute"),
 
-  const statusBox   = $("#statusBox");
-  const statusSub   = $("#statusSub");
+    statusTitle: $("#statusTitle"),
+    statusLine: $("#statusLine"),
+    pageMeta: $("#pageMeta"),
 
-  const viewerMeta  = $("#viewerMeta");
-  const openPdfBtn  = $("#openPdfBtn");
-  const canvas      = $("#pdfCanvas");
-  const ctx         = canvas.getContext("2d", { alpha:false });
+    canvas: $("#pdfCanvas"),
+  };
 
-  // State
-  let pdfDoc = null;
-  let listCache = [];
-  let currentPdf = null; // {file,title,url}
-  let pageNum = 1;
-  let totalPages = 0;
+  const state = {
+    pdfDoc: null,
+    pdfUrl: "",
+    pdfLabel: "",
+    page: 1,
+    totalPages: 0,
 
-  let pageText = "";
-  let isMuted = false;
-  let isPlaying = false;
-  let isPaused = false;
-  let selectedVoice = null;
+    voices: [],
+    selectedVoiceURI: "",
+    selectedRate: 1.0,
+    muted: false,
+    playing: false,
+    paused: false,
 
-  function setStatus(main, sub){
-    // preserve the first text node for big status line
-    if(statusBox && statusBox.firstChild) statusBox.firstChild.nodeValue = (main || "") + "\n";
-    if(statusSub) statusSub.textContent = sub || "";
+    chunks: [],
+    chunkIndex: 0,
+
+    pageTextCache: new Map(),
+  };
+
+  function setStatus(title, line){
+    el.statusTitle.textContent = title || "";
+    el.statusLine.textContent = line || "";
   }
 
-  function hardStopSpeech(){
-    try { window.speechSynthesis.cancel(); } catch {}
-    isPlaying = false;
-    isPaused = false;
-    if(pauseBtn) pauseBtn.textContent = "⏸ Pause";
+  function bust(){
+    return String(Date.now());
   }
 
-  function enableControls(on){
-    if(pauseBtn) pauseBtn.disabled = !on;
-    if(stopBtn)  stopBtn.disabled  = !on;
-    if(prevBtn)  prevBtn.disabled  = !on;
-    if(nextBtn)  nextBtn.disabled  = !on;
-    if(muteBtn)  muteBtn.disabled  = !on;
+  async function safeFetchJson(url){
+    const u = url + (url.includes("?") ? "&" : "?") + "_=" + bust();
+    const r = await fetch(u, { cache: "no-store" });
+    if(!r.ok) throw new Error("Failed to load index.json (" + r.status + ")");
+    return r.json();
   }
 
-  function bestDefaultVoice(voices){
-    const byName = (re) => voices.find(v => re.test(v.name));
-    return (
-      byName(/Google UK English Female/i) ||
-      byName(/Google UK English/i) ||
-      voices.find(v => (v.lang||"").toLowerCase().startsWith("en-gb")) ||
-      voices.find(v => (v.lang||"").toLowerCase().startsWith("en-us")) ||
-      voices.find(v => (v.lang||"").toLowerCase().startsWith("en")) ||
-      voices[0] ||
-      null
-    );
+  function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
+
+  function stopAllAudio(){
+    try{ window.speechSynthesis.cancel(); }catch(_){}
+    state.playing = false;
+    state.paused = false;
+    state.chunks = [];
+    state.chunkIndex = 0;
   }
 
-  function loadVoices(){
-    const synth = window.speechSynthesis;
-    const voices = synth ? synth.getVoices() : [];
-    if(!voiceSelect) return;
-
-    voiceSelect.innerHTML = "";
-
-    if(!voices.length){
-      const opt = document.createElement("option");
-      opt.value = "";
-      opt.textContent = "No voices available";
-      voiceSelect.appendChild(opt);
-      selectedVoice = null;
-      return;
-    }
-
-    voices.forEach((v, idx)=>{
-      const opt = document.createElement("option");
-      opt.value = String(idx);
-      opt.textContent = `${v.name} (${v.lang})`;
-      voiceSelect.appendChild(opt);
-    });
-
-    selectedVoice = bestDefaultVoice(voices);
-    const idx = voices.indexOf(selectedVoice);
-    if(idx >= 0) voiceSelect.value = String(idx);
-
-    voiceSelect.onchange = ()=>{
-      const i = Number(voiceSelect.value);
-      const vs = window.speechSynthesis.getVoices();
-      selectedVoice = Number.isFinite(i) ? (vs[i] || null) : null;
-    };
-  }
-
-  function getSpeechRate(){
-    const v = parseFloat(speedSelect?.value || "1");
-    if(!Number.isFinite(v)) return 1;
-    return Math.max(0.5, Math.min(2.5, v));
-  }
-
-  async function waitForPdfJs(){
-    if(window.pdfjsLib && typeof window.pdfjsLib.getDocument === "function") return true;
-
-    return await new Promise((resolve)=>{
-      let done = false;
-      const finish = (ok)=>{
-        if(done) return;
-        done = true;
-        window.removeEventListener("pdfjs-ready", onReady);
-        window.removeEventListener("pdfjs-failed", onFail);
-        resolve(ok);
-      };
-      const onReady = ()=>finish(true);
-      const onFail  = ()=>finish(false);
-
-      window.addEventListener("pdfjs-ready", onReady);
-      window.addEventListener("pdfjs-failed", onFail);
-
-      setTimeout(()=>finish(!!(window.pdfjsLib && window.pdfjsLib.getDocument)), 5000);
+  function wireStopOnLeave(){
+    window.addEventListener("pagehide", stopAllAudio);
+    window.addEventListener("beforeunload", stopAllAudio);
+    document.addEventListener("visibilitychange", () => {
+      if(document.hidden) stopAllAudio();
     });
   }
 
-  function prettyTitleFromFilename(fn){
-    const base = (fn || "").split("/").pop().replace(/\.pdf$/i,"");
-    return base
-      .replace(/[_\-]+/g," ")
-      .replace(/\s+/g," ")
-      .trim() || "Untitled PDF";
+  // ---- 21+ gate ----
+  function hasConsent(){
+    try{ return localStorage.getItem(CONSENT_KEY) === "yes"; }catch(_){ return false; }
+  }
+  function setConsent(){
+    try{ localStorage.setItem(CONSENT_KEY, "yes"); }catch(_){}
+  }
+  function showGate(){
+    el.gate.style.display = "flex";
+    document.body.style.overflow = "hidden";
+    el.gateCheck.checked = false;
+    el.gateEnter.disabled = true;
+  }
+  function hideGate(){
+    el.gate.style.display = "none";
+    document.body.style.overflow = "";
+  }
+  function wireGate(){
+    el.gateCheck.addEventListener("change", () => {
+      el.gateEnter.disabled = !el.gateCheck.checked;
+    });
+    el.gateLeave.addEventListener("click", () => {
+      stopAllAudio();
+      location.href = "/index.html";
+    });
+    el.gateEnter.addEventListener("click", () => {
+      if(!el.gateCheck.checked) return;
+      setConsent();
+      hideGate();
+      boot();
+    });
   }
 
-  async function fetchIndex(){
-    setStatus("Loading PDFs…", "Fetching released/epstein/index.json");
-    const res = await fetch(INDEX_URL, { cache:"no-store" });
-    if(!res.ok) throw new Error(`Index failed to load (${res.status}). Confirm ${INDEX_URL} exists.`);
-    const data = await res.json();
+  // ---- PDF.js ----
+  async function ensurePdfJs(){
+    if(window.pdfjsLib) return window.pdfjsLib;
 
-    // ✅ Your format:
-    // { generatedAt, count, items: [ {file, path, label} ] }
-    const items = Array.isArray(data)
-      ? data
-      : (Array.isArray(data.items) ? data.items : (Array.isArray(data.files) ? data.files : []));
-
-    const list = items.map((x)=>{
-      if(typeof x === "string"){
-        return { file: x, title: prettyTitleFromFilename(x) };
+    const candidates = [
+      "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js",
+      "https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js",
+    ];
+    for(const src of candidates){
+      await new Promise(resolve => {
+        const s = document.createElement("script");
+        s.src = src; s.async = true;
+        s.onload = () => resolve(true);
+        s.onerror = () => resolve(false);
+        document.head.appendChild(s);
+      });
+      if(window.pdfjsLib){
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+          "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
+        return window.pdfjsLib;
       }
-      const file = (x.file || "").trim() || (x.path ? String(x.path).split("/").pop() : "");
-      const title = (x.label && String(x.label).trim())
-        ? String(x.label).trim()
-        : prettyTitleFromFilename(file || x.path || "");
-      return { file, title };
-    }).filter(x => x.file);
-
-    return list;
+    }
+    throw new Error("PDF.js failed to load (pdfjsLib missing).");
   }
 
-  function populatePdfDropdown(list){
-    if(!pdfSelect) return;
-    pdfSelect.innerHTML = "";
+  // ---- Voices ----
+  function listVoices(){
+    state.voices = window.speechSynthesis?.getVoices?.() || [];
+    el.voiceSelect.innerHTML = "";
 
-    if(!list.length){
-      const opt = document.createElement("option");
-      opt.value = "";
-      opt.textContent = "No PDFs found";
-      pdfSelect.appendChild(opt);
+    if(!state.voices.length){
+      const o = document.createElement("option");
+      o.value = "";
+      o.textContent = "No voices found (try again)";
+      el.voiceSelect.appendChild(o);
       return;
     }
 
-    const first = document.createElement("option");
-    first.value = "";
-    first.textContent = "Select a PDF…";
-    pdfSelect.appendChild(first);
+    const sorted = [...state.voices].sort((a,b) => {
+      const ae = (a.lang||"").toLowerCase().startsWith("en") ? 0 : 1;
+      const be = (b.lang||"").toLowerCase().startsWith("en") ? 0 : 1;
+      if(ae !== be) return ae - be;
+      return (a.name||"").localeCompare(b.name||"");
+    });
 
-    list.forEach((item, idx)=>{
-      const opt = document.createElement("option");
-      opt.value = String(idx);
-      opt.textContent = item.title || item.file;
-      pdfSelect.appendChild(opt);
+    for(const v of sorted){
+      const o = document.createElement("option");
+      o.value = v.voiceURI;
+      o.textContent = `${v.name} (${v.lang})`;
+      el.voiceSelect.appendChild(o);
+    }
+
+    const prefer =
+      sorted.find(v => /google/i.test(v.name) && /uk|brit/i.test(v.name) && /female/i.test(v.name)) ||
+      sorted.find(v => (v.lang||"").toLowerCase() === "en-gb") ||
+      sorted.find(v => (v.lang||"").toLowerCase().startsWith("en-")) ||
+      sorted[0];
+
+    state.selectedVoiceURI = prefer?.voiceURI || "";
+    el.voiceSelect.value = state.selectedVoiceURI;
+  }
+
+  function getVoice(){
+    return state.voices.find(v => v.voiceURI === state.selectedVoiceURI) || null;
+  }
+
+  function wireVoices(){
+    listVoices();
+    if(window.speechSynthesis){
+      window.speechSynthesis.onvoiceschanged = listVoices;
+      setTimeout(listVoices, 300);
+      setTimeout(listVoices, 1000);
+    }
+
+    el.voiceSelect.addEventListener("change", () => {
+      state.selectedVoiceURI = el.voiceSelect.value || "";
+      if(state.playing && !state.paused) restartReading();
+    });
+
+    el.speedSelect.addEventListener("change", () => {
+      const r = parseFloat(el.speedSelect.value || "1");
+      state.selectedRate = clamp(isFinite(r)?r:1, 0.5, 2);
+      if(state.playing && !state.paused) restartReading();
     });
   }
 
-  async function renderPage(n){
-    if(!pdfDoc) return;
-    const page = await pdfDoc.getPage(n);
-    const viewport = page.getViewport({ scale: 1.35 });
+  // ---- Index ----
+  async function loadIndex(){
+    setStatus("Loading…", "Fetching PDF list…");
+    const data = await safeFetchJson(INDEX_URL);
+    const items = Array.isArray(data.items) ? data.items : [];
 
-    canvas.width  = Math.floor(viewport.width);
-    canvas.height = Math.floor(viewport.height);
+    el.pdfSelect.innerHTML = "";
+    if(!items.length){
+      const o = document.createElement("option");
+      o.value = "";
+      o.textContent = "No PDFs found";
+      el.pdfSelect.appendChild(o);
+      setStatus("Ready.", "No PDFs found. Add PDFs to /released/epstein/pdfs/ and rebuild index.json.");
+      return [];
+    }
 
-    ctx.fillStyle = "#111";
-    ctx.fillRect(0,0,canvas.width,canvas.height);
-
-    await page.render({ canvasContext: ctx, viewport }).promise;
+    for(const it of items){
+      const o = document.createElement("option");
+      o.value = "/" + String(it.path || "").replace(/^\/+/, "");
+      o.textContent = it.label || it.file || it.path;
+      el.pdfSelect.appendChild(o);
+    }
+    setStatus("Ready.", "Select a PDF to begin.");
+    return items;
   }
 
-  async function preparePageText(n){
-    if(!pdfDoc) return "";
-    setStatus("Working…", `Extracting text from page ${n} (this can take a moment).`);
+  // ---- PDF load/render ----
+  async function loadPdf(url, label){
+    stopAllAudio();
+    state.pageTextCache.clear();
 
-    const page = await pdfDoc.getPage(n);
-    const content = await page.getTextContent();
-    const strings = (content.items || []).map(it => it.str).filter(Boolean);
+    setStatus("Loading PDF…", "Preparing viewer…");
+    el.pageMeta.textContent = "Loading…";
 
-    let text = strings.join(" ").replace(/\s+/g," ").trim();
-    if(!text){
-      text = "This page appears to contain no extractable text. It may be a scanned image.";
-    }
+    const pdfjsLib = await ensurePdfJs();
+    try{
+      pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
+    }catch(_){}
 
-    pageText = text;
-    setStatus("Ready.", `Page ${n} is loaded. Press Play.`);
-    return text;
-  }
+    const task = pdfjsLib.getDocument({ url, withCredentials: false });
+    state.pdfDoc = await task.promise;
+    state.pdfUrl = url;
+    state.pdfLabel = label || "";
+    state.totalPages = state.pdfDoc.numPages || 0;
+    state.page = 1;
 
-  async function loadPdfBySelection(){
-    const idx = Number(pdfSelect?.value);
-    if(!Number.isFinite(idx) || idx < 0 || idx >= listCache.length){
-      currentPdf = null;
-      pdfDoc = null;
-      totalPages = 0;
-      pageNum = 1;
-      if(viewerMeta) viewerMeta.textContent = "No PDF loaded.";
-      if(openPdfBtn) openPdfBtn.style.display = "none";
-      setStatus("Ready.", "Select a PDF to begin.");
-      enableControls(false);
-      hardStopSpeech();
-      return;
-    }
-
-    const item = listCache[idx];
-    const url = PDF_BASE + item.file;
-
-    currentPdf = { ...item, url };
-
-    if(openPdfBtn){
-      openPdfBtn.href = url;
-      openPdfBtn.style.display = "inline-flex";
-    }
-
-    const ok = await waitForPdfJs();
-    if(!ok){
-      const detail = window.__pdfjs_load_error ? (window.__pdfjs_load_error.message || String(window.__pdfjs_load_error)) : "Unknown error";
-      throw new Error("PDF.js failed to load. " + detail);
-    }
-
-    setStatus("Loading PDF…", item.title || item.file);
-
-    hardStopSpeech();
-    enableControls(false);
-
-    const loadingTask = window.pdfjsLib.getDocument({ url });
-    pdfDoc = await loadingTask.promise;
-
-    totalPages = pdfDoc.numPages || 0;
-    pageNum = 1;
-
-    if(viewerMeta) viewerMeta.textContent = `${item.title} • Page ${pageNum} of ${totalPages}`;
-
-    enableControls(true);
-
-    await renderPage(pageNum);
-    await preparePageText(pageNum);
-
+    await renderPage(1);
     setStatus("Ready.", "Press Play to start reading page 1.");
   }
 
-  function speakText(text){
-    if(!window.speechSynthesis) throw new Error("Speech Synthesis is not supported on this device/browser.");
-    if(isMuted){
-      setStatus("Muted.", "Unmute to hear audio.");
-      return;
-    }
+  async function renderPage(n){
+    if(!state.pdfDoc) return;
+    n = clamp(n, 1, state.totalPages || 1);
+    state.page = n;
 
-    // Stop resets; Pause resumes
-    hardStopSpeech();
+    el.pageMeta.textContent = `Page ${state.page} / ${state.totalPages || "?"}`;
 
-    const u = new SpeechSynthesisUtterance(text);
-    u.rate = getSpeechRate();
+    const page = await state.pdfDoc.getPage(n);
+    const canvas = el.canvas;
+    const ctx = canvas.getContext("2d", { alpha: false });
 
-    const voices = window.speechSynthesis.getVoices();
-    const idx = Number(voiceSelect?.value);
-    selectedVoice = (Number.isFinite(idx) && voices[idx]) ? voices[idx] : (selectedVoice || bestDefaultVoice(voices));
-    if(selectedVoice) u.voice = selectedVoice;
+    const containerWidth = canvas.clientWidth || 800;
+    const vp1 = page.getViewport({ scale: 1 });
+    const scale = containerWidth / vp1.width;
+    const vp = page.getViewport({ scale: Math.max(0.75, Math.min(scale, 2.0)) });
 
-    u.onstart = ()=>{
-      isPlaying = true;
-      isPaused = false;
-      if(pauseBtn) pauseBtn.textContent = "⏸ Pause";
-      setStatus("Reading…", `${currentPdf ? currentPdf.title : "PDF"} • Page ${pageNum}/${totalPages}`);
-    };
-    u.onend = ()=>{
-      isPlaying = false;
-      isPaused = false;
-      if(pauseBtn) pauseBtn.textContent = "⏸ Pause";
-      setStatus("Finished page.", "Use Next Page to continue, or press Play to repeat.");
-    };
-    u.onerror = (e)=>{
-      isPlaying = false;
-      isPaused = false;
-      if(pauseBtn) pauseBtn.textContent = "⏸ Pause";
-      setStatus("Speech error.", (e && e.error) ? String(e.error) : "Unable to read aloud on this device.");
-    };
+    canvas.width = Math.floor(vp.width);
+    canvas.height = Math.floor(vp.height);
 
-    window.speechSynthesis.speak(u);
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0,0,canvas.width, canvas.height);
+
+    await page.render({ canvasContext: ctx, viewport: vp }).promise;
   }
 
-  function doPlay(){
-    if(!pdfDoc || !pageText){
-      setStatus("Nothing to play yet.", "Select a PDF first.");
-      return;
-    }
-    speakText(pageText);
+  async function getPageText(n){
+    if(state.pageTextCache.has(n)) return state.pageTextCache.get(n);
+
+    setStatus("Working…", `Extracting text from page ${n}…`);
+    const page = await state.pdfDoc.getPage(n);
+    const tc = await page.getTextContent();
+
+    const parts = (tc.items || []).map(it => (it.str || "").trim()).filter(Boolean);
+    const text = parts.join(" ");
+
+    state.pageTextCache.set(n, text);
+    return text;
   }
 
-  function doPauseToggle(){
-    if(!window.speechSynthesis) return;
+  function chunkText(text){
+    const clean = String(text || "").replace(/\s+/g, " ").trim();
+    if(!clean) return ["(No readable text on this page.)"];
 
-    if(!isPlaying && !isPaused){
-      doPlay();
-      return;
-    }
+    const maxLen = 1200;
+    const sentences = clean.split(/(?<=[.?!])\s+/);
+    const out = [];
+    let buf = "";
 
-    if(window.speechSynthesis.paused){
-      window.speechSynthesis.resume();
-      isPaused = false;
-      if(pauseBtn) pauseBtn.textContent = "⏸ Pause";
-      setStatus("Reading…", `Resumed on page ${pageNum}/${totalPages}`);
-    }else{
-      window.speechSynthesis.pause();
-      isPaused = true;
-      if(pauseBtn) pauseBtn.textContent = "▶ Resume";
-      setStatus("Paused.", `Page ${pageNum}/${totalPages}`);
-    }
-  }
-
-  function doStop(){
-    hardStopSpeech();
-    setStatus("Stopped.", "Press Play to start over on this page.");
-  }
-
-  async function goPage(delta){
-    if(!pdfDoc) return;
-    const next = pageNum + delta;
-    if(next < 1 || next > totalPages) return;
-
-    hardStopSpeech();
-    setStatus("Working…", `Loading page ${next}.`);
-
-    pageNum = next;
-    if(viewerMeta && currentPdf) viewerMeta.textContent = `${currentPdf.title} • Page ${pageNum} of ${totalPages}`;
-
-    await renderPage(pageNum);
-    await preparePageText(pageNum);
-  }
-
-  function toggleMute(){
-    isMuted = !isMuted;
-    if(muteBtn) muteBtn.textContent = isMuted ? "🔈 Unmute" : "🔇 Mute";
-    if(isMuted){
-      hardStopSpeech();
-      setStatus("Muted.", "Audio is muted.");
-    }else{
-      setStatus("Unmuted.", "Press Play to read aloud.");
-    }
-  }
-
-  // 21+ gate cookie
-  function rememberGate(){
-    document.cookie = "ct_epstein_21=1; Path=/; SameSite=Lax";
-  }
-  function hasGate(){
-    return /(?:^|;\s*)ct_epstein_21=1(?:;|$)/.test(document.cookie || "");
-  }
-  function hideGate(){
-    gateEl?.classList.add("hidden");
-  }
-
-  async function bootAfterGate(){
-    try{
-      setStatus("Loading voices…", "Preparing text-to-speech options.");
-      loadVoices();
-
-      if(window.speechSynthesis){
-        window.speechSynthesis.onvoiceschanged = ()=>loadVoices();
+    for(const s of sentences){
+      if(!s) continue;
+      if((buf ? (buf + " " + s) : s).length <= maxLen){
+        buf = buf ? (buf + " " + s) : s;
+      }else{
+        if(buf) out.push(buf.trim());
+        if(s.length > maxLen){
+          for(let i=0;i<s.length;i+=maxLen) out.push(s.slice(i, i+maxLen));
+          buf = "";
+        }else{
+          buf = s;
+        }
       }
+    }
+    if(buf) out.push(buf.trim());
+    return out.length ? out : [clean];
+  }
 
-      listCache = await fetchIndex();
-      populatePdfDropdown(listCache);
+  function speakNextChunk(){
+    if(!state.playing || state.paused) return;
 
-      setStatus("Ready.", "Select a PDF to begin.");
-      enableControls(false);
+    if(state.chunkIndex >= state.chunks.length){
+      return onPageDone();
+    }
 
-      pdfSelect.addEventListener("change", loadPdfBySelection);
+    const voice = getVoice();
+    const u = new SpeechSynthesisUtterance(state.chunks[state.chunkIndex]);
+    u.rate = state.selectedRate || 1;
+    u.voice = voice || null;
+    u.lang = voice?.lang || "en-US";
+    u.volume = state.muted ? 0 : 1;
 
-      playBtn.addEventListener("click", doPlay);
-      pauseBtn.addEventListener("click", doPauseToggle);
-      stopBtn.addEventListener("click", doStop);
+    u.onend = () => {
+      if(!state.playing || state.paused) return;
+      state.chunkIndex += 1;
+      speakNextChunk();
+    };
+    u.onerror = () => {
+      if(!state.playing || state.paused) return;
+      state.chunkIndex += 1;
+      speakNextChunk();
+    };
 
-      // ✅ exactly one page
-      nextBtn.addEventListener("click", ()=>goPage(+1));
-      prevBtn.addEventListener("click", ()=>goPage(-1));
-
-      muteBtn.addEventListener("click", toggleMute);
-
+    try{
+      // cancel prevents overlapping and fixes "reads one page then stops" on some mobile browsers
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(u);
     }catch(err){
       console.error(err);
-      setStatus("Could not load PDFs.", (err && err.message) ? err.message : String(err));
-      enableControls(false);
+      setStatus("Error", "Text-to-speech failed to start on this device/browser.");
+      state.playing = false;
+      state.paused = false;
+    }
+  }
+
+  async function startReadingPage(n){
+    if(!state.pdfDoc) return;
+    n = clamp(n, 1, state.totalPages || 1);
+
+    setStatus("Playing…", `Reading page ${n}…`);
+    const text = await getPageText(n);
+
+    state.chunks = chunkText(text);
+    state.chunkIndex = 0;
+
+    speakNextChunk();
+  }
+
+  function onPageDone(){
+    if(!state.playing || state.paused) return;
+
+    if(state.page >= (state.totalPages || 1)){
+      setStatus("Done.", "Reached the end of the PDF.");
+      state.playing = false;
+      state.paused = false;
+      return;
+    }
+
+    const next = clamp(state.page + 1, 1, state.totalPages);
+    state.page = next;
+
+    renderPage(next)
+      .then(() => startReadingPage(next))
+      .catch(err => {
+        console.error(err);
+        setStatus("Error", "Failed to load the next page.");
+        state.playing = false;
+        state.paused = false;
+      });
+  }
+
+  function restartReading(){
+    if(!state.pdfDoc) return;
+    try{ window.speechSynthesis.cancel(); }catch(_){}
+    state.playing = true;
+    state.paused = false;
+    startReadingPage(state.page);
+  }
+
+  // ---- Controls ----
+  function wireControls(){
+    el.btnPlay.addEventListener("click", async () => {
+      if(!state.pdfDoc){
+        setStatus("Ready.", "Select a PDF first.");
+        return;
+      }
+
+      if(state.paused){
+        state.paused = false;
+        state.playing = true;
+        try{
+          window.speechSynthesis.resume();
+          setStatus("Playing…", `Reading page ${state.page}…`);
+        }catch(_){
+          restartReading();
+        }
+        return;
+      }
+
+      if(state.playing) return;
+
+      state.playing = true;
+      state.paused = false;
+      await renderPage(state.page);
+      await startReadingPage(state.page);
+    });
+
+    el.btnPause.addEventListener("click", () => {
+      if(!state.playing) return;
+      state.paused = true;
+      try{ window.speechSynthesis.pause(); }catch(_){}
+      setStatus("Paused.", "Press Play to resume.");
+    });
+
+    el.btnStop.addEventListener("click", async () => {
+      stopAllAudio();
+      if(state.pdfDoc){
+        state.page = 1;
+        await renderPage(1);
+        setStatus("Stopped.", "Press Play to start from page 1.");
+      }else{
+        setStatus("Ready.", "Select a PDF to begin.");
+      }
+    });
+
+    el.btnNext.addEventListener("click", async () => {
+      if(!state.pdfDoc) return;
+      const wasPlaying = state.playing && !state.paused;
+
+      stopAllAudio();
+      state.page = clamp(state.page + 1, 1, state.totalPages);
+      await renderPage(state.page);
+
+      if(wasPlaying){
+        state.playing = true;
+        await startReadingPage(state.page);
+      }else{
+        setStatus("Ready.", `Moved to page ${state.page}. Press Play to read.`);
+      }
+    });
+
+    el.btnPrev.addEventListener("click", async () => {
+      if(!state.pdfDoc) return;
+      const wasPlaying = state.playing && !state.paused;
+
+      stopAllAudio();
+      state.page = clamp(state.page - 1, 1, state.totalPages);
+      await renderPage(state.page);
+
+      if(wasPlaying){
+        state.playing = true;
+        await startReadingPage(state.page);
+      }else{
+        setStatus("Ready.", `Moved to page ${state.page}. Press Play to read.`);
+      }
+    });
+
+    el.btnMute.addEventListener("click", () => {
+      state.muted = !state.muted;
+      el.btnMute.textContent = state.muted ? "🔊 Unmute" : "🔇 Mute";
+      if(state.playing && !state.paused){
+        restartReading();
+      }
+    });
+
+    el.pdfSelect.addEventListener("change", async () => {
+      const url = el.pdfSelect.value || "";
+      const label = el.pdfSelect.options[el.pdfSelect.selectedIndex]?.textContent || "";
+      if(!url){
+        stopAllAudio();
+        state.pdfDoc = null;
+        state.totalPages = 0;
+        state.page = 1;
+        el.pageMeta.textContent = "No PDF loaded.";
+        setStatus("Ready.", "Select a PDF to begin.");
+        return;
+      }
+      await loadPdf(url, label);
+    });
+  }
+
+  async function boot(){
+    try{
+      wireStopOnLeave();
+      wireVoices();
+      wireControls();
+      await loadIndex();
+    }catch(err){
+      console.error(err);
+      setStatus("Error", err?.message ? err.message : String(err));
     }
   }
 
   function init(){
-    if(hasGate()){
+    wireGate();
+    if(hasConsent()){
       hideGate();
-      bootAfterGate();
+      boot();
     }else{
-      setStatus("Age verification required.", "Confirm 21+ to load PDFs and voices.");
-      agreeBtn?.addEventListener("click", ()=>{
-        rememberGate();
-        hideGate();
-        bootAfterGate();
-      });
-      leaveBtn?.addEventListener("click", ()=>{
-        window.location.href = "/";
-      });
+      showGate();
     }
   }
 
