@@ -1,34 +1,20 @@
-/*
-  CivicThreat.us — config.js
-  Uses Google Apps Script Web App (JSONP).
-
-  appsScriptUrl is REQUIRED.
-  apiKey is OPTIONAL:
-   - If you set it, admin/write endpoints can be protected.
-   - Public pages (listApproved + react) work without it.
-*/
-
+// CivicThreat.us site config
+// NOTE: This file is public on GitHub Pages. Do not put true secrets here.
 window.CT_CONFIG = {
-  SITE_NAME: "Civic Threat",
+  SITE_NAME: "CIVIC THREAT",
+  SITE_TAGLINE: "Debate & Discuss",
+  COPYRIGHT_YEAR: 2026,
 
+  TITLE_MAX: 80,
+
+  // --- Remote Database (Google Sheets via Apps Script Web App) ---
   REMOTE_DB: {
     enabled: true,
-
-    // REQUIRED: your Apps Script /exec URL
-    // Example:
-    // "https://script.google.com/macros/s/AKfycbxxxxxxx/exec"
+    // Your deployed Apps Script Web App EXEC URL:
     appsScriptUrl: "https://script.google.com/macros/s/AKfycbxvjktr3A_FCZEgRNtkWBb9qGJTjdwa0oaS2ofAzQDQGngka0vLe8MwJrgUqy5KUOl6lA/exec",
-
-    // OPTIONAL: only needed for admin/write endpoints
-    apiKey: ""
+  
   },
 
-  REACTIONS: {
-    cooldownMs: 5000
-  },
-
-  HOME_LIMITS: {
-    support: 6,
-    maga: 6
-  }
+  // Backward-compat alias (older builds referenced CT_CONFIG.API_URL)
+  API_URL: "https://script.google.com/macros/s/AKfycbxvjktr3A_FCZEgRNtkWBb9qGJTjdwa0oaS2ofAzQDQGngka0vLe8MwJrgUqy5KUOl6lA/exec"
 };
