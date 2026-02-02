@@ -393,3 +393,37 @@ textarea{ min-height: 110px; resize: vertical; }
   text-shadow: 0 2px 10px rgba(0,0,0,.55);
 }
 .fbembed-loading .dots{ font-size: 28px; }
+/* Reactions (Support ❤️ / MAGA 🖕) */
+.post-foot{
+  display:flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.reactwrap{
+  display:flex;
+  align-items:center;
+  gap: 8px;
+}
+.reactbtn{
+  border: 1px solid rgba(255,255,255,.16);
+  background: rgba(0,0,0,.35);
+  color: #fff;
+  padding: 6px 10px;
+  cursor: pointer;
+  border-radius: 0;
+  font-size: 18px;
+  line-height: 1;
+}
+.reactbtn:disabled{
+  opacity: .5;
+  cursor: not-allowed;
+}
+.reactcount{
+  font-size: 12px;
+  opacity: .9;
+  min-width: 18px;
+  text-align: left;
+}
+
