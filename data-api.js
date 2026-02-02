@@ -1,109 +1,77 @@
-// CivicThreat.us — Remote API client for Apps Script (JSONP to avoid CORS)
+/* CivicThreat.us data API
+   Uses JSONP-style calls to a Google Apps Script endpoint (no CORS headaches).
+*/
 (function(){
   "use strict";
 
-  function CFG(){ return (window.CT_CONFIG || {}); }
+  function bust(){ return String(Date.now()); }
 
-  function getUrl(){
-    const u = CFG()?.REMOTE_DB?.appsScriptUrl ? String(CFG().REMOTE_DB.appsScriptUrl) : "";
-    if(!u) throw new Error("REMOTE_DB.appsScriptUrl missing in config.js");
-    return u;
-  }
+  // JSONP call
+  function call(params){
+    return new Promise((resolve, reject) => {
+      const cfg = window.CT_CONFIG || {};
+      const endpoint = cfg.appsScriptUrl || cfg.APPS_SCRIPT_URL || cfg.apps_script_url;
+      if(!endpoint) return reject(new Error("Missing CT_CONFIG.appsScriptUrl in config.js"));
 
-  function getKey(){
-    return CFG()?.REMOTE_DB?.apiKey ? String(CFG().REMOTE_DB.apiKey) : "";
-  }
+      const cb = "cb_" + Math.random().toString(16).slice(2);
+      const url = new URL(endpoint);
 
-  function b64urlEncode(str){
-    const bytes = new TextEncoder().encode(str);
-    let bin = "";
-    for(let i=0;i<bytes.length;i++) bin += String.fromCharCode(bytes[i]);
-    const b64 = btoa(bin);
-    return b64.replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-  }
-
-  function jsonp(params, timeoutMs=15000){
-    return new Promise((resolve, reject)=>{
-      const cbName = "__ct_cb_" + Math.random().toString(16).slice(2);
-      const url = new URL(getUrl());
-
-      Object.entries(params || {}).forEach(([k,v])=>{
-        if(v !== undefined && v !== null && String(v) !== "") url.searchParams.set(k, String(v));
+      // Add all params
+      Object.entries(params || {}).forEach(([k,v]) => {
+        if(v === undefined || v === null) return;
+        url.searchParams.set(k, String(v));
       });
 
-      const key = getKey();
-      if(key) url.searchParams.set("apiKey", key);
-      url.searchParams.set("callback", cbName);
-      url.searchParams.set("_", String(Date.now()));
+      // Cache bust + callback
+      url.searchParams.set("callback", cb);
+      url.searchParams.set("_", bust());
 
       const script = document.createElement("script");
       script.async = true;
+      script.src = url.toString();
 
-      const finalUrl = url.toString();
-      window.__CT_LAST_REMOTE_URL = finalUrl;
-      try{ console.log("[CT_REMOTE] JSONP ->", finalUrl); }catch(_){}
-
-      script.src = finalUrl;
-
-      let done = false;
-      const timer = setTimeout(()=>{
-        if(done) return;
-        done = true;
-        cleanup();
-        reject(new Error("Remote request timed out"));
-      }, timeoutMs);
-
-      function cleanup(){
-        clearTimeout(timer);
-        try{ delete window[cbName]; }catch(_){}
-        if(script.parentNode) script.parentNode.removeChild(script);
-      }
-
-      window[cbName] = (data)=>{
-        if(done) return;
-        done = true;
-        cleanup();
-        resolve(data);
+      const cleanup = () => {
+        try{ delete window[cb]; }catch(_){}
+        if(script && script.parentNode) script.parentNode.removeChild(script);
       };
 
-      script.onload = ()=>{
-        // If callback never fires, this helps diagnose "loaded but not executed/called"
-        setTimeout(()=>{
-          if(!done){
-            try{ console.warn("[CT_REMOTE] Script loaded but callback did not fire. Check Web App access, CSP, or response type.", finalUrl); }catch(_){}
-          }
-        }, 50);
+      window[cb] = (data) => {
+        cleanup();
+        if(data && data.ok === false){
+          reject(new Error(data.error || "API error"));
+        }else{
+          resolve(data);
+        }
       };
 
-      script.onerror = ()=>{
-        if(done) return;
-        done = true;
+      script.onerror = () => {
         cleanup();
-        reject(new Error("Remote request failed to load"));
+        reject(new Error("API request failed"));
       };
 
       document.head.appendChild(script);
     });
   }
 
-  async function call(params){
-    const res = await jsonp(params);
-    if(!res || res.ok !== true){
-      throw new Error(res?.error || "Remote API error");
-    }
-    return res;
-  }
-
+  // Public API
   window.CT_REMOTE = {
-    __transport: "jsonp",
-    listApproved: async ()=> (await call({ action:"listApproved" })).items || [],
-    listPending:  async ()=> (await call({ action:"listPending"  })).items || [],
-    submit: async (item)=>{
-      const payload = b64urlEncode(JSON.stringify({ item: item || {} }));
-      return await call({ action:"submit", payload });
-    },
-    approve: async (id)=> await call({ action:"approve", id }),
-    reject:  async (id)=> await call({ action:"reject", id }),
-    deleteApproved: async (id)=> await call({ action:"deleteApproved", id })
+    listApproved: async ({ platform="facebook", category="support", limit=48 }={}) =>
+      await call({ action:"listApproved", platform, category, limit }),
+
+    listPending: async ({ limit=200 }={}) =>
+      await call({ action:"listPending", limit }),
+
+    submit: async (payload) => await call({ action:"submit", payload: JSON.stringify(payload || {}) }),
+
+    approve: async (id) => await call({ action:"approve", id }),
+
+    reject: async (id) => await call({ action:"reject", id }),
+
+    // Reactions (increment per post)
+    // kind: "up" (support) or "down" (maga)
+    react: async ({ id, kind }) => await call({ action:"react", id, kind }),
+
+    deleteApproved: async (id) => await call({ action:"deleteApproved", id })
   };
+
 })();
