@@ -33,7 +33,6 @@
 
     pageTextCache: new Map(),
 
-    // FIX: prevent race conditions while switching PDFs quickly
     loadSeq: 0,
     loadingPdf: false,
   };
@@ -71,30 +70,29 @@
   }
 
   function setControlsEnabled(ready){
-    // ready = true when a PDF is fully loaded and the UI can play
     const disable = !ready;
     const nodes = [el.btnPlay, el.btnPause, el.btnStop, el.btnPrev, el.btnNext, el.btnMute];
     nodes.forEach(n => { if(n) n.disabled = disable; });
 
-    // Stop should always be usable if a PDF exists (even during load)
-    if(el.btnStop) el.btnStop.disabled = !(state.pdfDoc || state.loadingPdf) ? true : false;
+    // Stop usable if PDF exists or is loading
+    if(el.btnStop) el.btnStop.disabled = !(state.pdfDoc || state.loadingPdf);
 
-    // Prev/Next only if pdf loaded
+    // Prev/Next only when a PDF is actually loaded
     if(el.btnPrev) el.btnPrev.disabled = !(state.pdfDoc && ready);
     if(el.btnNext) el.btnNext.disabled = !(state.pdfDoc && ready);
+
+    // Pause only useful when actively playing
     if(el.btnPause) el.btnPause.disabled = !(state.playing && ready);
   }
 
   function wireStopOnLeave(){
-    // Hard stop when leaving page
     window.addEventListener("pagehide", stopAllAudio);
     window.addEventListener("beforeunload", stopAllAudio);
+    window.addEventListener("popstate", stopAllAudio);
 
-    // FIX: also stop on in-site navigation clicks (menus, links)
     document.addEventListener("click", (e) => {
       const a = e.target && e.target.closest ? e.target.closest("a") : null;
       if(!a) return;
-      // Only stop if it's actual navigation (ignore #, javascript:, etc.)
       const href = (a.getAttribute("href") || "").trim();
       if(!href) return;
       if(href.startsWith("#")) return;
@@ -102,8 +100,9 @@
       stopAllAudio();
     });
 
-    // FIX: back/forward navigation
-    window.addEventListener("popstate", stopAllAudio);
+    document.addEventListener("visibilitychange", () => {
+      if(document.hidden) stopAllAudio();
+    });
   }
 
   // ---- 21+ gate ----
@@ -114,7 +113,7 @@
     try{ localStorage.setItem(CONSENT_KEY, "yes"); }catch(_){}
   }
   function showGate(){
-    if(!el.gate) return; // if page has no gate, just allow
+    if(!el.gate) return;
     el.gate.style.display = "flex";
     document.body.style.overflow = "hidden";
     if(el.gateCheck) el.gateCheck.checked = false;
@@ -126,7 +125,6 @@
     document.body.style.overflow = "";
   }
   function wireGate(onEnter){
-    // If gate elements not present, skip gating entirely
     if(!el.gate || !el.gateCheck || !el.gateEnter || !el.gateLeave) return onEnter();
 
     el.gateCheck.addEventListener("change", () => {
@@ -156,7 +154,7 @@
   // ---- PDF.js ----
   async function ensurePdfJs(){
     if(window.pdfjsLib) return window.pdfjsLib;
-    throw new Error("PDF.js failed to load (pdfjsLib missing). Confirm epstein-reader.html includes pdf.min.js.");
+    throw new Error("PDF.js failed to load (pdfjsLib missing). Check that pdf.min.js loaded.");
   }
 
   // ---- Voices ----
@@ -250,8 +248,10 @@
     }
 
     for(const it of items){
+      const raw = String(it.path || "").replace(/^\/+/, "");
+      const full = "/" + raw; // ensures absolute site path
       const o = document.createElement("option");
-      o.value = "/" + String(it.path || "").replace(/^\/+/, "");
+      o.value = full;
       o.textContent = it.label || it.file || it.path;
       el.pdfSelect.appendChild(o);
     }
@@ -270,11 +270,29 @@
     state.pdfDoc = null;
   }
 
+  // IMPORTANT: preflight check so we can show EXACT why it won't load
+  async function preflightPdf(url){
+    try{
+      // Range request for first byte. If server blocks range, we still learn the status.
+      const r = await fetch(url, {
+        method: "GET",
+        headers: { "Range": "bytes=0-0" },
+        cache: "no-store",
+      });
+
+      // Accept 200 or 206 (partial content)
+      if(!(r.status === 200 || r.status === 206)){
+        return { ok:false, status:r.status, statusText:r.statusText };
+      }
+      return { ok:true, status:r.status };
+    }catch(err){
+      return { ok:false, status:0, statusText: err?.message ? err.message : String(err) };
+    }
+  }
+
   async function loadPdf(url, label){
-    // increment load sequence; older async steps won't “win”
     const seq = ++state.loadSeq;
 
-    // stop audio, clear cache
     stopAllAudio();
     state.pageTextCache.clear();
     clearPlaybackBuffers();
@@ -282,11 +300,25 @@
     state.loadingPdf = true;
     setControlsEnabled(false);
 
-    setStatus("Loading PDF…", "Preparing viewer…");
+    setStatus("Loading PDF…", "Checking file access…");
     if(el.pageMeta) el.pageMeta.textContent = "Loading…";
 
-    const pdfjsLib = await ensurePdfJs();
+    // preflight the actual PDF URL so you see real errors
+    const pre = await preflightPdf(url);
+    if(seq !== state.loadSeq) return;
 
+    if(!pre.ok){
+      state.loadingPdf = false;
+      setControlsEnabled(false);
+      setStatus("Error", `PDF fetch failed: ${pre.status || "ERR"} ${pre.statusText || ""} — ${url}`);
+      if(el.pageMeta) el.pageMeta.textContent = "PDF not reachable.";
+      await destroyCurrentPdf();
+      return;
+    }
+
+    setStatus("Loading PDF…", "Downloading & parsing…");
+
+    const pdfjsLib = await ensurePdfJs();
     try{
       pdfjsLib.GlobalWorkerOptions.workerSrc =
         "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
@@ -294,12 +326,28 @@
 
     try{
       await destroyCurrentPdf();
-
-      // If user changed selection during awaits, abort
       if(seq !== state.loadSeq) return;
 
-      const task = pdfjsLib.getDocument({ url, withCredentials: false });
-      const doc = await task.promise;
+      // FIX: disable range/stream to avoid servers that break PDF.js incremental loading
+      const baseOpts = {
+        url,
+        withCredentials: false,
+        disableRange: true,
+        disableStream: true,
+      };
+
+      let doc = null;
+
+      try{
+        const task = pdfjsLib.getDocument(baseOpts);
+        doc = await task.promise;
+      }catch(firstErr){
+        // FIX: if worker fails (CSP/crossorigin), retry without worker
+        console.warn("PDF load retry without worker:", firstErr);
+        setStatus("Loading PDF…", "Retrying (worker disabled)…");
+        const task2 = pdfjsLib.getDocument({ ...baseOpts, disableWorker: true });
+        doc = await task2.promise;
+      }
 
       if(seq !== state.loadSeq){
         try{ await doc.destroy(); }catch(_){}
@@ -317,12 +365,11 @@
       setStatus("Ready.", "Press Play to start reading page 1.");
     }catch(err){
       console.error(err);
-      setStatus("Error", "Failed to load PDF. Check the file path and that the PDF is accessible.");
-      if(el.pageMeta) el.pageMeta.textContent = "Failed to load PDF.";
+      setStatus("Error", "PDF.js could not parse this PDF. See console for details.");
+      if(el.pageMeta) el.pageMeta.textContent = "Failed to parse PDF.";
       await destroyCurrentPdf();
     }finally{
       state.loadingPdf = false;
-      // enable if PDF loaded
       setControlsEnabled(!!state.pdfDoc);
     }
   }
@@ -424,7 +471,6 @@
     };
 
     try{
-      // FIX: DO NOT cancel here; it can break chaining on some browsers
       window.speechSynthesis.speak(u);
     }catch(err){
       console.error(err);
@@ -438,7 +484,6 @@
     if(!state.pdfDoc) return;
     n = clamp(n, 1, state.totalPages || 1);
 
-    // FIX: clear any pending utterances ONCE when starting a page
     cancelSpeech();
     clearPlaybackBuffers();
 
@@ -511,7 +556,6 @@
       return;
     }
 
-    // initial state: nothing loaded
     setControlsEnabled(false);
 
     el.btnPlay.addEventListener("click", async () => {
@@ -568,14 +612,12 @@
       }
     });
 
-    // FIX: Prev/Next while playing should keep playing automatically on the new page
     el.btnNext.addEventListener("click", async () => {
       if(state.loadingPdf) return;
       if(!state.pdfDoc) return;
 
       const wasPlaying = state.playing && !state.paused;
 
-      // cancel current speech but keep play state intention
       cancelSpeech();
       clearPlaybackBuffers();
 
