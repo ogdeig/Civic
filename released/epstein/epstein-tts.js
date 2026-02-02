@@ -6,13 +6,12 @@
 (function(){
   "use strict";
 
-  const VERSION = "v12";
+  const VERSION = "v13";
   const INDEX_URL = "/released/epstein/index.json";
   const CONSENT_KEY = "ct_epstein_21_gate_v1";
 
   const $ = (sel, root=document) => root.querySelector(sel);
 
-  // Lazy element map (filled at init)
   const el = {};
 
   const state = {
@@ -36,9 +35,20 @@
 
     loadSeq: 0,
     loadingPdf: false,
+
+    // --- NEW: render serialization / cancellation ---
+    renderTask: null,
+    renderQueue: Promise.resolve(),
+    renderSeq: 0,
+
+    // --- NEW: speech callback guard ---
+    speechSeq: 0,
+
+    // --- NEW: navigation guard ---
+    navSeq: 0,
+    navBusy: false,
   };
 
-  // Make it obvious JS is loaded (and which version)
   window.CT_EPSTEIN_TTS = { version: VERSION };
 
   function setStatus(title, line){
@@ -58,6 +68,7 @@
   function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
 
   function cancelSpeech(){
+    state.speechSeq++; // invalidate any pending utterance callbacks
     try{ window.speechSynthesis.cancel(); }catch(_){}
   }
 
@@ -78,7 +89,6 @@
     window.addEventListener("beforeunload", stopAllAudio);
     window.addEventListener("popstate", stopAllAudio);
 
-    // Stop if user clicks any real navigation link
     document.addEventListener("click", (e) => {
       const a = e.target && e.target.closest ? e.target.closest("a") : null;
       if(!a) return;
@@ -238,7 +248,7 @@
 
     for(const it of items){
       const raw = String(it.path || "").replace(/^\/+/, "");
-      const full = "/" + raw; // absolute site path
+      const full = "/" + raw;
       const o = document.createElement("option");
       o.value = full;
       o.textContent = it.label || it.file || it.path;
@@ -249,7 +259,6 @@
     return items;
   }
 
-  // ---- PDF load/render ----
   async function destroyCurrentPdf(){
     try{
       if(state.pdfDoc && typeof state.pdfDoc.destroy === "function"){
@@ -259,12 +268,22 @@
     state.pdfDoc = null;
   }
 
+  function cancelRenderTask(){
+    try{
+      if(state.renderTask && typeof state.renderTask.cancel === "function"){
+        state.renderTask.cancel();
+      }
+    }catch(_){}
+    state.renderTask = null;
+  }
+
   async function loadPdf(url, label){
     const seq = ++state.loadSeq;
 
     stopAllAudio();
     state.pageTextCache.clear();
     clearPlaybackBuffers();
+    cancelRenderTask();
 
     state.loadingPdf = true;
 
@@ -281,7 +300,6 @@
       await destroyCurrentPdf();
       if(seq !== state.loadSeq) return;
 
-      // IMPORTANT: disable range/stream (GitHub Pages / some CDNs can break incremental loading)
       const baseOpts = {
         url,
         withCredentials: false,
@@ -295,7 +313,6 @@
         const task = pdfjsLib.getDocument(baseOpts);
         doc = await task.promise;
       }catch(firstErr){
-        // Retry without worker if worker/CSP/crossorigin issues
         console.warn("PDF load retry without worker:", firstErr);
         setStatus("Loading PDF…", `(${VERSION}) Retrying (worker disabled)…`);
         const task2 = pdfjsLib.getDocument({ ...baseOpts, disableWorker: true });
@@ -313,7 +330,7 @@
       state.totalPages = state.pdfDoc.numPages || 0;
       state.page = 1;
 
-      await renderPage(1);
+      await renderPageQueued(1);
 
       setStatus("Ready.", `(${VERSION}) PDF loaded. Press Play to read page 1.`);
     }catch(err){
@@ -326,8 +343,18 @@
     }
   }
 
-  async function renderPage(n){
+  // --- NEW: render queue to prevent overlapping render() operations ---
+  function renderPageQueued(n){
+    state.renderQueue = state.renderQueue.then(() => renderPageInternal(n));
+    return state.renderQueue;
+  }
+
+  async function renderPageInternal(n){
     if(!state.pdfDoc) return;
+
+    const mySeq = ++state.renderSeq;
+    cancelRenderTask();
+
     if(!el.canvas){
       setStatus("Error", "Missing element: #pdfCanvas (PDF viewer canvas).");
       return;
@@ -353,7 +380,24 @@
     ctx.fillStyle = "#000";
     ctx.fillRect(0,0,canvas.width, canvas.height);
 
-    await page.render({ canvasContext: ctx, viewport: vp }).promise;
+    // Start render and keep a reference so we can cancel it
+    const task = page.render({ canvasContext: ctx, viewport: vp });
+    state.renderTask = task;
+
+    try{
+      await task.promise;
+    }catch(err){
+      // Ignore cancellation / stale renders
+      const msg = String(err && err.message ? err.message : err);
+      if(/cancel/i.test(msg) || /RenderingCancelledException/i.test(msg)){
+        return;
+      }
+      // If another render has started since, ignore
+      if(mySeq !== state.renderSeq) return;
+      throw err;
+    }finally{
+      if(state.renderTask === task) state.renderTask = null;
+    }
   }
 
   async function getPageText(n){
@@ -397,11 +441,12 @@
     return out.length ? out : [clean];
   }
 
-  function speakNextChunk(){
+  function speakNextChunk(localSpeechSeq){
+    if(localSpeechSeq !== state.speechSeq) return;
     if(!state.playing || state.paused) return;
 
     if(state.chunkIndex >= state.chunks.length){
-      return onPageDone();
+      return onPageDone(localSpeechSeq);
     }
 
     const voice = getVoice();
@@ -412,14 +457,16 @@
     u.volume = state.muted ? 0 : 1;
 
     u.onend = () => {
+      if(localSpeechSeq !== state.speechSeq) return;
       if(!state.playing || state.paused) return;
       state.chunkIndex += 1;
-      speakNextChunk();
+      speakNextChunk(localSpeechSeq);
     };
     u.onerror = () => {
+      if(localSpeechSeq !== state.speechSeq) return;
       if(!state.playing || state.paused) return;
       state.chunkIndex += 1;
-      speakNextChunk();
+      speakNextChunk(localSpeechSeq);
     };
 
     try{
@@ -434,10 +481,14 @@
 
   async function startReadingPage(n){
     if(!state.pdfDoc) return;
+
     n = clamp(n, 1, state.totalPages || 1);
 
+    // Invalidate any previous utterance callbacks
     cancelSpeech();
     clearPlaybackBuffers();
+
+    const localSeq = state.speechSeq;
 
     setStatus("Playing…", `(${VERSION}) Reading page ${n}…`);
     const text = await getPageText(n);
@@ -445,10 +496,49 @@
     state.chunks = chunkText(text);
     state.chunkIndex = 0;
 
-    speakNextChunk();
+    speakNextChunk(localSeq);
   }
 
-  function onPageDone(){
+  async function gotoPage(targetPage, opts){
+    opts = opts || {};
+    if(!state.pdfDoc) return;
+
+    const myNav = ++state.navSeq;
+    const keepPlaying = !!opts.keepPlaying;
+
+    state.navBusy = true;
+
+    // Stop speech immediately to prevent auto-next racing your click
+    cancelSpeech();
+    clearPlaybackBuffers();
+
+    const p = clamp(targetPage, 1, state.totalPages || 1);
+    state.page = p;
+
+    try{
+      await renderPageQueued(p);
+      if(myNav !== state.navSeq) return;
+
+      if(keepPlaying){
+        state.playing = true;
+        state.paused = false;
+        await startReadingPage(p);
+      }else{
+        setStatus("Ready.", `(${VERSION}) Moved to page ${p}. Press Play to read.`);
+      }
+    }catch(err){
+      console.error(err);
+      if(myNav !== state.navSeq) return;
+      setStatus("Error", `(${VERSION}) Failed to render page ${p}.`);
+      state.playing = false;
+      state.paused = false;
+    }finally{
+      if(myNav === state.navSeq) state.navBusy = false;
+    }
+  }
+
+  function onPageDone(localSpeechSeq){
+    if(localSpeechSeq !== state.speechSeq) return;
     if(!state.playing || state.paused) return;
 
     if(state.page >= (state.totalPages || 1)){
@@ -458,22 +548,13 @@
       return;
     }
 
+    // Auto-advance uses the same navigation pipeline (prevents double-renders and double-steps)
     const next = clamp(state.page + 1, 1, state.totalPages);
-    state.page = next;
-
-    renderPage(next)
-      .then(() => startReadingPage(next))
-      .catch(err => {
-        console.error(err);
-        setStatus("Error", `(${VERSION}) Failed to load the next page.`);
-        state.playing = false;
-        state.paused = false;
-      });
+    gotoPage(next, { keepPlaying: true });
   }
 
   function restartReading(){
     if(!state.pdfDoc) return;
-    cancelSpeech();
     state.playing = true;
     state.paused = false;
     startReadingPage(state.page);
@@ -508,9 +589,7 @@
       return;
     }
 
-    // BIG FIX: Play will auto-load the selected PDF if it wasn't loaded yet.
     el.btnPlay.addEventListener("click", async () => {
-      // If user selected a PDF but it wasn't loaded (change event didn't fire), load it now.
       if(!state.pdfDoc && !state.loadingPdf){
         const url = el.pdfSelect.value || "";
         const label = el.pdfSelect.options[el.pdfSelect.selectedIndex]?.textContent || "";
@@ -546,7 +625,7 @@
       state.playing = true;
       state.paused = false;
 
-      await renderPage(state.page);
+      await renderPageQueued(state.page);
       await startReadingPage(state.page);
     });
 
@@ -560,8 +639,7 @@
     el.btnStop.addEventListener("click", async () => {
       stopAllAudio();
       if(state.pdfDoc){
-        state.page = 1;
-        await renderPage(1);
+        await gotoPage(1, { keepPlaying: false });
         setStatus("Stopped.", `(${VERSION}) Press Play to start from page 1.`);
       }else{
         setStatus("Ready.", `(${VERSION}) Select a PDF to begin.`);
@@ -569,45 +647,15 @@
     });
 
     el.btnNext.addEventListener("click", async () => {
-      if(state.loadingPdf) return;
-      if(!state.pdfDoc) return;
-
+      if(state.loadingPdf || !state.pdfDoc || state.navBusy) return;
       const wasPlaying = state.playing && !state.paused;
-
-      cancelSpeech();
-      clearPlaybackBuffers();
-
-      state.page = clamp(state.page + 1, 1, state.totalPages);
-      await renderPage(state.page);
-
-      if(wasPlaying){
-        state.playing = true;
-        state.paused = false;
-        await startReadingPage(state.page);
-      }else{
-        setStatus("Ready.", `(${VERSION}) Moved to page ${state.page}. Press Play to read.`);
-      }
+      await gotoPage(state.page + 1, { keepPlaying: wasPlaying });
     });
 
     el.btnPrev.addEventListener("click", async () => {
-      if(state.loadingPdf) return;
-      if(!state.pdfDoc) return;
-
+      if(state.loadingPdf || !state.pdfDoc || state.navBusy) return;
       const wasPlaying = state.playing && !state.paused;
-
-      cancelSpeech();
-      clearPlaybackBuffers();
-
-      state.page = clamp(state.page - 1, 1, state.totalPages);
-      await renderPage(state.page);
-
-      if(wasPlaying){
-        state.playing = true;
-        state.paused = false;
-        await startReadingPage(state.page);
-      }else{
-        setStatus("Ready.", `(${VERSION}) Moved to page ${state.page}. Press Play to read.`);
-      }
+      await gotoPage(state.page - 1, { keepPlaying: wasPlaying });
     });
 
     el.btnMute.addEventListener("click", () => {
@@ -628,13 +676,13 @@
         state.totalPages = 0;
         state.page = 1;
         state.loadingPdf = false;
+        cancelRenderTask();
 
         if(el.pageMeta) el.pageMeta.textContent = "No PDF loaded.";
         setStatus("Ready.", `(${VERSION}) Select a PDF to begin.`);
         return;
       }
 
-      // Load immediately on change (and Play also loads as a fallback)
       await loadPdf(url, label);
     });
   }
@@ -685,7 +733,6 @@
       showMissingIds(missing);
     }
 
-    // Show a visible "JS is alive" message right away
     setStatus("Ready.", `(${VERSION}) JS loaded. Select a PDF, then press Play.`);
 
     wireGate(boot);
