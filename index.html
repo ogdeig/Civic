@@ -8,40 +8,57 @@
   <link rel="icon" href="/assets/logo.png"/>
   <link rel="stylesheet" href="/styles.css"/>
 
-  <!-- Page-only styles for the Epstein hero split layout -->
+  <!-- Page-only styles for the homepage hero layout -->
   <style>
     /* Extra breathing room under sticky top bar */
     main{ padding-top: 14px; }
 
-    .player-hero{ padding: 18px 0 10px; }
-    .player-hero .grid{
+    /* Section spacing */
+    .hero-block{ padding: 18px 0 6px; }
+    .hero-block + .hero-block{ padding-top: 10px; }
+
+    /* Civic Threat (top, centered, bigger) */
+    .ct-hero{
+      text-align: center;
+    }
+    .ct-hero h1{
+      margin: 0 0 10px;
+      font-size: clamp(34px, 5vw, 56px);
+      letter-spacing: .04em;
+      font-weight: 1000;
+    }
+    .ct-hero p{
+      margin: 0 auto;
+      max-width: 86ch;
+      opacity: .9;
+      line-height: 1.7;
+      font-size: 15px;
+    }
+
+    /* Released Files (second section, keep same vibe) */
+    .rf-hero .grid{
       display:grid;
       grid-template-columns: 1.05fr .95fr;
       gap: 18px;
       align-items: start;
     }
     @media (max-width: 980px){
-      .player-hero .grid{ grid-template-columns: 1fr; }
+      .rf-hero .grid{ grid-template-columns: 1fr; }
     }
 
-    .player-hero h1{
+    .rf-hero h2{
       margin: 0 0 8px;
       font-size: clamp(26px, 4vw, 42px);
       letter-spacing: .02em;
+      font-weight: 1000;
     }
-    .player-hero h2{
-      margin: 0 0 8px;
-      font-size: clamp(20px, 3vw, 30px);
-      letter-spacing: .02em;
-    }
-    .player-hero p{
+    .rf-hero p{
       margin: 0 0 12px;
       opacity: .9;
       line-height: 1.6;
       max-width: 75ch;
     }
-
-    .player-hero .actions{
+    .rf-hero .actions{
       display:flex;
       gap:10px;
       flex-wrap: wrap;
@@ -56,7 +73,7 @@
       max-width: 80ch;
     }
 
-    /* Right-side image only (no frame, no border, no header bar) */
+    /* Image only (no frame) */
     .hero-media{
       display:block;
       width: 100%;
@@ -89,15 +106,11 @@
       text-transform: uppercase;
     }
 
-    /* Hidden H2s for SEO (no visual impact) */
-    .sr-only{
-      position:absolute!important;
-      width:1px;height:1px;
-      padding:0;margin:-1px;
-      overflow:hidden;
-      clip:rect(0,0,0,0);
-      white-space:nowrap;
-      border:0;
+    /* Subtle separator line */
+    .hero-sep{
+      margin: 18px 0 0;
+      border: 0;
+      border-top: 1px solid rgba(255,255,255,.10);
     }
   </style>
 
@@ -116,30 +129,30 @@
 
   <main>
 
-    <!-- TOP FEATURE: Civic Threat + Released Files (Epstein Files) -->
-    <section class="hero player-hero">
+    <!-- HERO 1: CIVIC THREAT (centered, bigger, SEO H1) -->
+    <section class="hero hero-block ct-hero">
       <div class="wrap">
-        <!-- SEO-only headings (hidden) -->
-        <h2 class="sr-only">Civic Threat</h2>
-        <h2 class="sr-only">Released files</h2>
-        <h2 class="sr-only">Epstein files</h2>
+        <h1>CIVIC THREAT</h1>
+        <p>
+          Civic Threat is a public hub for browsing, discussing, and sharing content from major platforms — with a focus on transparency,
+          public records, and civil discussion. We curate content for people who want to stay informed, support creators, and challenge
+          misinformation without promoting hate speech.
+        </p>
+      </div>
+    </section>
 
+    <!-- HERO 2: RELEASED FILES • EPSTEIN FILES (H2, keep same) -->
+    <section class="hero hero-block rf-hero">
+      <div class="wrap">
         <div class="grid">
 
-          <!-- LEFT: Civic Threat + Released Files copy -->
+          <!-- LEFT -->
           <div>
-            <h2>CIVIC THREAT</h2>
+            <h2>Released Files • Epstein Files</h2>
             <p>
-              Civic Threat is a public hub for browsing, discussing, and sharing content from major platforms — with a focus on
-              transparency, public records, and civil discussion. We curate content for people who want to stay informed,
-              support creators, and challenge misinformation without promoting hate speech.
-            </p>
-
-            <h1>Released Files • Epstein Files</h1>
-            <p>
-              Explore and listen to publicly available released documents — including files such as the Epstein files and other
-              government or investigative releases (for example, CIA, FBI, and related public records). Our built-in reader lets you
-              open a PDF, choose a voice, and play it page-by-page using text-to-speech for accessibility and easy listening.
+              Explore and listen to publicly available released documents — including files such as the Epstein files and other government
+              or investigative releases (for example, CIA, FBI, and related public records). Our built-in reader lets you open a PDF,
+              choose a voice, and play it page-by-page using text-to-speech for accessibility and easy listening.
             </p>
 
             <div class="actions">
@@ -148,15 +161,14 @@
             </div>
 
             <div class="ep-meta">
-              <strong>Facebook submissions:</strong> Submit posts that deserve attention — whether it’s to
-              <em>support</em> creators/pages you care about, or to <em>educate and debate</em> posts that spread misinformation.
-              Posts appear after review so the site stays focused and free from hate speech.<br><br>
-              <strong>Disclosure:</strong> Some released documents may contain explicit or disturbing material. Use discretion.
-              This site does not endorse wrongdoing; this tool is provided for reading, accessibility, and public-interest discussion.
+              <strong>Facebook submissions:</strong> Submit posts that deserve attention — whether it’s to support creators/pages you care about,
+              or to educate and debate posts that spread misinformation. Posts appear after review so the site stays focused and free from hate speech.<br><br>
+              <strong>Disclosure:</strong> Some released documents may contain explicit or disturbing material. Use discretion. This site does not endorse wrongdoing;
+              this tool is provided for reading, accessibility, and public-interest discussion.
             </div>
           </div>
 
-          <!-- RIGHT: image only (no frame) -->
+          <!-- RIGHT (image only) -->
           <div>
             <a class="hero-media" href="/released/epstein/epstein-reader.html" aria-label="Open Epstein Files Player">
               <img
@@ -165,18 +177,19 @@
                 onerror="this.style.display='none'; this.parentElement.querySelector('.fallback').style.display='flex';"
               />
               <div class="fallback" style="display:none;">
-                Add an image at <strong style="margin-left:6px">/assets/epstein/epstein-hero.jpg</strong><br><br>
-                Use a screenshot of page 1 or a courtroom-style image.
+                Add an image at <strong style="margin-left:6px">/assets/epstein/epstein-hero.jpg</strong>
               </div>
             </a>
             <div class="hero-media-caption">Epstein Files</div>
           </div>
 
         </div>
+
+        <hr class="hero-sep" />
       </div>
     </section>
 
-    <!-- Your existing sections stay -->
+    <!-- Existing sections stay -->
     <section class="section">
       <div class="wrap">
         <div class="toolbar">
