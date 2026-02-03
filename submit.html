@@ -5,89 +5,241 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <meta name="color-scheme" content="dark"/>
   <title>Submit | Civic Threat</title>
-  <link rel="icon" href="./assets/logo.png"/>
-  <link rel="stylesheet" href="./styles.css"/>
-  <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-Z03YK1FYXW"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
+  <link rel="icon" href="/assets/logo.png"/>
+  <link rel="stylesheet" href="/styles.css"/>
 
-  gtag('config', 'G-Z03YK1FYXW');
-</script>
+  <!-- Page-local form polish (keeps your global look but makes this page reliable) -->
+  <style>
+    label{display:block;font-size:12px;color:rgba(233,238,248,.78);margin:0 0 6px}
+    input,select,textarea{
+      width:100%;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(0,0,0,.22);
+      color:#e9eef8;
+      padding:10px 12px;
+      outline:none;
+      font-size:14px;
+    }
+    textarea{min-height:160px;resize:vertical}
+    input:focus,select:focus,textarea:focus{border-color:rgba(43,108,255,.65)}
+    .smallnote{font-size:12px;color:rgba(233,238,248,.72);line-height:1.35}
+    .smallnote a{color:#e9eef8;opacity:.9}
+    .smallnote a:hover{text-decoration:underline}
+    .hr{height:1px;background:rgba(255,255,255,.08);margin:18px 0}
+    .consentBox{
+      display:flex;align-items:flex-start;gap:10px;
+      padding:12px;border-radius:14px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.04)
+    }
+    .consentBox input{width:auto;margin-top:2px}
+    #submitStatus{display:inline-block;min-height:18px}
+  </style>
+
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-Z03YK1FYXW"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-Z03YK1FYXW');
+  </script>
 </head>
+
 <body data-page="submit">
   <div id="siteHeader"></div>
+
   <main>
-    
-<section class="hero" style="padding-bottom:10px">
-  <div class="wrap">
-    <h1 style="font-size:40px; margin-bottom:6px">Submit a Facebook Post</h1>
-    <p>Paste a Facebook embed code (recommended) or a direct Facebook post URL. Submissions go into review.</p>
-  </div>
-</section>
-
-<section class="section" style="padding-top:12px">
-  <div class="wrap">
-    <form id="submitForm" autocomplete="off">
-      <div class="feed-grid" style="grid-template-columns: 1fr 1fr; gap:14px">
-        <div>
-          <label for="category">Category</label>
-          <select id="category" required>
-            <option value="support">Facebook • Support</option>
-            <option value="maga">Facebook • MAGA / Debate</option>
-          </select>
-        </div>
-        <div>
-          <label for="title">Title (max 80 characters)</label>
-          <input id="title" maxlength="80" placeholder="Short, clear headline…" required/>
-        </div>
+    <section class="hero" style="padding-bottom:10px">
+      <div class="wrap">
+        <h1 style="font-size:40px; margin:0 0 6px">Submit a Facebook Post</h1>
+        <p style="margin:0;color:rgba(233,238,248,.78)">
+          Paste a Facebook embed code (recommended) <em>or</em> a direct Facebook post URL. Submissions go into review.
+        </p>
       </div>
+    </section>
 
-      <div style="margin-top:14px">
-        <label for="embed">Facebook Embed Code (or direct post URL)</label>
-        <textarea id="embed" placeholder='Paste the full embed snippet from Facebook…'></textarea>
-      </div>
+    <section class="section" style="padding-top:12px">
+      <div class="wrap">
+        <form id="submitForm" autocomplete="off">
+          <div class="feed-grid" style="grid-template-columns: 1fr 1fr; gap:14px">
+            <div>
+              <label for="category">Category</label>
+              <select id="category" required>
+                <option value="support">Facebook • Support</option>
+                <option value="maga">Facebook • MAGA / Debate</option>
+              </select>
+            </div>
 
-      <div class="feed-grid" style="grid-template-columns: 1fr 1fr; gap:14px; margin-top:14px">
-        <div>
-          <label for="username">Your username (optional)</label>
-          <input id="username" placeholder="Example: CivicThreat"/>
-          <div class="smallnote" style="margin-top:6px">If you consent below, your username appears as “Submitted by”. Otherwise it shows as Anonymous.</div>
-        </div>
-        <div>
-          <label>&nbsp;</label>
-          <div style="display:flex; align-items:center; gap:10px; padding:12px; border:1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.04)">
-            <input id="consent" type="checkbox"/>
-            <div class="smallnote">
-              I agree my username may be displayed publicly on this site.
-              <a href="./privacy.html">Privacy</a> • <a href="./terms.html">Terms</a>
+            <div>
+              <label for="title">Title (max 80 characters)</label>
+              <input id="title" maxlength="80" placeholder="Short, clear headline…" required/>
             </div>
           </div>
+
+          <div style="margin-top:14px">
+            <label for="embed">Facebook Embed Code (or direct post URL)</label>
+            <textarea id="embed" placeholder='Paste the full embed snippet from Facebook… or paste a direct Facebook URL.'></textarea>
+            <div class="smallnote" style="margin-top:8px">
+              Tip: On Facebook, open the post → click the three dots → “Embed” → copy the embed code.
+            </div>
+          </div>
+
+          <div class="feed-grid" style="grid-template-columns: 1fr 1fr; gap:14px; margin-top:14px">
+            <div>
+              <label for="username">Your username (optional)</label>
+              <input id="username" placeholder="Example: CivicThreat"/>
+              <div class="smallnote" style="margin-top:6px">
+                If you consent below, your username appears as “Submitted by”. Otherwise it shows as Anonymous.
+              </div>
+            </div>
+
+            <div>
+              <label>&nbsp;</label>
+              <div class="consentBox">
+                <input id="consent" type="checkbox"/>
+                <div class="smallnote">
+                  I agree my username may be displayed publicly on this site.
+                  <br/>
+                  <a href="/policy/privacy">Privacy</a> • <a href="/policy/terms">Terms</a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top:16px; display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+            <button class="btn blue" type="submit">Submit for review</button>
+            <span id="submitStatus" class="smallnote"></span>
+          </div>
+        </form>
+
+        <div class="hr"></div>
+
+        <div class="smallnote">
+          Submissions are reviewed before appearing publicly. Please keep it civil — no hate speech, doxxing, or harassment.
         </div>
       </div>
-
-      <div style="margin-top:16px; display:flex; gap:10px; align-items:center; flex-wrap:wrap">
-        <button class="btn blue" type="submit">Submit for review</button>
-        <span id="submitStatus" class="smallnote"></span>
-      </div>
-    </form>
-
-    <div class="hr"></div>
-
-    <div class="smallnote">
-      Tip: On Facebook, open the post → click the three dots → “Embed” → copy the embed code. Paste it above.
-    </div>
-  </div>
-</section>
-
+    </section>
   </main>
+
   <div id="siteFooter"></div>
 
   <script src="/config.js?v=6"></script>
-<script src="/data-api.js?v=6"></script>
-<script src="/app.js?v=6"></script>
-  <!-- Facebook embed SDK is optional for iframe embeds; leaving out keeps page lighter. -->
+  <script src="/data-api.js?v=6"></script>
+  <script src="/app.js?v=6"></script>
+
+  <script>
+    // Submit page logic (kept here so you don't have to touch app.js)
+    (function () {
+      const form = document.getElementById('submitForm');
+      const statusEl = document.getElementById('submitStatus');
+
+      function setStatus(msg, ok){
+        statusEl.textContent = msg || '';
+        statusEl.style.color = ok ? 'rgba(0,242,234,.95)' : 'rgba(255,140,140,.95)';
+      }
+
+      function uuid(){
+        if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+        return 'ct_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+      }
+
+      function extractFacebookUrl(raw){
+        const s = (raw || '').trim();
+        if (!s) return '';
+
+        // If user pasted a direct URL, use it.
+        if (/^https?:\/\/(www\.)?facebook\.com\//i.test(s) || /^https?:\/\/(www\.)?fb\.watch\//i.test(s)) {
+          return s;
+        }
+
+        // If user pasted an embed snippet, try to locate the iframe src/href.
+        // Common: plugins/post.php?href=<ENCODED_URL>
+        const hrefMatch = s.match(/href=([^&"\s>]+)/i); // sometimes in plugin URL
+        const srcMatch  = s.match(/src=["']([^"']+)["']/i);
+
+        const candidates = [];
+        if (srcMatch && srcMatch[1]) candidates.push(srcMatch[1]);
+        if (hrefMatch && hrefMatch[1]) candidates.push(hrefMatch[1]);
+
+        for (const c of candidates) {
+          try {
+            // If it's a plugin URL containing href=ENCODED
+            const u = new URL(c, location.origin);
+            const href = u.searchParams.get('href');
+            if (href) return decodeURIComponent(href);
+
+            // Sometimes they paste a URL-encoded facebook URL directly
+            if (/facebook\.com%2F/i.test(c)) {
+              const decoded = decodeURIComponent(c);
+              const m = decoded.match(/https?:\/\/(www\.)?facebook\.com\/[^\s"'<>]+/i);
+              if (m) return m[0];
+            }
+
+            // As fallback, if the src itself is a facebook URL, try to find "facebook.com/..."
+            const m = c.match(/https?:\/\/(www\.)?facebook\.com\/[^\s"'<>]+/i);
+            if (m) return m[0];
+          } catch (e) {
+            // ignore parsing errors
+          }
+        }
+
+        // Last resort: look for ANY facebook.com URL in the blob
+        const any = s.match(/https?:\/\/(www\.)?facebook\.com\/[^\s"'<>]+/i);
+        if (any) return any[0];
+
+        return '';
+      }
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        setStatus('', true);
+
+        if (!window.CT_API) {
+          setStatus('Submission system not loaded. Check config.js + data-api.js.', false);
+          return;
+        }
+
+        const category = document.getElementById('category').value;
+        const title = document.getElementById('title').value.trim();
+        const embed = document.getElementById('embed').value;
+        const username = document.getElementById('username').value.trim();
+        const consent = document.getElementById('consent').checked;
+
+        const postUrl = extractFacebookUrl(embed);
+
+        if (!title) {
+          setStatus('Please add a title.', false);
+          return;
+        }
+        if (!postUrl) {
+          setStatus('Could not detect a Facebook URL. Paste a direct post URL or the full embed code.', false);
+          return;
+        }
+
+        const item = {
+          id: uuid(),
+          platform: 'facebook',
+          category,
+          title,
+          postUrl,
+          submittedAt: Date.now(),
+          submitterName: consent && username ? username : 'Anonymous',
+          submitterLink: '',
+          consent: !!(consent && username)
+        };
+
+        try {
+          setStatus('Submitting…', true);
+          await window.CT_API.submit(item);
+          setStatus('Submitted! Thanks — it’s now in review.', true);
+          form.reset();
+        } catch (err) {
+          setStatus('Submit failed: ' + (err && err.message ? err.message : String(err)), false);
+        }
+      });
+    })();
+  </script>
 </body>
 </html>
