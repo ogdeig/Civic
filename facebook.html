@@ -5,8 +5,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <meta name="color-scheme" content="dark"/>
   <title>Facebook • Support | Civic Threat</title>
-  <link rel="icon" href="./assets/logo.png"/>
-  <link rel="stylesheet" href="./styles.css"/>
+
+  <link rel="icon" href="/assets/logo.png"/>
+  <link rel="stylesheet" href="/styles.css?v=7"/>
 
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-Z03YK1FYXW"></script>
@@ -17,45 +18,39 @@
     gtag('config', 'G-Z03YK1FYXW');
   </script>
 </head>
-<body data-page="facebook">
+
+<body data-page="fb_support">
   <div id="siteHeader"></div>
+
   <main>
-    <section class="hero">
+    <section class="hero" style="padding-bottom:8px">
       <div class="wrap">
-        <h1>Facebook • Support</h1>
+        <h1 style="margin:0 0 6px">Facebook • Support</h1>
         <p>Browse approved Facebook-friendly posts. Do you have a favorite influencer? If so, submit one of their posts.</p>
       </div>
     </section>
 
-    <section class="section">
+    <section class="section" style="padding-top:6px">
       <div class="wrap">
-        <div class="toolbar">
-          <div>
-            <h2>Approved posts</h2>
-            <p class="sub">Search by title, URL, or submitter.</p>
+        <div class="feed-top">
+          <div class="search">
+            <input id="search" type="text" placeholder="Search title, URL, or submitter…"/>
           </div>
-          <div class="pillrow">
-            <span class="pill" id="approvedCount">Approved: —</span>
-            <span class="pill" id="pendingCount">Pending: —</span>
+          <div class="counter">
+            <div class="badge">Approved: <small id="countApproved">0</small></div>
+            <div class="badge">Pending: <small id="countPending">0</small></div>
           </div>
         </div>
 
-        <div class="searchrow">
-          <label class="srlabel" for="q">Search</label>
-          <input id="q" class="search" placeholder="Search title, URL, or submitter…"/>
-        </div>
-
-        <div id="feed" class="feed-grid"></div>
-        <div id="more" class="more">Loading more posts…</div>
+        <div id="feedGrid" class="feed-grid"></div>
       </div>
     </section>
   </main>
+
   <div id="siteFooter"></div>
 
-  <link rel="stylesheet" href="/styles.css?v=7"/>
-<script src="/config.js?v=7"></script>
-<script src="/data-api.js?v=7"></script>
-<script src="/app.js?v=7"></script>
-
+  <script src="/config.js?v=7"></script>
+  <script src="/data-api.js?v=7"></script>
+  <script src="/app.js?v=7"></script>
 </body>
 </html>
