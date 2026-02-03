@@ -1,107 +1,91 @@
-/* CivicThreat.us — data-api.js (NO API KEY)
-   JSONP wrapper so GitHub Pages / static hosting can call Apps Script without CORS.
-*/
+/* data-api.js — CivicThreat.us (JSONP + Apps Script, no API key) */
+(function(){
+  const CFG = window.CT_CONFIG || {};
+  const REMOTE = (CFG.REMOTE_DB || {});
+  const BASE = (REMOTE.appsScriptUrl || "").trim();
 
-(function () {
-  const CFG = (window.CT_CONFIG && window.CT_CONFIG.REMOTE_DB) ? window.CT_CONFIG.REMOTE_DB : null;
-
-  function requireUrl() {
-    if (!CFG || !CFG.appsScriptUrl) {
-      throw new Error("CT_CONFIG.REMOTE_DB.appsScriptUrl missing in config.js");
-    }
-    return CFG.appsScriptUrl;
+  function assertBase(){
+    if (!BASE) throw new Error("CT_CONFIG.REMOTE_DB.appsScriptUrl missing (config.js)");
   }
 
-  function b64(obj) {
-    const json = JSON.stringify(obj);
-    // Web-safe base64
-    return btoa(unescape(encodeURIComponent(json)))
-      .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
-  }
-
-  function jsonp(url) {
+  // JSONP helper
+  function jsonp(action, params){
+    assertBase();
+    params = params || {};
     return new Promise((resolve, reject) => {
       const cb = "ct_cb_" + Math.random().toString(36).slice(2);
-      const script = document.createElement("script");
-      let done = false;
-
       const cleanup = () => {
+        try { delete window[cb]; } catch(e){}
         if (script && script.parentNode) script.parentNode.removeChild(script);
-        try { delete window[cb]; } catch (e) { window[cb] = undefined; }
       };
 
-      window[cb] = (data) => {
-        done = true;
+      window[cb] = function(payload){
         cleanup();
-        resolve(data);
+        if (!payload || payload.ok === false) {
+          reject(new Error((payload && payload.error) ? payload.error : "request_failed"));
+          return;
+        }
+        resolve(payload);
       };
 
+      const qs = new URLSearchParams();
+      qs.set("action", action);
+      qs.set("callback", cb);
+
+      Object.keys(params).forEach(k => {
+        if (params[k] === undefined || params[k] === null) return;
+        qs.set(k, String(params[k]));
+      });
+
+      const url = BASE + (BASE.includes("?") ? "&" : "?") + qs.toString();
+
+      const script = document.createElement("script");
+      script.src = url;
+      script.async = true;
       script.onerror = () => {
         cleanup();
-        reject(new Error("JSONP request failed"));
+        reject(new Error("network_error"));
       };
-
-      // Safety timeout
-      setTimeout(() => {
-        if (!done) {
-          cleanup();
-          reject(new Error("JSONP timeout"));
-        }
-      }, 20000);
-
-      script.src = url + (url.includes("?") ? "&" : "?") + "callback=" + cb;
-      document.body.appendChild(script);
+      document.head.appendChild(script);
     });
   }
 
-  function call(action, params) {
-    const base = requireUrl();
-    const u = new URL(base);
-
-    u.searchParams.set("action", action);
-
-    if (params && Object.keys(params).length) {
-      // If payload, send as payload=base64json (keeps URLs clean)
-      if (params.payload) {
-        u.searchParams.set("payload", b64(params.payload));
-      } else {
-        Object.entries(params).forEach(([k, v]) => {
-          if (v === undefined || v === null) return;
-          u.searchParams.set(k, String(v));
-        });
-      }
-    }
-
-    return jsonp(u.toString()).then((res) => {
-      if (!res || res.ok !== true) {
-        const msg = (res && res.error) ? res.error : "request_failed";
-        throw new Error(msg);
-      }
-      return res;
-    });
+  function b64(obj){
+    const json = JSON.stringify(obj);
+    const bytes = new TextEncoder().encode(json);
+    let bin = "";
+    bytes.forEach(b => bin += String.fromCharCode(b));
+    const base64 = btoa(bin);
+    // websafe
+    return base64.replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
   }
 
-  // Per-browser stable id (for optional server-side rate limiting)
-  function getClientId() {
-    const KEY = "ct_client_id";
-    let id = "";
-    try { id = localStorage.getItem(KEY) || ""; } catch (e) {}
-    if (!id) {
-      id = "ct_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
-      try { localStorage.setItem(KEY, id); } catch (e) {}
-    }
-    return id;
-  }
-
+  // Public API used by app.js
   window.CT_API = {
-    health: () => call("health"),
-    listApproved: () => call("listApproved").then(r => r.items || []),
-    listPending:  () => call("listPending").then(r => r.items || []),
+    async health(){
+      const res = await jsonp("health");
+      return res;
+    },
 
-    submit: (item) => call("submit", { payload: { item } }).then(() => true),
+    async listApproved(){
+      const res = await jsonp("listApproved");
+      return (res.items || []);
+    },
 
-    // dir: "up" | "down"
-    react: (id, dir) => call("react", { id, dir, clientId: getClientId() })
-      .then(r => ({ reactionsUp: r.reactionsUp, reactionsDown: r.reactionsDown }))
+    async listPending(){
+      const res = await jsonp("listPending");
+      return (res.items || []);
+    },
+
+    async submit(item){
+      const payload = b64({ item });
+      const res = await jsonp("submit", { payload });
+      return res;
+    },
+
+    async react(id, dir){
+      const res = await jsonp("react", { id, dir });
+      return res; // { reactionsUp, reactionsDown }
+    }
   };
 })();
