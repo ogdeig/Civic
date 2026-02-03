@@ -7,49 +7,53 @@
   <title>Facebook • MAGA / Debate | Civic Threat</title>
   <link rel="icon" href="./assets/logo.png"/>
   <link rel="stylesheet" href="./styles.css"/>
-  <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-Z03YK1FYXW"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
 
-  gtag('config', 'G-Z03YK1FYXW');
-</script>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-Z03YK1FYXW"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-Z03YK1FYXW');
+  </script>
 </head>
-<body data-page="fb_maga">
+<body data-page="facebook-maga">
   <div id="siteHeader"></div>
   <main>
-    
-<section class="hero" style="padding-bottom:8px">
-  <div class="wrap">
-    <h1 style="font-size:40px; margin-bottom:6px">Facebook • MAGA / Debate</h1>
-    <p>Browse Approved Facebook MAGA Posts and Feel Free to Debate and Educate You Can Easily Submit A Post as Well.</p>
-  </div>
-</section>
-
-<section class="section" style="padding-top:12px">
-  <div class="wrap">
-    <div class="toolbar">
-      <div class="search">
-        <label for="search">Search</label>
-        <input id="search" type="search" placeholder="Search title, URL, or submitter…"/>
+    <section class="hero">
+      <div class="wrap">
+        <h1>Facebook • MAGA / Debate</h1>
+        <p>Browse approved MAGA/debate posts for discussion and fact-checking. Keep it civil—no hate speech.</p>
       </div>
-      <div class="badges">
-        <div class="badge">Approved: <span id="countApproved">0</span></div>
-        <div class="badge">Pending: <span id="countPending">0</span></div>
-      </div>
-    </div>
-    <div id="feedGrid" class="feed-grid"></div>
-  </div>
-</section>
+    </section>
 
+    <section class="section">
+      <div class="wrap">
+        <div class="toolbar">
+          <div>
+            <h2>Approved posts</h2>
+            <p class="sub">Search by title, URL, or submitter.</p>
+          </div>
+          <div class="pillrow">
+            <span class="pill" id="approvedCount">Approved: —</span>
+            <span class="pill" id="pendingCount">Pending: —</span>
+          </div>
+        </div>
+
+        <div class="searchrow">
+          <label class="srlabel" for="q">Search</label>
+          <input id="q" class="search" placeholder="Search title, URL, or submitter…"/>
+        </div>
+
+        <div id="feed" class="feed-grid"></div>
+        <div id="more" class="more">Loading more posts…</div>
+      </div>
+    </section>
   </main>
   <div id="siteFooter"></div>
 
-  <script src="/config.js?v=6"></script>
-<script src="/data-api.js?v=6"></script>
-<script src="/app.js?v=6"></script>
-  <!-- Facebook embed SDK is optional for iframe embeds; leaving out keeps page lighter. -->
+  <script src="./config.js?v=7"></script>
+  <script src="./data-api.js?v=7"></script>
+  <script src="./app.js?v=7"></script>
 </body>
 </html>
