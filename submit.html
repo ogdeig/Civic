@@ -5,10 +5,18 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <meta name="color-scheme" content="dark"/>
   <title>Submit | Civic Threat</title>
-  <link rel="icon" href="/assets/logo.png"/>
-  <link rel="stylesheet" href="/styles.css"/>
+  <link rel="icon" href="./assets/logo.png"/>
+  <link rel="stylesheet" href="./styles.css"/>
 
-  <!-- Page-local form polish (keeps your global look but makes this page reliable) -->
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-Z03YK1FYXW"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-Z03YK1FYXW');
+  </script>
+
   <style>
     label{display:block;font-size:12px;color:rgba(233,238,248,.78);margin:0 0 6px}
     input,select,textarea{
@@ -36,15 +44,6 @@
     .consentBox input{width:auto;margin-top:2px}
     #submitStatus{display:inline-block;min-height:18px}
   </style>
-
-  <!-- Google tag (gtag.js) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-Z03YK1FYXW"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-Z03YK1FYXW');
-  </script>
 </head>
 
 <body data-page="submit">
@@ -102,7 +101,7 @@
                 <div class="smallnote">
                   I agree my username may be displayed publicly on this site.
                   <br/>
-                  <a href="/policy/privacy">Privacy</a> • <a href="/policy/terms">Terms</a>
+                  <a href="./policy/privacy">Privacy</a> • <a href="./policy/terms">Terms</a>
                 </div>
               </div>
             </div>
@@ -125,121 +124,8 @@
 
   <div id="siteFooter"></div>
 
-  <script src="/config.js?v=6"></script>
-  <script src="/data-api.js?v=6"></script>
-  <script src="/app.js?v=6"></script>
-
-  <script>
-    // Submit page logic (kept here so you don't have to touch app.js)
-    (function () {
-      const form = document.getElementById('submitForm');
-      const statusEl = document.getElementById('submitStatus');
-
-      function setStatus(msg, ok){
-        statusEl.textContent = msg || '';
-        statusEl.style.color = ok ? 'rgba(0,242,234,.95)' : 'rgba(255,140,140,.95)';
-      }
-
-      function uuid(){
-        if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
-        return 'ct_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
-      }
-
-      function extractFacebookUrl(raw){
-        const s = (raw || '').trim();
-        if (!s) return '';
-
-        // If user pasted a direct URL, use it.
-        if (/^https?:\/\/(www\.)?facebook\.com\//i.test(s) || /^https?:\/\/(www\.)?fb\.watch\//i.test(s)) {
-          return s;
-        }
-
-        // If user pasted an embed snippet, try to locate the iframe src/href.
-        // Common: plugins/post.php?href=<ENCODED_URL>
-        const hrefMatch = s.match(/href=([^&"\s>]+)/i); // sometimes in plugin URL
-        const srcMatch  = s.match(/src=["']([^"']+)["']/i);
-
-        const candidates = [];
-        if (srcMatch && srcMatch[1]) candidates.push(srcMatch[1]);
-        if (hrefMatch && hrefMatch[1]) candidates.push(hrefMatch[1]);
-
-        for (const c of candidates) {
-          try {
-            // If it's a plugin URL containing href=ENCODED
-            const u = new URL(c, location.origin);
-            const href = u.searchParams.get('href');
-            if (href) return decodeURIComponent(href);
-
-            // Sometimes they paste a URL-encoded facebook URL directly
-            if (/facebook\.com%2F/i.test(c)) {
-              const decoded = decodeURIComponent(c);
-              const m = decoded.match(/https?:\/\/(www\.)?facebook\.com\/[^\s"'<>]+/i);
-              if (m) return m[0];
-            }
-
-            // As fallback, if the src itself is a facebook URL, try to find "facebook.com/..."
-            const m = c.match(/https?:\/\/(www\.)?facebook\.com\/[^\s"'<>]+/i);
-            if (m) return m[0];
-          } catch (e) {
-            // ignore parsing errors
-          }
-        }
-
-        // Last resort: look for ANY facebook.com URL in the blob
-        const any = s.match(/https?:\/\/(www\.)?facebook\.com\/[^\s"'<>]+/i);
-        if (any) return any[0];
-
-        return '';
-      }
-
-      form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        setStatus('', true);
-
-        if (!window.CT_API) {
-          setStatus('Submission system not loaded. Check config.js + data-api.js.', false);
-          return;
-        }
-
-        const category = document.getElementById('category').value;
-        const title = document.getElementById('title').value.trim();
-        const embed = document.getElementById('embed').value;
-        const username = document.getElementById('username').value.trim();
-        const consent = document.getElementById('consent').checked;
-
-        const postUrl = extractFacebookUrl(embed);
-
-        if (!title) {
-          setStatus('Please add a title.', false);
-          return;
-        }
-        if (!postUrl) {
-          setStatus('Could not detect a Facebook URL. Paste a direct post URL or the full embed code.', false);
-          return;
-        }
-
-        const item = {
-          id: uuid(),
-          platform: 'facebook',
-          category,
-          title,
-          postUrl,
-          submittedAt: Date.now(),
-          submitterName: consent && username ? username : 'Anonymous',
-          submitterLink: '',
-          consent: !!(consent && username)
-        };
-
-        try {
-          setStatus('Submitting…', true);
-          await window.CT_API.submit(item);
-          setStatus('Submitted! Thanks — it’s now in review.', true);
-          form.reset();
-        } catch (err) {
-          setStatus('Submit failed: ' + (err && err.message ? err.message : String(err)), false);
-        }
-      });
-    })();
-  </script>
+  <script src="./config.js?v=7"></script>
+  <script src="./data-api.js?v=7"></script>
+  <script src="./app.js?v=7"></script>
 </body>
 </html>
