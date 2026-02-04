@@ -1,91 +1,124 @@
-/* data-api.js — CivicThreat.us (JSONP + Apps Script, no API key) */
+// CivicThreat.us — Remote API client for Apps Script (JSONP to avoid CORS)
+// Exposes BOTH:
+//   window.CT_API    (preferred, used by app.js / submit page)
+//   window.CT_REMOTE (legacy, used by older admin pages)
 (function(){
-  const CFG = window.CT_CONFIG || {};
-  const REMOTE = (CFG.REMOTE_DB || {});
-  const BASE = (REMOTE.appsScriptUrl || "").trim();
+  "use strict";
 
-  function assertBase(){
-    if (!BASE) throw new Error("CT_CONFIG.REMOTE_DB.appsScriptUrl missing (config.js)");
+  function CFG(){ return (window.CT_CONFIG || {}); }
+
+  function getBaseUrl(){
+    const u = CFG()?.REMOTE_DB?.appsScriptUrl ? String(CFG().REMOTE_DB.appsScriptUrl) : "";
+    if(!u) throw new Error("REMOTE_DB.appsScriptUrl missing in config.js");
+    return u;
   }
 
-  // JSONP helper
-  function jsonp(action, params){
-    assertBase();
-    params = params || {};
-    return new Promise((resolve, reject) => {
-      const cb = "ct_cb_" + Math.random().toString(36).slice(2);
-      const cleanup = () => {
-        try { delete window[cb]; } catch(e){}
-        if (script && script.parentNode) script.parentNode.removeChild(script);
-      };
+  // Optional. If you don’t use keys, leave blank in config.js and the backend can ignore it.
+  function getKey(){
+    return CFG()?.REMOTE_DB?.apiKey ? String(CFG().REMOTE_DB.apiKey) : "";
+  }
 
-      window[cb] = function(payload){
-        cleanup();
-        if (!payload || payload.ok === false) {
-          reject(new Error((payload && payload.error) ? payload.error : "request_failed"));
-          return;
-        }
-        resolve(payload);
-      };
+  function b64urlEncode(str){
+    const bytes = new TextEncoder().encode(str);
+    let bin = "";
+    for(let i=0;i<bytes.length;i++) bin += String.fromCharCode(bytes[i]);
+    const b64 = btoa(bin);
+    return b64.replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+  }
 
-      const qs = new URLSearchParams();
-      qs.set("action", action);
-      qs.set("callback", cb);
+  function jsonp(params, timeoutMs=15000){
+    return new Promise((resolve, reject)=>{
+      const cbName = "__ct_cb_" + Math.random().toString(16).slice(2);
+      const url = new URL(getBaseUrl());
 
-      Object.keys(params).forEach(k => {
-        if (params[k] === undefined || params[k] === null) return;
-        qs.set(k, String(params[k]));
+      Object.entries(params || {}).forEach(([k,v])=>{
+        if(v !== undefined && v !== null && String(v) !== "") url.searchParams.set(k, String(v));
       });
 
-      const url = BASE + (BASE.includes("?") ? "&" : "?") + qs.toString();
+      // Optional key
+      const key = getKey();
+      if(key) url.searchParams.set("apiKey", key);
+
+      url.searchParams.set("callback", cbName);
+      url.searchParams.set("_", String(Date.now()));
 
       const script = document.createElement("script");
-      script.src = url;
       script.async = true;
-      script.onerror = () => {
+      const finalUrl = url.toString();
+
+      // Debug helper
+      window.__CT_LAST_REMOTE_URL = finalUrl;
+
+      let done = false;
+      const timer = setTimeout(()=>{
+        if(done) return;
+        done = true;
         cleanup();
-        reject(new Error("network_error"));
+        reject(new Error("Remote request timed out"));
+      }, timeoutMs);
+
+      function cleanup(){
+        clearTimeout(timer);
+        try{ delete window[cbName]; }catch(_){}
+        if(script.parentNode) script.parentNode.removeChild(script);
+      }
+
+      window[cbName] = (data)=>{
+        if(done) return;
+        done = true;
+        cleanup();
+        resolve(data);
       };
+
+      script.onerror = ()=>{
+        if(done) return;
+        done = true;
+        cleanup();
+        reject(new Error("Remote request failed to load"));
+      };
+
+      script.src = finalUrl;
       document.head.appendChild(script);
     });
   }
 
-  function b64(obj){
-    const json = JSON.stringify(obj);
-    const bytes = new TextEncoder().encode(json);
-    let bin = "";
-    bytes.forEach(b => bin += String.fromCharCode(b));
-    const base64 = btoa(bin);
-    // websafe
-    return base64.replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+  async function call(params){
+    const res = await jsonp(params);
+    if(!res || res.ok !== true){
+      throw new Error(res?.error || "Remote API error");
+    }
+    return res;
   }
 
-  // Public API used by app.js
-  window.CT_API = {
-    async health(){
-      const res = await jsonp("health");
-      return res;
+  // Public API
+  const API = {
+    __transport: "jsonp",
+
+    health: async ()=> await call({ action:"health" }),
+
+    listApproved: async ()=> (await call({ action:"listApproved" })).items || [],
+    listPending:  async ()=> (await call({ action:"listPending"  })).items || [],
+
+    submit: async (item)=>{
+      const payload = b64urlEncode(JSON.stringify({ item: item || {} }));
+      return await call({ action:"submit", payload });
     },
 
-    async listApproved(){
-      const res = await jsonp("listApproved");
-      return (res.items || []);
-    },
+    approve: async (id)=> await call({ action:"approve", id }),
+    reject:  async (id)=> await call({ action:"reject", id }),
+    deleteApproved: async (id)=> await call({ action:"deleteApproved", id }),
 
-    async listPending(){
-      const res = await jsonp("listPending");
-      return (res.items || []);
-    },
-
-    async submit(item){
-      const payload = b64({ item });
-      const res = await jsonp("submit", { payload });
-      return res;
-    },
-
-    async react(id, dir){
-      const res = await jsonp("react", { id, dir });
-      return res; // { reactionsUp, reactionsDown }
+    // Reactions
+    react: async (id, dir)=>{
+      // dir: "up" or "down"
+      return await call({ action:"react", id, dir });
     }
   };
+
+  // Preferred
+  window.CT_API = API;
+
+  // Back-compat for any pages still expecting CT_REMOTE
+  window.CT_REMOTE = API;
+
 })();
