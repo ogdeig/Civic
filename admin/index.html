@@ -6,115 +6,130 @@
   <title>Civic Threat — Admin</title>
   <meta name="robots" content="noindex,nofollow"/>
 
-  <link rel="stylesheet" href="../styles.css"/>
+  <!-- Use absolute paths so /admin/ never breaks assets -->
+  <link rel="stylesheet" href="/styles.css"/>
 </head>
 
 <body data-page="admin_custom">
-  <!-- Header injected by app.js -->
-  <header id="siteHeader"></header>
+  <!-- MUST be a DIV (app.js injects header here) -->
+  <div id="siteHeader"></div>
 
-  <main class="wrap" style="padding-top:18px; padding-bottom:28px">
+  <main style="padding-top:18px; padding-bottom:28px">
     <section class="hero">
-      <h1 style="margin:0 0 6px 0">Admin</h1>
-      <p class="lead" style="margin:0; opacity:.9">
-        Review submissions, approve them to publish, or delete approved posts.
-      </p>
-      <div class="smallnote" style="margin-top:10px">
-        This page is intended to be protected by Cloudflare Access.
+      <div class="wrap">
+        <h1 style="margin:0 0 6px 0">Admin</h1>
+        <p class="lead" style="margin:0; opacity:.9">
+          Review submissions, approve them to publish, or delete approved posts.
+        </p>
+        <div class="smallnote" style="margin-top:10px">
+          This page is intended to be protected by Cloudflare Access.
+        </div>
       </div>
     </section>
 
-    <section style="margin-top:18px">
-      <div class="section-head">
-        <h2 style="margin:0">Pending</h2>
-        <div class="smallnote">Waiting for approval</div>
+    <section class="section" style="padding-top:14px">
+      <div class="wrap">
+        <div class="toolbar">
+          <div>
+            <h2 style="margin:0">Pending</h2>
+            <p class="sub">Waiting for approval</p>
+          </div>
+        </div>
+
+        <div id="pendingList" class="stack">
+          <div class="more" style="margin-top:0">Loading pending…</div>
+        </div>
       </div>
-      <div id="pendingList" class="stack"></div>
     </section>
 
-    <section style="margin-top:22px">
-      <div class="section-head">
-        <h2 style="margin:0">Approved</h2>
-        <div class="smallnote">Live on the site</div>
+    <section class="section" style="padding-top:14px">
+      <div class="wrap">
+        <div class="toolbar">
+          <div>
+            <h2 style="margin:0">Approved</h2>
+            <p class="sub">Live on the site</p>
+          </div>
+        </div>
+
+        <div id="approvedList" class="stack">
+          <div class="more" style="margin-top:0">Loading approved…</div>
+        </div>
       </div>
-      <div id="approvedList" class="stack"></div>
     </section>
   </main>
 
-  <!-- Footer injected by app.js -->
-  <footer id="siteFooter"></footer>
+  <!-- MUST be a DIV (app.js injects footer here) -->
+  <div id="siteFooter"></div>
 
   <!-- Script order matters -->
-  <script src="../config.js"></script>
-  <script src="../data-api.js"></script>
-  <script src="../app.js"></script>
+  <script src="/config.js"></script>
+  <script src="/data-api.js"></script>
+  <script src="/app.js"></script>
 
-  <!-- Admin-only logic (remote-only) -->
+  <!-- Admin-only logic -->
   <script>
   (function(){
     "use strict";
 
-    const CFG = () => (window.CT_CONFIG || {});
     const qs = (sel, root=document) => root.querySelector(sel);
     const esc = (s) => String(s||"").replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
     function requireRemote(){
-      const cfg = CFG();
+      const cfg = window.CT_CONFIG || {};
       if(!cfg.REMOTE_DB || cfg.REMOTE_DB.enabled !== true) {
-        throw new Error("REMOTE_DB is disabled. Turn it on in config.js.");
+        throw new Error("REMOTE_DB is disabled. Enable it in config.js.");
       }
       if(!cfg.REMOTE_DB.appsScriptUrl) {
         throw new Error("REMOTE_DB.appsScriptUrl is missing in config.js.");
       }
-      if(!window.CT_REMOTE) {
-        throw new Error("CT_REMOTE not found. Make sure data-api.js loads before app.js.");
+      // data-api.js should expose BOTH CT_REMOTE and CT_API
+      const api = window.CT_REMOTE || window.CT_API;
+      if(!api) {
+        throw new Error("Remote API not found. Make sure /data-api.js loads before /app.js.");
       }
-      return window.CT_REMOTE;
+      return api;
     }
 
-    async function remoteDeleteApproved(id){
-      // Prefer CT_REMOTE.deleteApproved if you add it later.
-      if(window.CT_REMOTE && typeof window.CT_REMOTE.deleteApproved === "function"){
-        return await window.CT_REMOTE.deleteApproved(id);
-      }
-      // Fallback: direct POST to Apps Script (requires Apps Script to implement action: deleteApproved)
-      const cfg = CFG();
-      const res = await fetch(cfg.REMOTE_DB.appsScriptUrl, {
-        method: "POST",
-        headers: {"Content-Type":"text/plain;charset=utf-8"},
-        body: JSON.stringify({ action: "deleteApproved", id, apiKey: cfg.REMOTE_DB.apiKey || "" })
-      });
-      const data = await res.json().catch(()=>({ok:false,error:"Bad JSON response"}));
-      return data;
+    function errorBox(msg){
+      return `
+        <div class="smallnote" style="padding:14px; border:1px solid rgba(255,255,255,.12); background:rgba(0,0,0,.25)">
+          <strong style="display:block; margin-bottom:6px">Admin data loading error</strong>
+          <div>${esc(msg)}</div>
+          <div style="margin-top:10px; opacity:.85">
+            Tip: Open DevTools → Console and confirm <code>CT_API</code> or <code>CT_REMOTE</code> exists.
+          </div>
+        </div>
+      `;
     }
 
     function card(item, mode){
       const title = esc(item.title || "Untitled");
       const url = esc(item.postUrl || "");
-      const cat = item.category === "support" ? "Support" : "MAGA / Debate";
+      const isMaga = (String(item.category||"").toLowerCase() === "maga");
+      const cat = isMaga ? "MAGA / Debate" : "Support";
       const by = esc((item.submitterName || "Anonymous").trim() || "Anonymous");
-      const submittedAt = item.submittedAt ? new Date(Number(item.submittedAt)) : new Date();
-      const approvedAt = item.approvedAt ? new Date(Number(item.approvedAt)) : null;
+      const submittedAt = item.submittedAt ? new Date(Number(item.submittedAt)) : null;
+      const approvedAt  = item.approvedAt ? new Date(Number(item.approvedAt)) : null;
 
-      const meta = mode === "pending"
-        ? `Facebook • ${esc(cat)} • Submitted by ${by} • ${esc(submittedAt.toLocaleString())}`
-        : `Facebook • ${esc(cat)} • Approved ${esc(approvedAt ? approvedAt.toLocaleString() : "")} • Submitted by ${by}`;
+      const meta = (mode === "pending")
+        ? `Facebook • ${esc(cat)} • Submitted by ${by}${submittedAt ? " • " + esc(submittedAt.toLocaleString()) : ""}`
+        : `Facebook • ${esc(cat)} • Approved${approvedAt ? " " + esc(approvedAt.toLocaleString()) : ""} • Submitted by ${by}`;
 
-      const actions = mode === "pending"
+      const actions = (mode === "pending")
         ? `
-          <button class="btn blue" data-approve="${esc(item.id)}">Approve</button>
-          <button class="btn" data-reject="${esc(item.id)}">Reject</button>
+          <button class="btn blue" data-approve="${esc(item.id)}" type="button">Approve</button>
+          <button class="btn" data-reject="${esc(item.id)}" type="button">Reject</button>
         `
         : `
           <a class="btn blue" href="${url}" target="_blank" rel="noopener">Go to Post</a>
-          <button class="btn danger" data-delete-approved="${esc(item.id)}">Delete</button>
+          <button class="btn danger" data-delete-approved="${esc(item.id)}" type="button">Delete</button>
         `;
 
       return `
-        <article class="post-card" style="padding:14px">
+        <article class="post-card" style="padding:14px; border-radius:0">
           <div style="display:flex; gap:14px; justify-content:space-between; align-items:flex-start; flex-wrap:wrap">
             <div style="min-width:260px; flex:1">
-              <div style="font-weight:1000; font-size:16px">${title}</div>
+              <div style="font-weight:900; font-size:16px">${title}</div>
               <div class="smallnote" style="margin-top:6px">${meta}</div>
               <div class="smallnote" style="margin-top:6px">
                 <a href="${url}" target="_blank" rel="noopener">${url}</a>
@@ -128,27 +143,26 @@
       `;
     }
 
-    function errorBox(msg){
-      return `<div class="smallnote" style="padding:14px; border:1px solid rgba(255,255,255,.12); background:rgba(0,0,0,.25)">
-        <strong style="display:block; margin-bottom:6px">Admin data loading error</strong>
-        <div>${esc(msg)}</div>
-      </div>`;
-    }
-
     async function load(){
-      const pendingHost = qs("#pendingList");
+      const pendingHost  = qs("#pendingList");
       const approvedHost = qs("#approvedList");
 
       try{
         const api = requireRemote();
+
         const pending = (await api.listPending()) || [];
         const approved = (await api.listApproved()) || [];
 
-        const p = pending.filter(x=>x.platform==="facebook").sort((a,b)=>(Number(b.submittedAt)||0)-(Number(a.submittedAt)||0));
-        const a = approved.filter(x=>x.platform==="facebook").sort((x,y)=>(Number(y.approvedAt)||0)-(Number(x.approvedAt)||0));
+        const p = pending
+          .filter(x => (x.platform || "facebook") === "facebook")
+          .sort((a,b) => (Number(b.submittedAt)||0) - (Number(a.submittedAt)||0));
 
-        pendingHost.innerHTML = p.length ? p.map(x=>card(x,"pending")).join("") : `<div class="smallnote">No pending submissions.</div>`;
-        approvedHost.innerHTML = a.length ? a.map(x=>card(x,"approved")).join("") : `<div class="smallnote">No approved posts yet.</div>`;
+        const a = approved
+          .filter(x => (x.platform || "facebook") === "facebook")
+          .sort((x,y) => (Number(y.approvedAt)||0) - (Number(x.approvedAt)||0));
+
+        pendingHost.innerHTML  = p.length ? p.map(x => card(x,"pending")).join("") : `<div class="smallnote">No pending submissions.</div>`;
+        approvedHost.innerHTML = a.length ? a.map(x => card(x,"approved")).join("") : `<div class="smallnote">No approved posts yet.</div>`;
       }catch(err){
         console.error(err);
         const msg = (err && err.message) ? err.message : String(err);
@@ -159,8 +173,8 @@
 
     document.addEventListener("click", async (e)=>{
       const approveBtn = e.target.closest("[data-approve]");
-      const rejectBtn = e.target.closest("[data-reject]");
-      const delBtn = e.target.closest("[data-delete-approved]");
+      const rejectBtn  = e.target.closest("[data-reject]");
+      const delBtn     = e.target.closest("[data-delete-approved]");
 
       try{
         const api = requireRemote();
@@ -170,6 +184,7 @@
           approveBtn.textContent = "Approving…";
           await api.approve(id);
           await load();
+          return;
         }
 
         if(rejectBtn){
@@ -177,6 +192,7 @@
           rejectBtn.textContent = "Rejecting…";
           await api.reject(id);
           await load();
+          return;
         }
 
         if(delBtn){
@@ -184,14 +200,9 @@
           const ok = confirm("Delete this approved post? This cannot be undone.");
           if(!ok) return;
           delBtn.textContent = "Deleting…";
-          const res = await remoteDeleteApproved(id);
-
-          if(!res || res.ok !== true){
-            alert("Delete failed. If you haven't added deleteApproved to Apps Script yet, do that next.\n\n" + (res && res.error ? res.error : "Unknown error"));
-            delBtn.textContent = "Delete";
-            return;
-          }
+          await api.deleteApproved(id);
           await load();
+          return;
         }
       }catch(err){
         console.error(err);
