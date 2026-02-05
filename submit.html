@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <meta name="color-scheme" content="dark"/>
   <title>Submit | Civic Threat</title>
-  <link rel="icon" href="./assets/logo.png"/>
-  <link rel="stylesheet" href="./styles.css"/>
+  <link rel="icon" href="/assets/logo.png"/>
+  <link rel="stylesheet" href="/styles.css"/>
 
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-Z03YK1FYXW"></script>
@@ -21,7 +21,7 @@
     label{display:block;font-size:12px;color:rgba(233,238,248,.78);margin:0 0 6px}
     input,select,textarea{
       width:100%;
-      border-radius:12px;
+      border-radius:0;
       border:1px solid rgba(255,255,255,.14);
       background:rgba(0,0,0,.22);
       color:#e9eef8;
@@ -37,12 +37,14 @@
     .hr{height:1px;background:rgba(255,255,255,.08);margin:18px 0}
     .consentBox{
       display:flex;align-items:flex-start;gap:10px;
-      padding:12px;border-radius:14px;
+      padding:12px;
+      border-radius:0;
       border:1px solid rgba(255,255,255,.14);
       background:rgba(255,255,255,.04)
     }
     .consentBox input{width:auto;margin-top:2px}
     #submitStatus{display:inline-block;min-height:18px}
+    .btn[disabled]{opacity:.6;cursor:not-allowed}
   </style>
 </head>
 
@@ -79,7 +81,7 @@
 
           <div style="margin-top:14px">
             <label for="embed">Facebook Embed Code (or direct post URL)</label>
-            <textarea id="embed" placeholder='Paste the full embed snippet from Facebook… or paste a direct Facebook URL.'></textarea>
+            <textarea id="embed" placeholder='Paste the full embed snippet from Facebook… or paste a direct Facebook URL.' required></textarea>
             <div class="smallnote" style="margin-top:8px">
               Tip: On Facebook, open the post → click the three dots → “Embed” → copy the embed code.
             </div>
@@ -101,14 +103,14 @@
                 <div class="smallnote">
                   I agree my username may be displayed publicly on this site.
                   <br/>
-                  <a href="./policy/privacy">Privacy</a> • <a href="./policy/terms">Terms</a>
+                  <a href="/policy/privacy">Privacy</a> • <a href="/policy/terms">Terms</a>
                 </div>
               </div>
             </div>
           </div>
 
           <div style="margin-top:16px; display:flex; gap:10px; align-items:center; flex-wrap:wrap">
-            <button class="btn blue" type="submit">Submit for review</button>
+            <button id="submitBtn" class="btn blue" type="submit">Submit for review</button>
             <span id="submitStatus" class="smallnote"></span>
           </div>
         </form>
@@ -124,8 +126,116 @@
 
   <div id="siteFooter"></div>
 
-  <script src="./config.js?v=8"></script>
-  <script src="./data-api.js?v=8"></script>
-  <script src="./app.js?v=8"></script>
+  <!-- IMPORTANT: script order -->
+  <script src="/config.js"></script>
+  <script src="/data-api.js"></script>
+  <script src="/app.js"></script>
+
+  <script>
+    (function(){
+      "use strict";
+
+      const form = document.getElementById("submitForm");
+      const statusEl = document.getElementById("submitStatus");
+      const btn = document.getElementById("submitBtn");
+
+      function setStatus(msg, ok){
+        statusEl.textContent = msg || "";
+        statusEl.style.color = ok ? "rgba(0,242,234,.95)" : "rgba(255,140,140,.95)";
+      }
+
+      function uuid(){
+        if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+        return "ct_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+      }
+
+      function extractFacebookUrl(raw){
+        const s = (raw || "").trim();
+        if (!s) return "";
+
+        // direct URL
+        if (/^https?:\/\/(www\.)?facebook\.com\//i.test(s) || /^https?:\/\/(www\.)?fb\.watch\//i.test(s)) return s;
+
+        // find any facebook url in the blob
+        const any = s.match(/https?:\/\/(www\.)?facebook\.com\/[^\s"'<>]+/i);
+        if (any) return any[0];
+
+        // common embed: plugins/post.php?href=<ENCODED_URL>
+        const srcMatch = s.match(/src=["']([^"']+)["']/i);
+        if (srcMatch && srcMatch[1]) {
+          try {
+            const u = new URL(srcMatch[1], location.origin);
+            const href = u.searchParams.get("href");
+            if (href) return decodeURIComponent(href);
+          } catch(e){}
+        }
+
+        // sometimes raw contains encoded URL
+        if (/facebook\.com%2F/i.test(s)) {
+          try {
+            const decoded = decodeURIComponent(s);
+            const m = decoded.match(/https?:\/\/(www\.)?facebook\.com\/[^\s"'<>]+/i);
+            if (m) return m[0];
+          } catch(e){}
+        }
+
+        return "";
+      }
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        // Make sure API exists and has URL
+        if (!window.CT_CONFIG || !String(window.CT_CONFIG.API_URL || "").trim()) {
+          setStatus("Config error: API_URL missing in config.js", false);
+          return;
+        }
+        if (!window.CT_API || typeof window.CT_API.submit !== "function") {
+          setStatus("Submit system not loaded. (data-api.js not ready)", false);
+          return;
+        }
+
+        const category = document.getElementById("category").value;
+        const title = document.getElementById("title").value.trim();
+        const embed = document.getElementById("embed").value;
+        const username = document.getElementById("username").value.trim();
+        const consent = document.getElementById("consent").checked;
+
+        const postUrl = extractFacebookUrl(embed);
+
+        if (!title) { setStatus("Please add a title.", false); return; }
+        if (!postUrl) { setStatus("Could not detect a Facebook URL. Paste a direct post URL or the full embed code.", false); return; }
+
+        const item = {
+          id: uuid(),
+          platform: "facebook",
+          category,
+          title,
+          postUrl,
+          submittedAt: Date.now(),
+          submitterName: (consent && username) ? username : "Anonymous",
+          submitterLink: "",
+          consent: !!(consent && username)
+        };
+
+        try {
+          btn.disabled = true;
+          btn.textContent = "Submitting…";
+          setStatus("Submitting…", true);
+
+          await window.CT_API.submit(item);
+
+          setStatus("Submitted! Your submission has been added for review.", true);
+          form.reset();
+        } catch (err) {
+          const msg = (err && err.message) ? err.message : String(err);
+          setStatus("Submit failed: " + msg, false);
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "Submit for review";
+        }
+      });
+    })();
+  </script>
 </body>
 </html>
