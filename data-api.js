@@ -1,124 +1,114 @@
-// CivicThreat.us — Remote API client for Apps Script (JSONP to avoid CORS)
-// Exposes BOTH:
-//   window.CT_API    (preferred, used by app.js / submit page)
-//   window.CT_REMOTE (legacy, used by older admin pages)
-(function(){
+/* data-api.js — CivicThreat.us (JSONP client for Apps Script) */
+(function () {
   "use strict";
 
-  function CFG(){ return (window.CT_CONFIG || {}); }
+  const CFG = window.CT_CONFIG || {};
 
-  function getBaseUrl(){
-    const u = CFG()?.REMOTE_DB?.appsScriptUrl ? String(CFG().REMOTE_DB.appsScriptUrl) : "";
-    if(!u) throw new Error("REMOTE_DB.appsScriptUrl missing in config.js");
-    return u;
+  function requireApiUrl() {
+    const url = (CFG.API_URL || "").trim();
+    if (!url) throw new Error("CT_CONFIG.API_URL missing");
+    return url;
   }
 
-  // Optional. If you don’t use keys, leave blank in config.js and the backend can ignore it.
-  function getKey(){
-    return CFG()?.REMOTE_DB?.apiKey ? String(CFG().REMOTE_DB.apiKey) : "";
+  function encodePayload(obj) {
+    const json = JSON.stringify(obj || {});
+    // websafe base64
+    const b64 = btoa(unescape(encodeURIComponent(json)))
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/g, "");
+    return b64;
   }
 
-  function b64urlEncode(str){
-    const bytes = new TextEncoder().encode(str);
-    let bin = "";
-    for(let i=0;i<bytes.length;i++) bin += String.fromCharCode(bytes[i]);
-    const b64 = btoa(bin);
-    return b64.replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-  }
+  function jsonp(action, params) {
+    const base = requireApiUrl();
 
-  function jsonp(params, timeoutMs=15000){
-    return new Promise((resolve, reject)=>{
-      const cbName = "__ct_cb_" + Math.random().toString(16).slice(2);
-      const url = new URL(getBaseUrl());
+    return new Promise((resolve, reject) => {
+      const cbName = "ctcb_" + Math.random().toString(36).slice(2);
+      const cleanup = (script) => {
+        try { delete window[cbName]; } catch (e) { window[cbName] = undefined; }
+        if (script && script.parentNode) script.parentNode.removeChild(script);
+      };
 
-      Object.entries(params || {}).forEach(([k,v])=>{
-        if(v !== undefined && v !== null && String(v) !== "") url.searchParams.set(k, String(v));
-      });
-
-      // Optional key
-      const key = getKey();
-      if(key) url.searchParams.set("apiKey", key);
-
-      url.searchParams.set("callback", cbName);
-      url.searchParams.set("_", String(Date.now()));
-
-      const script = document.createElement("script");
-      script.async = true;
-      const finalUrl = url.toString();
-
-      // Debug helper
-      window.__CT_LAST_REMOTE_URL = finalUrl;
-
-      let done = false;
-      const timer = setTimeout(()=>{
-        if(done) return;
-        done = true;
-        cleanup();
-        reject(new Error("Remote request timed out"));
-      }, timeoutMs);
-
-      function cleanup(){
-        clearTimeout(timer);
-        try{ delete window[cbName]; }catch(_){}
-        if(script.parentNode) script.parentNode.removeChild(script);
-      }
-
-      window[cbName] = (data)=>{
-        if(done) return;
-        done = true;
-        cleanup();
+      window[cbName] = (data) => {
+        cleanup(script);
+        if (!data || data.ok !== true) {
+          reject(new Error((data && data.error) ? data.error : "unknown_error"));
+          return;
+        }
         resolve(data);
       };
 
-      script.onerror = ()=>{
-        if(done) return;
-        done = true;
-        cleanup();
-        reject(new Error("Remote request failed to load"));
-      };
+      const q = new URL(base);
+      q.searchParams.set("action", action);
+      q.searchParams.set("callback", cbName);
 
-      script.src = finalUrl;
+      if (params) {
+        Object.keys(params).forEach((k) => {
+          const v = params[k];
+          if (v === undefined || v === null) return;
+          q.searchParams.set(k, String(v));
+        });
+      }
+
+      const script = document.createElement("script");
+      script.src = q.toString();
+      script.async = true;
+      script.onerror = () => {
+        cleanup(script);
+        reject(new Error("network_error"));
+      };
       document.head.appendChild(script);
     });
   }
 
-  async function call(params){
-    const res = await jsonp(params);
-    if(!res || res.ok !== true){
-      throw new Error(res?.error || "Remote API error");
-    }
-    return res;
+  async function listApproved() {
+    const res = await jsonp("listApproved");
+    return res.items || [];
   }
 
-  // Public API
-  const API = {
-    __transport: "jsonp",
+  async function listPending() {
+    const res = await jsonp("listPending");
+    return res.items || [];
+  }
 
-    health: async ()=> await call({ action:"health" }),
+  async function submit(item) {
+    const payload = encodePayload({ item });
+    await jsonp("submit", { payload });
+    return true;
+  }
 
-    listApproved: async ()=> (await call({ action:"listApproved" })).items || [],
-    listPending:  async ()=> (await call({ action:"listPending"  })).items || [],
+  async function approve(id) {
+    await jsonp("approve", { id });
+    return true;
+  }
 
-    submit: async (item)=>{
-      const payload = b64urlEncode(JSON.stringify({ item: item || {} }));
-      return await call({ action:"submit", payload });
-    },
+  async function reject(id) {
+    await jsonp("reject", { id });
+    return true;
+  }
 
-    approve: async (id)=> await call({ action:"approve", id }),
-    reject:  async (id)=> await call({ action:"reject", id }),
-    deleteApproved: async (id)=> await call({ action:"deleteApproved", id }),
+  async function deleteApproved(id) {
+    await jsonp("deleteApproved", { id });
+    return true;
+  }
 
-    // Reactions
-    react: async (id, dir)=>{
-      // dir: "up" or "down"
-      return await call({ action:"react", id, dir });
-    }
+  async function react(id, dir) {
+    const res = await jsonp("react", { id, dir });
+    return { reactionsUp: res.reactionsUp || 0, reactionsDown: res.reactionsDown || 0 };
+  }
+
+  // Public API used by pages
+  window.CT_API = {
+    listApproved,
+    listPending,
+    submit,
+    approve,
+    reject,
+    deleteApproved,
+    react
   };
 
-  // Preferred
-  window.CT_API = API;
-
-  // Back-compat for any pages still expecting CT_REMOTE
-  window.CT_REMOTE = API;
-
+  // Admin expects CT_REMOTE sometimes
+  window.CT_REMOTE = window.CT_API;
 })();
