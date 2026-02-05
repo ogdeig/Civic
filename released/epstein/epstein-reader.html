@@ -68,6 +68,34 @@
       display:block;
     }
 
+    /* NEW: photos under disclosure */
+    .ep-photos{
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    @media (max-width: 700px){
+      .ep-photos{ grid-template-columns: 1fr; }
+    }
+    .ep-photos figure{
+      margin: 0;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.25);
+    }
+    .ep-photos img{
+      width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 0;
+    }
+    .ep-photos figcaption{
+      padding: 8px 10px;
+      font-size: 12px;
+      opacity: .82;
+      line-height: 1.35;
+    }
+
     /* 21+ gate */
     .gate{
       position: fixed; inset: 0; z-index: 9999;
@@ -216,6 +244,30 @@
             <strong>Disclosure:</strong> This page provides text-to-speech playback of publicly released documents. Content may contain sexually explicit material and is intended for adults.
             Civic Threat does not endorse wrongdoing; this tool is for reading and accessibility only.
           </div>
+
+          <!-- NEW: images directly below the disclosure -->
+          <div class="ep-photos" aria-label="Related photos">
+            <figure class="ep-box">
+              <img
+                src="/assets/epstein/trumpepstein.jpg"
+                alt="Group photo at an event."
+                loading="lazy"
+                decoding="async"
+              />
+              <figcaption>Reference photo (public context).</figcaption>
+            </figure>
+
+            <figure class="ep-box">
+              <img
+                src="/assets/epstein/epstein-hero.jpg"
+                alt="Courtroom scene photo."
+                loading="lazy"
+                decoding="async"
+              />
+              <figcaption>Courtroom context photo.</figcaption>
+            </figure>
+          </div>
+
         </div>
       </div>
 
