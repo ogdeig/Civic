@@ -2,17 +2,24 @@
 (function () {
   "use strict";
 
-  const CFG = window.CT_CONFIG || {};
+  function CFG(){ return window.CT_CONFIG || {}; }
 
-  function requireApiUrl() {
-    const url = (CFG.API_URL || "").trim();
-    if (!url) throw new Error("CT_CONFIG.API_URL missing");
+  function requireAppsScriptUrl() {
+    const cfg = CFG();
+    const remote = cfg.REMOTE_DB || {};
+    const url = String(remote.appsScriptUrl || "").trim();
+    if (!remote.enabled) throw new Error("REMOTE_DB is disabled. Enable it in config.js.");
+    if (!url) throw new Error("CT_CONFIG.REMOTE_DB.appsScriptUrl missing");
     return url;
+  }
+
+  function getApiKeyMaybe() {
+    const remote = (CFG().REMOTE_DB || {});
+    return String(remote.apiKey || "").trim(); // may be blank (fine if Apps Script doesn’t require it)
   }
 
   function encodePayload(obj) {
     const json = JSON.stringify(obj || {});
-    // websafe base64
     const b64 = btoa(unescape(encodeURIComponent(json)))
       .replace(/\+/g, "-")
       .replace(/\//g, "_")
@@ -21,17 +28,20 @@
   }
 
   function jsonp(action, params) {
-    const base = requireApiUrl();
+    const base = requireAppsScriptUrl();
+    const apiKey = getApiKeyMaybe();
 
     return new Promise((resolve, reject) => {
       const cbName = "ctcb_" + Math.random().toString(36).slice(2);
-      const cleanup = (script) => {
+      let script = null;
+
+      const cleanup = () => {
         try { delete window[cbName]; } catch (e) { window[cbName] = undefined; }
         if (script && script.parentNode) script.parentNode.removeChild(script);
       };
 
       window[cbName] = (data) => {
-        cleanup(script);
+        cleanup();
         if (!data || data.ok !== true) {
           reject(new Error((data && data.error) ? data.error : "unknown_error"));
           return;
@@ -39,23 +49,26 @@
         resolve(data);
       };
 
-      const q = new URL(base);
-      q.searchParams.set("action", action);
-      q.searchParams.set("callback", cbName);
+      const u = new URL(base);
+      u.searchParams.set("action", action);
+      u.searchParams.set("callback", cbName);
+
+      // only send apiKey if present (keeps your “no key” preference)
+      if (apiKey) u.searchParams.set("apiKey", apiKey);
 
       if (params) {
         Object.keys(params).forEach((k) => {
           const v = params[k];
           if (v === undefined || v === null) return;
-          q.searchParams.set(k, String(v));
+          u.searchParams.set(k, String(v));
         });
       }
 
-      const script = document.createElement("script");
-      script.src = q.toString();
+      script = document.createElement("script");
+      script.src = u.toString();
       script.async = true;
       script.onerror = () => {
-        cleanup(script);
+        cleanup();
         reject(new Error("network_error"));
       };
       document.head.appendChild(script);
@@ -98,17 +111,6 @@
     return { reactionsUp: res.reactionsUp || 0, reactionsDown: res.reactionsDown || 0 };
   }
 
-  // Public API used by pages
-  window.CT_API = {
-    listApproved,
-    listPending,
-    submit,
-    approve,
-    reject,
-    deleteApproved,
-    react
-  };
-
-  // Admin expects CT_REMOTE sometimes
-  window.CT_REMOTE = window.CT_API;
+  window.CT_API = { listApproved, listPending, submit, approve, reject, deleteApproved, react };
+  window.CT_REMOTE = window.CT_API; // admin compatibility
 })();
