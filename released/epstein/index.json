@@ -1,6 +1,6 @@
 {
-  "generatedAt": 1770009324,
-  "count": 22,
+  "generatedAt": 1770303299,
+  "count": 23,
   "items": [
     {
       "file": "ANASTASIA DOE_vs_EPSTEIN_Filed 12-17-19.pdf",
@@ -11,6 +11,11 @@
       "file": "CL_vs_Epstein.pdf",
       "path": "released/epstein/pdfs/CL_vs_Epstein.pdf",
       "label": "CL vs Epstein"
+    },
+    {
+      "file": "FBI Intake D_Trump 10-27-20.pdf",
+      "path": "released/epstein/pdfs/FBI Intake D_Trump 10-27-20.pdf",
+      "label": "FBI Intake D Trump 10 27 20"
     },
     {
       "file": "IN RE- Grand Jury Filed_07-23-25.pdf",
