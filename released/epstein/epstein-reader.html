@@ -225,4 +225,409 @@
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12a10 10 0 1 0-11.6 9.9v-7H8v-2.9h2.4V9.8c0-2.4 1.4-3.7 3.6-3.7 1 0 2 .2 2 .2v2.2h-1.1c-1.1 0-1.5.7-1.5 1.4v1.7H16l-.4 2.9h-2.2v7A10 10 0 0 0 22 12z"/></svg>
                 </a>
                 <a class="iconbtn" href="https://www.youtube.com/@civicthreat" target="_blank" rel="noopener" aria-label="YouTube">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.6 7.2a3 3 0 0 0-2.1-2.1C17.7 4.6 12 4.6 12 4.6s-5.7 0-7.5.5A3 3 0 0 0 2.4 7.2 31.7 31.7 0 0 0 2 12a31.7 31.7 0 0 0 .4 4.8 3 3 0 0 0 2.1 2.1c1.8.5 7.5.5 7.5.5s5.7 0 7.5-.5a3
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.6 7.2a3 3 0 0 0-2.1-2.1C17.7 4.6 12 4.6 12 4.6s-5.7 0-7.5.5A3 3 0 0 0 2.4 7.2 31.7 31.7 0 0 0 2 12a31.7 31.7 0 0 0 .4 4.8 3 3 0 0 0 2.1 2.1c1.8.5 7.5.5 7.5.5s5.7 0 7.5-.5a3 3 0 0 0 2.1-2.1A31.7 31.7 0 0 0 22 12a31.7 31.7 0 0 0-.4-4.8zM10 15.5v-7l6 3.5-6 3.5z"/></svg>
+                </a>
+                <a class="iconbtn" href="https://www.tiktok.com/@civicthreat" target="_blank" rel="noopener" aria-label="TikTok">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.6 3c.5 2.7 2.3 4.8 5 5.2v3.2c-1.9 0-3.6-.6-5-1.7v6.2c0 3.1-2.5 5.6-5.6 5.6S5.4 19 5.4 15.9s2.5-5.6 5.6-5.6c.5 0 1 .1 1.4.2v3.2c-.4-.2-.9-.3-1.4-.3-1.3 0-2.3 1-2.3 2.3s1 2.3 2.3 2.3 2.3-1 2.3-2.3V3h3.3z"/></svg>
+                </a>
+                <a class="iconbtn" href="https://x.com/CivicThreat" target="_blank" rel="noopener" aria-label="X">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.9 2H22l-6.9 7.9L23 22h-6.6l-5.2-6.7L5.4 22H2.3l7.4-8.5L1 2h6.8l4.7 6.1L18.9 2zm-1.1 18h1.7L6.1 3.9H4.3L17.8 20z"/></svg>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div class="nav">
+            <div class="dropdown" id="platformsDD">
+              <button class="btn" type="button" aria-haspopup="true" aria-expanded="false">Platforms ▾</button>
+              <div class="dropdown-menu" role="menu" aria-label="Platforms menu">
+                <div class="dd-title">Facebook</div>
+                <a class="dd-item" role="menuitem" href="/facebook.html"><span>Support</span><small>Browse</small></a>
+                <a class="dd-item" role="menuitem" href="/facebook-maga.html"><span>MAGA / Debate</span><small>Browse</small></a>
+              </div>
+            </div>
+
+            <div class="dropdown" id="releasedDD">
+              <button class="btn" type="button" aria-haspopup="true" aria-expanded="false">Released Files ▾</button>
+              <div class="dropdown-menu" role="menu" aria-label="Released Files menu">
+                <a class="dd-item" role="menuitem" href="/released/epstein/epstein-reader.html"><span>Epstein Files</span><small>PDF Reader (TTS)</small></a>
+              </div>
+            </div>
+
+            <a class="btn blue" href="/submit.html">Submit</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <main class="page-wrap">
+    <header class="hero">
+      <h1>Released Files • Epstein Files</h1>
+      <p>Pick a PDF, choose a voice and speed, then press Play. Use Prev/Next to move one page at a time.</p>
+    </header>
+
+    <section class="ep-grid">
+      <!-- LEFT: Player -->
+      <div class="ep-panel ep-box">
+        <div class="pad">
+          <div class="ep-row">
+            <div class="field">
+              <div class="ep-label">Choose a PDF</div>
+              <select id="pdfSelect" aria-label="Choose a PDF">
+                <option value="">Loading PDFs…</option>
+              </select>
+            </div>
+            <div class="field">
+              <div class="ep-label">Voice</div>
+              <select id="voiceSelect" aria-label="Choose a voice">
+                <option value="">Loading voices…</option>
+              </select>
+            </div>
+            <div class="field small">
+              <div class="ep-label">Speed</div>
+              <select id="speedSelect" aria-label="Choose reading speed">
+                <option value="1">1.0×</option>
+                <option value="1.25">1.25×</option>
+                <option value="1.5">1.5×</option>
+                <option value="2">2.0×</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="ep-controls" role="group" aria-label="Playback controls">
+            <button class="btn blue" id="btnPlay" type="button">▶ Play</button>
+            <button class="btn" id="btnPause" type="button">⏸ Pause</button>
+            <button class="btn" id="btnStop" type="button">⏹ Stop</button>
+            <button class="btn" id="btnPrev" type="button">← Prev Page</button>
+            <button class="btn" id="btnNext" type="button">Next Page →</button>
+            <button class="btn" id="btnMute" type="button">🔇 Mute</button>
+
+            <!-- Optional buttons you already added -->
+            <button class="btn" id="btnAutoRead" type="button" aria-pressed="false" title="Automatically advance to the next PDF when finished">⏭ Auto-Read: Off</button>
+            <button class="btn" id="btnLoop" type="button" aria-pressed="false" title="Loops current PDF (unless Auto-Read is on, then loops all PDFs)">🔁 Loop: Off</button>
+          </div>
+
+          <div class="ep-status ep-box" id="statusBox" aria-live="polite">
+            <strong class="big" id="statusTitle">Ready.</strong>
+            <div id="statusLine">Select a PDF to begin.</div>
+          </div>
+
+          <div class="legal">
+            <strong>Disclosure:</strong> This page provides text-to-speech playback and viewing of publicly released documents.
+            Content may be explicit, disturbing, or contain allegations. Civic Threat does not endorse wrongdoing and does not make claims about guilt or innocence.
+            This tool is provided for accessibility, public-interest review, and discussion. For full context, consult the complete PDF and primary sources.
+          </div>
+
+          <!-- Gallery under the player -->
+          <div class="gallery" aria-label="Image gallery">
+            <h2>Released Image Excerpts</h2>
+            <div id="galleryGrid" class="gallery-grid">
+              <div style="opacity:.8;font-size:13px;">Loading images…</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- RIGHT: Viewer -->
+      <div class="ep-panel ep-box">
+        <div class="pad viewer-wrap">
+          <div class="viewer-top">
+            <div><strong>Viewer</strong></div>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <div class="meta" id="pageMeta">No PDF loaded.</div>
+              <button class="btn" id="btnPopViewer" type="button" title="Pop out a larger viewer">🔍 Pop-out</button>
+            </div>
+          </div>
+          <canvas id="pdfCanvas" class="viewer-canvas" width="1000" height="1400"></canvas>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Viewer pop-out modal -->
+  <div class="viewer-modal" id="viewerModal" role="dialog" aria-modal="true" aria-label="Pop-out PDF viewer">
+    <div class="card ep-box">
+      <div class="head">
+        <div>
+          <strong>PDF Viewer</strong>
+          <span class="meta" id="viewerModalMeta" style="margin-left:10px; opacity:.85; font-size:12px;"></span>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn" id="btnViewerClose" type="button">✕ Close</button>
+        </div>
+      </div>
+      <div class="body">
+        <canvas id="pdfCanvasBig" width="1600" height="2200"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- 21+ gate -->
+  <div class="gate" id="ageGate" role="dialog" aria-modal="true" aria-labelledby="gateTitle">
+    <div class="card ep-box">
+      <h2 id="gateTitle">Adults 21+ Only</h2>
+      <p>This section may contain sexually explicit descriptions. You must confirm you are twenty-one (21) or older to view and use the reader.</p>
+      <div class="row">
+        <label for="gateCheck">
+          <input id="gateCheck" type="checkbox" />
+          <span>I confirm that I am 21 or older.</span>
+        </label>
+      </div>
+      <div class="actions">
+        <button class="btn" id="gateLeave" type="button">Leave</button>
+        <button class="btn blue" id="gateEnter" type="button" disabled>Continue</button>
+      </div>
+      <div class="legal">
+        By continuing, you agree you are 21+ and understand the content may be explicit.
+      </div>
+    </div>
+  </div>
+
+  <!-- PDF.js -->
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js" crossorigin="anonymous"></script>
+  <script>
+    if(window.pdfjsLib){
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
+    }
+    (function(){
+      function qs(sel, root=document){ return root.querySelector(sel); }
+      function qsa(sel, root=document){ return root ? Array.from(root.querySelectorAll(sel)) : []; }
+      function wireDropdown(dd){
+        if(!dd) return;
+        const btn = qs("button", dd);
+        const menu = qs(".dropdown-menu", dd);
+        if(!btn || !menu) return;
+        function close(){ dd.classList.remove("open"); btn.setAttribute("aria-expanded","false"); }
+        function open(){ dd.classList.add("open"); btn.setAttribute("aria-expanded","true"); }
+        btn.addEventListener("click",(e)=>{ e.preventDefault(); dd.classList.contains("open") ? close() : open(); });
+        document.addEventListener("click",(e)=>{ if(!dd.contains(e.target)) close(); });
+        document.addEventListener("keydown",(e)=>{ if(e.key==="Escape") close(); });
+        qsa("a", menu).forEach(a=>a.addEventListener("click", close));
+      }
+      wireDropdown(qs("#platformsDD"));
+      wireDropdown(qs("#releasedDD"));
+    })();
+  </script>
+
+  <script src="./epstein-tts.js?v=14"></script>
+
+  <!-- Auto-Read / Loop / Viewer pop-out logic (kept, no dev notes shown) -->
+  <script>
+    (function(){
+      function qs(sel, root=document){ return root.querySelector(sel); }
+      function safeClick(btn){ try{ btn && btn.click(); }catch(e){} }
+
+      const pdfSelect = qs("#pdfSelect");
+      const btnPlay = qs("#btnPlay");
+      const btnStop = qs("#btnStop");
+
+      const statusTitle = qs("#statusTitle");
+      const statusLine  = qs("#statusLine");
+
+      const btnAutoRead = qs("#btnAutoRead");
+      const btnLoop     = qs("#btnLoop");
+
+      const pageMeta = qs("#pageMeta");
+
+      // Viewer popout
+      const btnPopViewer = qs("#btnPopViewer");
+      const viewerModal = qs("#viewerModal");
+      const btnViewerClose = qs("#btnViewerClose");
+      const viewerModalMeta = qs("#viewerModalMeta");
+      const canvasSmall = qs("#pdfCanvas");
+      const canvasBig = qs("#pdfCanvasBig");
+      const bigCtx = canvasBig && canvasBig.getContext ? canvasBig.getContext("2d") : null;
+
+      // Toggles (persist)
+      const LS_AUTO = "ep_reader_autoRead";
+      const LS_LOOP = "ep_reader_loop";
+
+      let autoRead = localStorage.getItem(LS_AUTO) === "1";
+      let loopOn   = localStorage.getItem(LS_LOOP) === "1";
+
+      function setBtnState(btn, on, labelOn, labelOff){
+        if(!btn) return;
+        btn.setAttribute("aria-pressed", on ? "true" : "false");
+        btn.textContent = on ? labelOn : labelOff;
+      }
+      function syncButtons(){
+        setBtnState(btnAutoRead, autoRead, "⏭ Auto-Read: On", "⏭ Auto-Read: Off");
+        setBtnState(btnLoop, loopOn, "🔁 Loop: On", "🔁 Loop: Off");
+      }
+      syncButtons();
+
+      if(btnAutoRead){
+        btnAutoRead.addEventListener("click", function(){
+          autoRead = !autoRead;
+          localStorage.setItem(LS_AUTO, autoRead ? "1" : "0");
+          syncButtons();
+        });
+      }
+      if(btnLoop){
+        btnLoop.addEventListener("click", function(){
+          loopOn = !loopOn;
+          localStorage.setItem(LS_LOOP, loopOn ? "1" : "0");
+          syncButtons();
+        });
+      }
+
+      // Detect finished by watching status text (works without touching epstein-tts.js)
+      const DONE_RE = /(finished|complete|completed|done|end of|no more pages|reached the end|final page)/i;
+
+      let lastDoneAt = 0;
+      function isDoneText(){
+        const t = (statusTitle && statusTitle.textContent || "") + " " + (statusLine && statusLine.textContent || "");
+        return DONE_RE.test(t);
+      }
+
+      function getPdfOptions(){
+        if(!pdfSelect) return [];
+        return Array.from(pdfSelect.options || []).filter(o => o && o.value);
+      }
+
+      function advanceToNextPdf(loopAll){
+        const opts = getPdfOptions();
+        if(!opts.length) return false;
+
+        const cur = pdfSelect.value;
+        let idx = opts.findIndex(o => o.value === cur);
+        if(idx < 0) idx = 0;
+
+        let nextIdx = idx + 1;
+        if(nextIdx >= opts.length){
+          if(loopAll) nextIdx = 0;
+          else return false;
+        }
+
+        pdfSelect.value = opts[nextIdx].value;
+        pdfSelect.dispatchEvent(new Event("change", { bubbles: true }));
+
+        setTimeout(function(){ safeClick(btnPlay); }, 600);
+        return true;
+      }
+
+      function restartSamePdf(){
+        if(!pdfSelect) return;
+        safeClick(btnStop);
+        const v = pdfSelect.value;
+        setTimeout(function(){
+          pdfSelect.value = v;
+          pdfSelect.dispatchEvent(new Event("change", { bubbles: true }));
+          setTimeout(function(){ safeClick(btnPlay); }, 600);
+        }, 250);
+      }
+
+      function tick(){
+        if(isDoneText()){
+          const now = Date.now();
+          if(now - lastDoneAt > 2500){
+            lastDoneAt = now;
+
+            if(autoRead){
+              const ok = advanceToNextPdf(loopOn);
+              if(!ok) safeClick(btnStop);
+            }else if(loopOn){
+              restartSamePdf();
+            }
+          }
+        }
+        setTimeout(tick, 700);
+      }
+      setTimeout(tick, 900);
+
+      // Pop-out viewer
+      function openViewer(){
+        if(!viewerModal) return;
+        viewerModal.classList.add("open");
+        if(viewerModalMeta && pageMeta) viewerModalMeta.textContent = pageMeta.textContent || "";
+        drawBigOnce();
+      }
+      function closeViewer(){
+        if(!viewerModal) return;
+        viewerModal.classList.remove("open");
+      }
+      function drawBigOnce(){
+        if(!canvasSmall || !canvasBig || !bigCtx) return;
+        try{
+          bigCtx.clearRect(0,0,canvasBig.width, canvasBig.height);
+          bigCtx.drawImage(canvasSmall, 0, 0, canvasBig.width, canvasBig.height);
+        }catch(e){}
+      }
+
+      if(btnPopViewer) btnPopViewer.addEventListener("click", openViewer);
+      if(btnViewerClose) btnViewerClose.addEventListener("click", closeViewer);
+
+      if(viewerModal){
+        viewerModal.addEventListener("click", function(e){
+          if(e.target === viewerModal) closeViewer();
+        });
+        document.addEventListener("keydown", function(e){
+          if(e.key === "Escape" && viewerModal.classList.contains("open")) closeViewer();
+        });
+      }
+
+      setInterval(function(){
+        if(viewerModal && viewerModal.classList.contains("open")){
+          if(viewerModalMeta && pageMeta) viewerModalMeta.textContent = pageMeta.textContent || "";
+          drawBigOnce();
+        }
+      }, 500);
+    })();
+  </script>
+
+  <!-- Gallery loader: loads from ./images.json (no on-page dev notes) -->
+  <script>
+    (function(){
+      const grid = document.getElementById("galleryGrid");
+      if(!grid) return;
+
+      function esc(s){
+        return String(s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+      }
+
+      function card(img){
+        const caption = img.caption ? esc(img.caption) : "";
+        const source = img.source ? esc(img.source) : "";
+        const alt = img.alt ? esc(img.alt) : "Document image excerpt.";
+        const src = img.src ? String(img.src) : "";
+
+        const fig = document.createElement("figure");
+        fig.className = "g-card ep-box";
+        fig.innerHTML = `
+          <img src="${esc(src)}" alt="${alt}" loading="lazy" decoding="async">
+          <figcaption class="g-cap">
+            ${caption ? `<div>${caption}</div>` : ``}
+            ${source ? `<div class="src"><strong>Source:</strong> ${source}</div>` : ``}
+          </figcaption>
+        `;
+        return fig;
+      }
+
+      fetch("./images.json?v=" + Date.now(), { cache: "no-store" })
+        .then(r => {
+          if(!r.ok) throw new Error("HTTP " + r.status);
+          return r.json();
+        })
+        .then(data => {
+          const list = Array.isArray(data.images) ? data.images : [];
+          grid.innerHTML = "";
+          if(!list.length){
+            grid.innerHTML = `<div style="opacity:.8;font-size:13px;">No images available.</div>`;
+            return;
+          }
+          list.forEach(img => {
+            if(!img || !img.src) return;
+            grid.appendChild(card(img));
+          });
+        })
+        .catch(() => {
+          grid.innerHTML = `<div style="opacity:.85;font-size:13px;line-height:1.5;">Images unavailable right now.</div>`;
+        });
+    })();
+  </script>
+
+  <script src="/app.js?v=13"></script>
+</body>
+</html>
