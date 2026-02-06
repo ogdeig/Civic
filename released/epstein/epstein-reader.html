@@ -77,21 +77,25 @@
       line-height: 1.5;
     }
 
-    /* Gallery underneath player */
-    .gallery{
-      margin-top: 14px;
-      border-top: 1px solid rgba(255,255,255,.10);
-      padding-top: 14px;
+    /* FULL-WIDTH GALLERY SECTION (separate section under player+viewer) */
+    .gallery-section{
+      margin-top: 18px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.25);
     }
-    .gallery h2{
+    .gallery-section .pad{ padding: 14px; }
+    .gallery-section h2{
       margin: 0 0 10px;
       font-size: 16px;
       letter-spacing: .02em;
     }
     .gallery-grid{
       display:grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 10px;
+    }
+    @media (max-width: 980px){
+      .gallery-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     @media (max-width: 700px){
       .gallery-grid{ grid-template-columns: 1fr; }
@@ -201,65 +205,8 @@
 </head>
 
 <body>
-  <!-- Site header (root-relative links to avoid subfolder 404s) -->
-  <div id="siteHeader">
-    <div class="topbar">
-      <div class="wrap">
-        <div class="inner">
-          <div class="brandblock">
-            <a class="brand" href="/index.html" aria-label="Home">
-              <img src="/assets/logo.png" alt="Civic Threat logo"/>
-              <div class="text">
-                <strong>CIVIC THREAT</strong>
-                <span>Debate &amp; Discuss</span>
-              </div>
-            </a>
-
-            <div class="socialblock" aria-label="Follow Civic Threat on social media">
-              <div class="followcta" aria-hidden="true">
-                <span class="followtext">Follow us</span>
-                <span class="followarrow">➜</span>
-              </div>
-              <div class="iconrow" aria-label="Social links">
-                <a class="iconbtn" href="https://www.facebook.com/CivicThreat/" target="_blank" rel="noopener" aria-label="Facebook">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12a10 10 0 1 0-11.6 9.9v-7H8v-2.9h2.4V9.8c0-2.4 1.4-3.7 3.6-3.7 1 0 2 .2 2 .2v2.2h-1.1c-1.1 0-1.5.7-1.5 1.4v1.7H16l-.4 2.9h-2.2v7A10 10 0 0 0 22 12z"/></svg>
-                </a>
-                <a class="iconbtn" href="https://www.youtube.com/@civicthreat" target="_blank" rel="noopener" aria-label="YouTube">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.6 7.2a3 3 0 0 0-2.1-2.1C17.7 4.6 12 4.6 12 4.6s-5.7 0-7.5.5A3 3 0 0 0 2.4 7.2 31.7 31.7 0 0 0 2 12a31.7 31.7 0 0 0 .4 4.8 3 3 0 0 0 2.1 2.1c1.8.5 7.5.5 7.5.5s5.7 0 7.5-.5a3 3 0 0 0 2.1-2.1A31.7 31.7 0 0 0 22 12a31.7 31.7 0 0 0-.4-4.8zM10 15.5v-7l6 3.5-6 3.5z"/></svg>
-                </a>
-                <a class="iconbtn" href="https://www.tiktok.com/@civicthreat" target="_blank" rel="noopener" aria-label="TikTok">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.6 3c.5 2.7 2.3 4.8 5 5.2v3.2c-1.9 0-3.6-.6-5-1.7v6.2c0 3.1-2.5 5.6-5.6 5.6S5.4 19 5.4 15.9s2.5-5.6 5.6-5.6c.5 0 1 .1 1.4.2v3.2c-.4-.2-.9-.3-1.4-.3-1.3 0-2.3 1-2.3 2.3s1 2.3 2.3 2.3 2.3-1 2.3-2.3V3h3.3z"/></svg>
-                </a>
-                <a class="iconbtn" href="https://x.com/CivicThreat" target="_blank" rel="noopener" aria-label="X">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.9 2H22l-6.9 7.9L23 22h-6.6l-5.2-6.7L5.4 22H2.3l7.4-8.5L1 2h6.8l4.7 6.1L18.9 2zm-1.1 18h1.7L6.1 3.9H4.3L17.8 20z"/></svg>
-                </a>
-              </div>
-            </div>
-          </div>
-
-          <div class="nav">
-            <div class="dropdown" id="platformsDD">
-              <button class="btn" type="button" aria-haspopup="true" aria-expanded="false">Platforms ▾</button>
-              <div class="dropdown-menu" role="menu" aria-label="Platforms menu">
-                <div class="dd-title">Facebook</div>
-                <a class="dd-item" role="menuitem" href="/facebook.html"><span>Support</span><small>Browse</small></a>
-                <a class="dd-item" role="menuitem" href="/facebook-maga.html"><span>MAGA / Debate</span><small>Browse</small></a>
-              </div>
-            </div>
-
-            <div class="dropdown" id="releasedDD">
-              <button class="btn" type="button" aria-haspopup="true" aria-expanded="false">Released Files ▾</button>
-              <div class="dropdown-menu" role="menu" aria-label="Released Files menu">
-                <a class="dd-item" role="menuitem" href="/released/epstein/epstein-reader.html"><span>Epstein Files</span><small>PDF Reader (TTS)</small></a>
-              </div>
-            </div>
-
-            <a class="btn blue" href="/submit.html">Submit</a>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+  <!-- Header injected by app.js -->
+  <div id="siteHeader"></div>
 
   <main class="page-wrap">
     <header class="hero">
@@ -267,6 +214,7 @@
       <p>Pick a PDF, choose a voice and speed, then press Play. Use Prev/Next to move one page at a time.</p>
     </header>
 
+    <!-- PLAYER + VIEWER (TOP AREA) -->
     <section class="ep-grid">
       <!-- LEFT: Player -->
       <div class="ep-panel ep-box">
@@ -303,7 +251,6 @@
             <button class="btn" id="btnNext" type="button">Next Page →</button>
             <button class="btn" id="btnMute" type="button">🔇 Mute</button>
 
-            <!-- Optional buttons you already added -->
             <button class="btn" id="btnAutoRead" type="button" aria-pressed="false" title="Automatically advance to the next PDF when finished">⏭ Auto-Read: Off</button>
             <button class="btn" id="btnLoop" type="button" aria-pressed="false" title="Loops current PDF (unless Auto-Read is on, then loops all PDFs)">🔁 Loop: Off</button>
           </div>
@@ -318,15 +265,6 @@
             Content may be explicit, disturbing, or contain allegations. Civic Threat does not endorse wrongdoing and does not make claims about guilt or innocence.
             This tool is provided for accessibility, public-interest review, and discussion. For full context, consult the complete PDF and primary sources.
           </div>
-
-          <!-- Gallery under the player -->
-          <div class="gallery" aria-label="Image gallery">
-            <h2>Released Image Excerpts</h2>
-            <div id="galleryGrid" class="gallery-grid">
-              <div style="opacity:.8;font-size:13px;">Loading images…</div>
-            </div>
-          </div>
-
         </div>
       </div>
 
@@ -341,6 +279,20 @@
             </div>
           </div>
           <canvas id="pdfCanvas" class="viewer-canvas" width="1000" height="1400"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- FULL-WIDTH IMAGES SECTION (UNDER THE PLAYER+VIEWER) -->
+    <section class="gallery-section ep-box" aria-label="Released images">
+      <div class="pad">
+        <h2>Released Image Excerpts</h2>
+        <div id="galleryGrid" class="gallery-grid">
+          <div style="opacity:.8;font-size:13px;">Loading images…</div>
+        </div>
+
+        <div class="legal" style="margin-top:12px">
+          <strong>Image note:</strong> These images are displayed for reference alongside the released PDFs. If you need full context, use the PDF reader above and consult the complete file.
         </div>
       </div>
     </section>
@@ -413,7 +365,7 @@
 
   <script src="./epstein-tts.js?v=14"></script>
 
-  <!-- Auto-Read / Loop / Viewer pop-out logic (kept, no dev notes shown) -->
+  <!-- Auto-Read / Loop / Viewer pop-out logic -->
   <script>
     (function(){
       function qs(sel, root=document){ return root.querySelector(sel); }
@@ -577,7 +529,7 @@
     })();
   </script>
 
-  <!-- Gallery loader: loads from ./images.json (no on-page dev notes) -->
+  <!-- Gallery loader: loads from ./images.json -->
   <script>
     (function(){
       const grid = document.getElementById("galleryGrid");
@@ -628,6 +580,6 @@
     })();
   </script>
 
-  <script src="/app.js?v=13"></script>
+  <script src="/app.js?v=2"></script>
 </body>
 </html>
