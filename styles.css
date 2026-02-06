@@ -36,8 +36,21 @@ a{color:inherit}
   display:flex; align-items:center; justify-content:space-between;
   gap:14px;
   padding:10px 0;
+
+  /* FIX: allow header to wrap on mobile so nav doesn't push off-screen */
+  flex-wrap:wrap;
 }
-.brandblock{display:flex;align-items:center;gap:18px;min-width:260px}
+
+/* brand block */
+.brandblock{
+  display:flex;
+  align-items:center;
+  gap:18px;
+
+  /* FIX: let brand section shrink instead of forcing width */
+  min-width:0;
+  flex:1 1 320px;
+}
 .brand{
   display:flex;align-items:center;gap:12px;text-decoration:none;
 }
@@ -46,7 +59,15 @@ a{color:inherit}
 .brand .text .sub{font-weight:800;font-size:11px;opacity:.95;line-height:1.1}
 
 /* follow */
-.socialblock{display:flex;align-items:center;gap:10px}
+.socialblock{
+  display:flex;
+  align-items:center;
+  gap:10px;
+
+  /* keep it compact so it doesn't blow up the row */
+  flex:0 0 auto;
+  min-width:0;
+}
 .followlabel{font-size:10px;font-weight:1000;letter-spacing:.8px;opacity:.95}
 .iconrow{display:flex;gap:10px;align-items:center}
 .iconbtn{
@@ -57,7 +78,17 @@ a{color:inherit}
 .iconbtn:hover{opacity:1}
 
 /* nav */
-.nav{display:flex;align-items:center;gap:10px}
+.nav{
+  display:flex;
+  align-items:center;
+  gap:10px;
+
+  /* FIX: allow nav buttons to wrap and not overflow */
+  flex-wrap:wrap;
+  flex:0 1 auto;
+  min-width:0;
+  justify-content:flex-end;
+}
 .cta{
   display:inline-flex;align-items:center;justify-content:center;
   padding:9px 14px;
@@ -65,6 +96,9 @@ a{color:inherit}
   border:1px solid rgba(255,255,255,.25);
   text-decoration:none;
   font-weight:900;
+
+  /* prevent awkward word breaks */
+  white-space:nowrap;
 }
 .cta:hover{background:rgba(0,0,0,.38)}
 
@@ -77,6 +111,9 @@ a{color:inherit}
   color:white;
   font-weight:900;
   cursor:pointer;
+
+  /* prevent button labels from breaking */
+  white-space:nowrap;
 }
 .dropbtn:hover{background:rgba(0,0,0,.33)}
 .dropdown-menu{
@@ -92,6 +129,15 @@ a{color:inherit}
   overflow:hidden;
   z-index:60;
 }
+
+/* FIX: keep dropdown from going off-screen on mobile */
+@media (max-width: 860px){
+  .dropdown-menu{
+    max-width:min(92vw, 420px);
+    min-width:min(92vw, 320px);
+  }
+}
+
 .dropdown.open .dropdown-menu{display:block}
 .dd-item{
   display:flex; justify-content:space-between; gap:14px;
@@ -103,6 +149,39 @@ a{color:inherit}
 .dd-item:last-child{border-bottom:none}
 .dd-main{font-weight:900; overflow:hidden; text-overflow:ellipsis}
 .dd-sub{opacity:.8; font-weight:900}
+
+/* ===== Header Mobile Breakpoints (main fix for your screenshots) ===== */
+@media (max-width: 860px){
+  /* Put nav on its own line so it never pushes off-screen */
+  .topbar .inner{
+    align-items:flex-start;
+  }
+
+  .nav{
+    width:100%;
+    justify-content:flex-start;
+    gap:8px;
+  }
+
+  /* Hide FOLLOW US label on small screens (icons remain) */
+  .followlabel{display:none}
+
+  /* Slightly smaller controls to fit better */
+  .dropbtn{padding:9px 10px; font-size:14px}
+  .cta{padding:9px 12px; font-size:14px}
+}
+
+@media (max-width: 420px){
+  .brand img{width:30px;height:30px}
+  .brand .text .title{font-size:13px}
+  .brand .text .sub{font-size:10px}
+
+  .iconbtn{width:20px;height:20px}
+  .iconbtn svg{width:18px;height:18px}
+
+  .dropbtn{padding:8px 9px; font-size:13px}
+  .cta{padding:8px 10px; font-size:13px}
+}
 
 /* hero + sections */
 .hero{padding:24px 0 14px}
