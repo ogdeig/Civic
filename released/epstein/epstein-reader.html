@@ -18,8 +18,7 @@
     .page-wrap{ max-width: 1120px; margin: 0 auto; padding: 22px 16px 42px; }
     .hero{ padding: 18px 0 10px; }
     .hero h1{ margin: 0 0 6px; font-size: clamp(26px, 4vw, 38px); letter-spacing:.02em; }
-    .hero p{ margin: 0; opacity: .92; line-height: 1.55; max-width: 70ch; }
-    .hero .subnote{ margin-top:10px; font-size: 13px; opacity: .82; line-height: 1.5; max-width: 80ch; }
+    .hero p{ margin: 0; opacity: .9; line-height: 1.5; }
 
     /* Square containers (match rest of site) */
     .ep-box{ border-radius: 0 !important; }
@@ -70,74 +69,42 @@
       display:block;
     }
 
-    /* How-to steps */
-    .howto{
-      margin-top: 12px;
-      padding: 12px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.25);
-      border-radius: 0;
-    }
-    .howto h2{ margin: 0 0 8px; font-size: 16px; letter-spacing:.02em; }
-    .steps{
-      margin: 0;
-      padding-left: 18px;
-      line-height: 1.55;
-      opacity: .92;
-      font-size: 13px;
-    }
-    .steps li{ margin: 6px 0; }
-    .steps strong{ opacity: 1; }
-
     /* Disclosure */
     .legal{
       margin-top: 12px;
       font-size: 12px;
-      opacity: .84;
+      opacity: .82;
       line-height: 1.5;
-      border-top: 1px solid rgba(255,255,255,.10);
-      padding-top: 10px;
     }
 
-    /* Gallery */
-    .gallery-wrap{
+    /* Gallery underneath player */
+    .gallery{
       margin-top: 14px;
-      padding: 12px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.25);
+      border-top: 1px solid rgba(255,255,255,.10);
+      padding-top: 14px;
     }
-    .gallery-head{
-      display:flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
-      margin-bottom: 10px;
+    .gallery h2{
+      margin: 0 0 10px;
+      font-size: 16px;
+      letter-spacing: .02em;
     }
-    .gallery-head h2{ margin:0; font-size:16px; letter-spacing:.02em; }
-    .gallery-head .hint{ font-size:12px; opacity:.78; max-width: 70ch; }
-
     .gallery-grid{
       display:grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 10px;
     }
-    @media (max-width: 980px){
-      .gallery-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    }
-    @media (max-width: 620px){
+    @media (max-width: 700px){
       .gallery-grid{ grid-template-columns: 1fr; }
     }
-
     .g-card{
-      margin:0;
-      border:1px solid rgba(255,255,255,.12);
+      margin: 0;
+      border: 1px solid rgba(255,255,255,.12);
       background: rgba(0,0,0,.25);
-      overflow:hidden;
+      overflow: hidden;
     }
     .g-card img{
-      width:100%;
-      height:auto;
+      width: 100%;
+      height: auto;
       display:block;
       background:#000;
     }
@@ -220,7 +187,7 @@
     .gate input[type="checkbox"]{ width: 18px; height: 18px; }
     .gate .actions{ display:flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; margin-top: 14px; }
     .gate .btn{ border-radius: 0 !important; }
-    .gate .legal{ margin-top: 10px; font-size: 12px; opacity: .8; line-height: 1.45; border-top: 0; padding-top: 0; }
+    .gate .legal{ margin-top: 10px; font-size: 12px; opacity: .8; line-height: 1.45; }
   </style>
 
   <!-- Google tag (gtag.js) -->
@@ -258,310 +225,4 @@
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12a10 10 0 1 0-11.6 9.9v-7H8v-2.9h2.4V9.8c0-2.4 1.4-3.7 3.6-3.7 1 0 2 .2 2 .2v2.2h-1.1c-1.1 0-1.5.7-1.5 1.4v1.7H16l-.4 2.9h-2.2v7A10 10 0 0 0 22 12z"/></svg>
                 </a>
                 <a class="iconbtn" href="https://www.youtube.com/@civicthreat" target="_blank" rel="noopener" aria-label="YouTube">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.6 7.2a3 3 0 0 0-2.1-2.1C17.7 4.6 12 4.6 12 4.6s-5.7 0-7.5.5A3 3 0 0 0 2.4 7.2 31.7 31.7 0 0 0 2 12a31.7 31.7 0 0 0 .4 4.8 3 3 0 0 0 2.1 2.1c1.8.5 7.5.5 7.5.5s5.7 0 7.5-.5a3 3 0 0 0 2.1-2.1A31.7 31.7 0 0 0 22 12a31.7 31.7 0 0 0-.4-4.8zM10 15.5v-7l6 3.5-6 3.5z"/></svg>
-                </a>
-                <a class="iconbtn" href="https://www.tiktok.com/@civicthreat" target="_blank" rel="noopener" aria-label="TikTok">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.6 3c.5 2.7 2.3 4.8 5 5.2v3.2c-1.9 0-3.6-.6-5-1.7v6.2c0 3.1-2.5 5.6-5.6 5.6S5.4 19 5.4 15.9s2.5-5.6 5.6-5.6c.5 0 1 .1 1.4.2v3.2c-.4-.2-.9-.3-1.4-.3-1.3 0-2.3 1-2.3 2.3s1 2.3 2.3 2.3 2.3-1 2.3-2.3V3h3.3z"/></svg>
-                </a>
-                <a class="iconbtn" href="https://x.com/CivicThreat" target="_blank" rel="noopener" aria-label="X">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.9 2H22l-6.9 7.9L23 22h-6.6l-5.2-6.7L5.4 22H2.3l7.4-8.5L1 2h6.8l4.7 6.1L18.9 2zm-1.1 18h1.7L6.1 3.9H4.3L17.8 20z"/></svg>
-                </a>
-              </div>
-            </div>
-          </div>
-
-          <div class="nav">
-            <div class="dropdown" id="platformsDD">
-              <button class="btn" type="button" aria-haspopup="true" aria-expanded="false">Platforms ▾</button>
-              <div class="dropdown-menu" role="menu" aria-label="Platforms menu">
-                <div class="dd-title">Facebook</div>
-                <a class="dd-item" role="menuitem" href="/facebook.html"><span>Support</span><small>Browse</small></a>
-                <a class="dd-item" role="menuitem" href="/facebook-maga.html"><span>MAGA / Debate</span><small>Browse</small></a>
-              </div>
-            </div>
-
-            <div class="dropdown" id="releasedDD">
-              <button class="btn" type="button" aria-haspopup="true" aria-expanded="false">Released Files ▾</button>
-              <div class="dropdown-menu" role="menu" aria-label="Released Files menu">
-                <a class="dd-item" role="menuitem" href="/released/epstein/epstein-reader.html"><span>Epstein Files</span><small>PDF Reader (TTS)</small></a>
-              </div>
-            </div>
-
-            <a class="btn blue" href="/submit.html">Submit</a>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <main class="page-wrap">
-    <header class="hero">
-      <h1>Released Files • Epstein Files</h1>
-      <p>
-        Browse and listen to publicly released PDF documents with a built-in viewer and page-by-page text-to-speech.
-        This page is designed for accessibility and quick review — not as legal advice or definitive reporting.
-      </p>
-      <div class="subnote">
-        <strong>Quick steps:</strong> (1) Pick a PDF. (2) Choose a voice + speed. (3) Press <strong>Play</strong>. Use <strong>Prev/Next</strong> to move one page at a time.
-      </div>
-    </header>
-
-    <section class="ep-grid">
-      <!-- LEFT: Controls + How-to + Disclosures + Gallery -->
-      <div class="ep-panel ep-box">
-        <div class="pad">
-          <div class="ep-row">
-            <div class="field">
-              <div class="ep-label">Step 1 — Choose a PDF</div>
-              <select id="pdfSelect" aria-label="Choose a PDF">
-                <option value="">Loading PDFs…</option>
-              </select>
-            </div>
-            <div class="field">
-              <div class="ep-label">Step 2 — Voice</div>
-              <select id="voiceSelect" aria-label="Choose a voice">
-                <option value="">Loading voices…</option>
-              </select>
-            </div>
-            <div class="field small">
-              <div class="ep-label">Step 3 — Speed</div>
-              <select id="speedSelect" aria-label="Choose reading speed">
-                <option value="1">1.0×</option>
-                <option value="1.25">1.25×</option>
-                <option value="1.5">1.5×</option>
-                <option value="2">2.0×</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="ep-controls" role="group" aria-label="Playback controls">
-            <button class="btn blue" id="btnPlay" type="button">▶ Play</button>
-            <button class="btn" id="btnPause" type="button">⏸ Pause</button>
-            <button class="btn" id="btnStop" type="button">⏹ Stop</button>
-            <button class="btn" id="btnPrev" type="button">← Prev Page</button>
-            <button class="btn" id="btnNext" type="button">Next Page →</button>
-            <button class="btn" id="btnMute" type="button">🔇 Mute</button>
-          </div>
-
-          <div class="howto ep-box" aria-label="How to use">
-            <h2>How to use this reader</h2>
-            <ol class="steps">
-              <li><strong>Select a PDF</strong> from the menu (left side).</li>
-              <li><strong>Pick a voice</strong> (example: Google UK English Female) and a speed.</li>
-              <li>Press <strong>Play</strong> to start reading the current page aloud.</li>
-              <li>Use <strong>Prev Page</strong> / <strong>Next Page</strong> to move through the document.</li>
-              <li>If the voice list is empty, try waiting a moment — or refresh once so the browser loads voices.</li>
-            </ol>
-
-            <div class="legal">
-              <strong>Disclosure &amp; Use Notice:</strong> This page provides text-to-speech playback and viewing of documents that are publicly available / publicly released.
-              Some material may be explicit, disturbing, or contain allegations. This site does not endorse wrongdoing and does not make claims about guilt or innocence.
-              Content is provided for accessibility, public-interest review, and discussion. If you need verified context, consult primary sources and qualified professionals.
-            </div>
-
-            <div class="legal">
-              <strong>Image excerpts notice:</strong> Images shown below (when present) are presented as excerpts/snapshots for reference in the same spirit as the PDF reader.
-              They may be cropped for readability and may not show full context. Always refer to the full PDF for complete context.
-            </div>
-          </div>
-
-          <!-- AUTO-LOADING GALLERY -->
-          <div class="gallery-wrap ep-box" aria-label="Image gallery">
-            <div class="gallery-head">
-              <h2>Released Image Excerpts</h2>
-              <div class="hint">
-                This gallery auto-loads from <code>/released/epstein/images.json</code>. Add images to <code>/assets/epstein/gallery/</code>, then add entries to the JSON file.
-              </div>
-            </div>
-
-            <div id="galleryGrid" class="gallery-grid">
-              <div style="opacity:.8;font-size:13px;">Loading images…</div>
-            </div>
-
-            <div class="legal" style="margin-top:12px;">
-              <strong>Tip:</strong> If you add a new image and don’t see it immediately, your browser may be caching the JSON.
-              You can refresh hard once on desktop (Ctrl+F5) or refresh twice on mobile.
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      <!-- RIGHT: Viewer -->
-      <div class="ep-panel ep-box">
-        <div class="pad viewer-wrap">
-          <div class="viewer-top">
-            <div><strong>Viewer</strong></div>
-            <div style="display:flex; gap:10px; align-items:center;">
-              <div class="meta" id="pageMeta">No PDF loaded.</div>
-              <button class="btn" id="btnPopViewer" type="button" title="Pop out a larger viewer">🔍 Pop-out</button>
-            </div>
-          </div>
-          <canvas id="pdfCanvas" class="viewer-canvas" width="1000" height="1400"></canvas>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <!-- Viewer pop-out modal -->
-  <div class="viewer-modal" id="viewerModal" role="dialog" aria-modal="true" aria-label="Pop-out PDF viewer">
-    <div class="card ep-box">
-      <div class="head">
-        <div>
-          <strong>PDF Viewer</strong>
-          <span class="meta" id="viewerModalMeta" style="margin-left:10px; opacity:.85; font-size:12px;"></span>
-        </div>
-        <div style="display:flex; gap:10px;">
-          <button class="btn" id="btnViewerClose" type="button">✕ Close</button>
-        </div>
-      </div>
-      <div class="body">
-        <canvas id="pdfCanvasBig" width="1600" height="2200"></canvas>
-      </div>
-    </div>
-  </div>
-
-  <div id="siteFooter">
-    <footer class="site-footer">
-      <div class="wrap">
-        <div class="inner">
-          <div>
-            <div class="footer-brand">
-              <img src="/assets/logo.png" alt="Civic Threat logo"/>
-              <div class="t">
-                <strong>CIVIC THREAT</strong>
-                <span>Debate &amp; Discuss</span>
-              </div>
-            </div>
-            <div class="footer-copy">© 2026 Civic Threat. All rights reserved.</div>
-            <div class="footer-links" style="margin-top:10px">
-              <a href="/about.html">About</a>
-              <a href="/advertising-disclosure.html">Advertising Disclosure</a>
-              <a href="/privacy.html">Privacy</a>
-              <a href="/terms.html">Terms</a>
-              <a href="/cookies.html">Cookies</a>
-              <a href="/contact.html">Contact</a>
-            </div>
-          </div>
-          <div></div>
-        </div>
-      </div>
-    </footer>
-  </div>
-
-  <!-- 21+ gate -->
-  <div class="gate" id="ageGate" role="dialog" aria-modal="true" aria-labelledby="gateTitle">
-    <div class="card ep-box">
-      <h2 id="gateTitle">Adults 21+ Only</h2>
-      <p>This section may contain sexually explicit descriptions. You must confirm you are twenty-one (21) or older to view and use the reader.</p>
-      <div class="row">
-        <label for="gateCheck">
-          <input id="gateCheck" type="checkbox" />
-          <span>I confirm that I am 21 or older.</span>
-        </label>
-      </div>
-      <div class="actions">
-        <button class="btn" id="gateLeave" type="button">Leave</button>
-        <button class="btn blue" id="gateEnter" type="button" disabled>Continue</button>
-      </div>
-      <div class="legal">
-        By continuing, you agree you are 21+ and understand the content may be explicit.
-      </div>
-    </div>
-  </div>
-
-  <!-- PDF.js -->
-  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js" crossorigin="anonymous"></script>
-  <script>
-    if(window.pdfjsLib){
-      window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
-    }
-    (function(){
-      function qs(sel, root=document){ return root.querySelector(sel); }
-      function qsa(sel, root=document){ return root ? Array.from(root.querySelectorAll(sel)) : []; }
-      function wireDropdown(dd){
-        if(!dd) return;
-        const btn = qs("button", dd);
-        const menu = qs(".dropdown-menu", dd);
-        if(!btn || !menu) return;
-        function close(){ dd.classList.remove("open"); btn.setAttribute("aria-expanded","false"); }
-        function open(){ dd.classList.add("open"); btn.setAttribute("aria-expanded","true"); }
-        btn.addEventListener("click",(e)=>{ e.preventDefault(); dd.classList.contains("open") ? close() : open(); });
-        document.addEventListener("click",(e)=>{ if(!dd.contains(e.target)) close(); });
-        document.addEventListener("keydown",(e)=>{ if(e.key==="Escape") close(); });
-        qsa("a", menu).forEach(a=>a.addEventListener("click", close));
-      }
-      wireDropdown(qs("#platformsDD"));
-      wireDropdown(qs("#releasedDD"));
-    })();
-  </script>
-
-  <!-- your existing logic -->
-  <script src="./epstein-tts.js?v=14"></script>
-
-  <!-- Gallery loader (loads unlimited images from /released/epstein/images.json) -->
-  <script>
-    (function(){
-      const grid = document.getElementById("galleryGrid");
-      if(!grid) return;
-
-      function esc(s){
-        return String(s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-      }
-
-      function card(img){
-        const caption = img.caption ? esc(img.caption) : "";
-        const source = img.source ? esc(img.source) : "";
-        const alt = img.alt ? esc(img.alt) : "Document image excerpt.";
-        const src = img.src ? String(img.src) : "";
-
-        const fig = document.createElement("figure");
-        fig.className = "g-card ep-box";
-        fig.innerHTML = `
-          <img src="${esc(src)}" alt="${alt}" loading="lazy" decoding="async">
-          <figcaption class="g-cap">
-            ${caption ? `<div>${caption}</div>` : ``}
-            ${source ? `<div class="src"><strong>Source:</strong> ${source}</div>` : ``}
-          </figcaption>
-        `;
-        return fig;
-      }
-
-      // Cache-bust JSON lightly so updates show up faster
-      const url = "./images.json?v=" + Date.now();
-
-      fetch(url, { cache: "no-store" })
-        .then(r => {
-          if(!r.ok) throw new Error("HTTP " + r.status);
-          return r.json();
-        })
-        .then(data => {
-          const list = Array.isArray(data.images) ? data.images : [];
-          grid.innerHTML = "";
-
-          if(!list.length){
-            grid.innerHTML = `<div style="opacity:.8;font-size:13px;">No images added yet. Upload images to <code>/assets/epstein/gallery/</code> and list them in <code>/released/epstein/images.json</code>.</div>`;
-            return;
-          }
-
-          list.forEach(img => {
-            if(!img || !img.src) return;
-            grid.appendChild(card(img));
-          });
-        })
-        .catch(err => {
-          console.warn("Gallery load failed:", err);
-          grid.innerHTML = `
-            <div style="opacity:.85;font-size:13px;line-height:1.5;">
-              Couldn’t load the image gallery yet.<br>
-              Make sure <code>/released/epstein/images.json</code> exists and is valid JSON.<br>
-              (If you haven’t created it yet, do that first — then refresh.)
-            </div>
-          `;
-        });
-    })();
-  </script>
-
-  <script src="/app.js?v=2"></script>
-</body>
-</html>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.6 7.2a3 3 0 0 0-2.1-2.1C17.7 4.6 12 4.6 12 4.6s-5.7 0-7.5.5A3 3 0 0 0 2.4 7.2 31.7 31.7 0 0 0 2 12a31.7 31.7 0 0 0 .4 4.8 3 3 0 0 0 2.1 2.1c1.8.5 7.5.5 7.5.5s5.7 0 7.5-.5a3
