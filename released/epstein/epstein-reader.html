@@ -364,6 +364,123 @@
   </script>
 
   <script src="./epstein-tts.js?v=14"></script>
+<script>
+/**
+ * Voice Fix Shim (FB in-app browser / Android WebView)
+ * - Retries speechSynthesis voices
+ * - Forces voice init on user gesture (Play click)
+ * - Shows "Open in Chrome" help if voices never load
+ */
+(function () {
+  const voiceSelect = document.getElementById("voiceSelect");
+  const btnPlay = document.getElementById("btnPlay");
+  const statusTitle = document.getElementById("statusTitle");
+  const statusLine  = document.getElementById("statusLine");
+
+  if (!voiceSelect || !("speechSynthesis" in window)) return;
+
+  // Detect FB/IG in-app browsers (common voice failure)
+  const ua = navigator.userAgent || "";
+  const isInApp = /FBAN|FBAV|Instagram/i.test(ua);
+
+  // Add help message box once
+  function ensureHelpBox() {
+    if (document.getElementById("voiceHelpBox")) return;
+    const box = document.createElement("div");
+    box.id = "voiceHelpBox";
+    box.style.cssText =
+      "margin-top:10px;padding:10px;border:1px solid rgba(255,255,255,.12);" +
+      "background:rgba(0,0,0,.35);font-size:12px;line-height:1.5;display:none;";
+    box.innerHTML =
+      "<strong>Voice not loading?</strong><br>" +
+      "Facebook’s in-app browser sometimes blocks or hides text-to-speech voices.<br>" +
+      "Tap the ⋮ menu and choose <b>Open in browser</b> (Chrome).";
+    // place under the controls/status area
+    const statusBox = document.getElementById("statusBox");
+    if (statusBox && statusBox.parentNode) statusBox.parentNode.insertBefore(box, statusBox.nextSibling);
+  }
+
+  function setStatus(msg) {
+    if (statusTitle) statusTitle.textContent = msg;
+    if (statusLine)  statusLine.textContent  = isInApp
+      ? "If voices don’t appear, open this page in Chrome from the ⋮ menu."
+      : "If voices don’t appear, try Chrome or another browser.";
+  }
+
+  function clearSelect() {
+    voiceSelect.innerHTML = "";
+  }
+
+  function addOption(label, value) {
+    const opt = document.createElement("option");
+    opt.textContent = label;
+    opt.value = value;
+    voiceSelect.appendChild(opt);
+  }
+
+  function renderVoices(voices) {
+    clearSelect();
+
+    // Put a safe default option first
+    addOption("Default device voice", "");
+
+    // Prefer English voices
+    const list = voices
+      .slice()
+      .sort((a, b) => (a.lang || "").localeCompare(b.lang || "") || (a.name || "").localeCompare(b.name || ""));
+
+    for (const v of list) {
+      // keep it broad; do not filter too hard (FB sometimes returns only a few)
+      const label = `${v.name} (${v.lang || "?"})`;
+      addOption(label, v.name);
+    }
+
+    // Try to auto-select a UK English voice if present
+    const preferred = list.find(v => /en-GB/i.test(v.lang) && /Google|UK|British/i.test(v.name)) ||
+                      list.find(v => /en-GB/i.test(v.lang)) ||
+                      list.find(v => /en/i.test(v.lang));
+    if (preferred) voiceSelect.value = preferred.name;
+
+    setStatus("Voices loaded.");
+    const help = document.getElementById("voiceHelpBox");
+    if (help) help.style.display = "none";
+  }
+
+  let done = false;
+
+  function loadVoicesWithRetry(retries = 20) {
+    if (done) return;
+    const voices = window.speechSynthesis.getVoices ? window.speechSynthesis.getVoices() : [];
+    if (voices && voices.length) {
+      done = true;
+      renderVoices(voices);
+      return;
+    }
+    if (retries <= 0) {
+      ensureHelpBox();
+      const help = document.getElementById("voiceHelpBox");
+      if (help) help.style.display = isInApp ? "block" : "none";
+      clearSelect();
+      addOption("No voices available in this browser", "");
+      setStatus("No voices found.");
+      return;
+    }
+    setTimeout(() => loadVoicesWithRetry(retries - 1), 250);
+  }
+
+  // Kick off and also listen for voice events
+  window.speechSynthesis.onvoiceschanged = () => loadVoicesWithRetry(20);
+  setTimeout(() => loadVoicesWithRetry(20), 0);
+
+  // User-gesture unlock: re-run when Play is tapped
+  if (btnPlay) {
+    btnPlay.addEventListener("click", () => {
+      // user gesture often unlocks voices in WebViews
+      loadVoicesWithRetry(20);
+    }, { passive: true });
+  }
+})();
+</script>
 
   <!-- Auto-Read / Loop / Viewer pop-out logic -->
   <script>
