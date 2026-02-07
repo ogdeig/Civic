@@ -1,46 +1,121 @@
 {
-  "images": [
+  "generatedAt": 1770303299,
+  "count": 23,
+  "items": [
     {
-      "src": "./images/billclinton1-1024x793.jpg",
-      "alt": "Released image excerpt: Bill Clinton (1).",
-      "caption": "Document image excerpt (for reference).",
-      "source": "Publicly released records"
+      "file": "ANASTASIA DOE_vs_EPSTEIN_Filed 12-17-19.pdf",
+      "path": "released/epstein/pdfs/ANASTASIA DOE_vs_EPSTEIN_Filed 12-17-19.pdf",
+      "label": "ANASTASIA DOE vs EPSTEIN Filed 12 17 19"
     },
     {
-      "src": "./images/billclinton2-1024x793.jpg",
-      "alt": "Released image excerpt: Bill Clinton (2).",
-      "caption": "Document image excerpt (for reference).",
-      "source": "Publicly released records"
+      "file": "CL_vs_Epstein.pdf",
+      "path": "released/epstein/pdfs/CL_vs_Epstein.pdf",
+      "label": "CL vs Epstein"
     },
     {
-      "src": "./images/billclinton3-1024x793.jpg",
-      "alt": "Released image excerpt: Bill Clinton (3).",
-      "caption": "Document image excerpt (for reference).",
-      "source": "Publicly released records"
+      "file": "FBI Intake D_Trump 10-27-20.pdf",
+      "path": "released/epstein/pdfs/FBI Intake D_Trump 10-27-20.pdf",
+      "label": "FBI Intake D Trump 10 27 20"
     },
     {
-      "src": "./images/copperfield-751x1024.jpg",
-      "alt": "Released image excerpt: Copperfield.",
-      "caption": "Document image excerpt (for reference).",
-      "source": "Publicly released records"
+      "file": "IN RE- Grand Jury Filed_07-23-25.pdf",
+      "path": "released/epstein/pdfs/IN RE- Grand Jury Filed_07-23-25.pdf",
+      "label": "IN RE Grand Jury Filed 07 23 25"
     },
     {
-      "src": "./images/epstein1-751x1024.jpg",
-      "alt": "Released image excerpt: Epstein (1).",
-      "caption": "Document image excerpt (for reference).",
-      "source": "Publicly released records"
+      "file": "JANE DOE 1000_vs_EPSTEIN_Filed 11-14-19.pdf",
+      "path": "released/epstein/pdfs/JANE DOE 1000_vs_EPSTEIN_Filed 11-14-19.pdf",
+      "label": "JANE DOE 1000 vs EPSTEIN Filed 11 14 19"
     },
     {
-      "src": "./images/jagger-1024x793.jpg",
-      "alt": "Released image excerpt: Jagger.",
-      "caption": "Document image excerpt (for reference).",
-      "source": "Publicly released records"
+      "file": "JANE DOE 11_vs_EPSTEIN_Filed_03-25-09.pdf",
+      "path": "released/epstein/pdfs/JANE DOE 11_vs_EPSTEIN_Filed_03-25-09.pdf",
+      "label": "JANE DOE 11 vs EPSTEIN Filed 03 25 09"
     },
     {
-      "src": "./images/spacey-1024x793.jpg",
-      "alt": "Released image excerpt: Spacey.",
-      "caption": "Document image excerpt (for reference).",
-      "source": "Publicly released records"
+      "file": "JANE DOE 43_vs_EPSTEIN_Filed_01-26-17.pdf",
+      "path": "released/epstein/pdfs/JANE DOE 43_vs_EPSTEIN_Filed_01-26-17.pdf",
+      "label": "JANE DOE 43 vs EPSTEIN Filed 01 26 17"
+    },
+    {
+      "file": "JANE DOE No. 101_vs_EPSTEIN_Filed_04-20-09.pdf",
+      "path": "released/epstein/pdfs/JANE DOE No. 101_vs_EPSTEIN_Filed_04-20-09.pdf",
+      "label": "JANE DOE No. 101 vs EPSTEIN Filed 04 20 09"
+    },
+    {
+      "file": "JANE DOE No. 102_vs_EPSTEIN_Filed_05-04-09.pdf",
+      "path": "released/epstein/pdfs/JANE DOE No. 102_vs_EPSTEIN_Filed_05-04-09.pdf",
+      "label": "JANE DOE No. 102 vs EPSTEIN Filed 05 04 09"
+    },
+    {
+      "file": "JANE DOE NO. 1_vs_EPSTEIN_Filed_01-25-08.pdf",
+      "path": "released/epstein/pdfs/JANE DOE NO. 1_vs_EPSTEIN_Filed_01-25-08.pdf",
+      "label": "JANE DOE NO. 1 vs EPSTEIN Filed 01 25 08"
+    },
+    {
+      "file": "JANE DOE NO. 2_vs_EPSTEIN_Filed_02-06-08.pdf",
+      "path": "released/epstein/pdfs/JANE DOE NO. 2_vs_EPSTEIN_Filed_02-06-08.pdf",
+      "label": "JANE DOE NO. 2 vs EPSTEIN Filed 02 06 08"
+    },
+    {
+      "file": "JANE DOE NO. 3_vs_EPSTEIN_Filed_03-05-08.pdf",
+      "path": "released/epstein/pdfs/JANE DOE NO. 3_vs_EPSTEIN_Filed_03-05-08.pdf",
+      "label": "JANE DOE NO. 3 vs EPSTEIN Filed 03 05 08"
+    },
+    {
+      "file": "JANE DOE NO. 4_vs_EPSTEIN_Filed_04-14-08.pdf",
+      "path": "released/epstein/pdfs/JANE DOE NO. 4_vs_EPSTEIN_Filed_04-14-08.pdf",
+      "label": "JANE DOE NO. 4 vs EPSTEIN Filed 04 14 08"
+    },
+    {
+      "file": "JANE DOE NO. 5_vs_EPSTEIN_Filed_04-15-08.pdf",
+      "path": "released/epstein/pdfs/JANE DOE NO. 5_vs_EPSTEIN_Filed_04-15-08.pdf",
+      "label": "JANE DOE NO. 5 vs EPSTEIN Filed 04 15 08"
+    },
+    {
+      "file": "JANE DOE NO. 6_vs_EPSTEIN_Filed_09-11-08.pdf",
+      "path": "released/epstein/pdfs/JANE DOE NO. 6_vs_EPSTEIN_Filed_09-11-08.pdf",
+      "label": "JANE DOE NO. 6 vs EPSTEIN Filed 09 11 08"
+    },
+    {
+      "file": "JANE DOE NO. 8_vs_EPSTEIN_Filed 05-28-09.pdf",
+      "path": "released/epstein/pdfs/JANE DOE NO. 8_vs_EPSTEIN_Filed 05-28-09.pdf",
+      "label": "JANE DOE NO. 8 vs EPSTEIN Filed 05 28 09"
+    },
+    {
+      "file": "JULIETTE BRYANT_vs_EPSTEIN_Filed 11-14-19.pdf",
+      "path": "released/epstein/pdfs/JULIETTE BRYANT_vs_EPSTEIN_Filed 11-14-19.pdf",
+      "label": "JULIETTE BRYANT vs EPSTEIN Filed 11 14 19"
+    },
+    {
+      "file": "L.M._vs_EPSTEIN_Filed_07-27-09.pdf",
+      "path": "released/epstein/pdfs/L.M._vs_EPSTEIN_Filed_07-27-09.pdf",
+      "label": "L.M. vs EPSTEIN Filed 07 27 09"
+    },
+    {
+      "file": "M.J_vs_EPSTEIN_Filed_09-17-10.pdf",
+      "path": "released/epstein/pdfs/M.J_vs_EPSTEIN_Filed_09-17-10.pdf",
+      "label": "M.J vs EPSTEIN Filed 09 17 10"
+    },
+    {
+      "file": "MARIA FARMER_vs_EPSTEIN_Filed_11-12-19.pdf",
+      "path": "released/epstein/pdfs/MARIA FARMER_vs_EPSTEIN_Filed_11-12-19.pdf",
+      "label": "MARIA FARMER vs EPSTEIN Filed 11 12 19"
+    },
+    {
+      "file": "TEALA DAVIES_vs_EPSTEIN_Filed_11-21-19 .pdf",
+      "path": "released/epstein/pdfs/TEALA DAVIES_vs_EPSTEIN_Filed_11-21-19 .pdf",
+      "label": "TEALA DAVIES vs EPSTEIN Filed 11 21 19"
+    },
+    {
+      "file": "TERESA HELM_vs_EPSTEIN_Filed_11-12-19.pdf",
+      "path": "released/epstein/pdfs/TERESA HELM_vs_EPSTEIN_Filed_11-12-19.pdf",
+      "label": "TERESA HELM vs EPSTEIN Filed 11 12 19"
+    },
+    {
+      "file": "VIRGINIA L. GIUFFRE_vs_MAXWELL_Filed_09-21-15.pdf",
+      "path": "released/epstein/pdfs/VIRGINIA L. GIUFFRE_vs_MAXWELL_Filed_09-21-15.pdf",
+      "label": "VIRGINIA L. GIUFFRE vs MAXWELL Filed 09 21 15"
     }
   ]
 }
