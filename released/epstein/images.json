@@ -1,16 +1,45 @@
 {
-  "version": 1,
   "images": [
     {
-      "src": "/assets/epstein/gallery/page-001.jpg",
-      "alt": "Document image excerpt.",
-      "caption": "Excerpt from publicly released materials (for reference).",
+      "src": "./images/billclinton1-1024x793.jpg",
+      "alt": "Released image excerpt: Bill Clinton (1).",
+      "caption": "Document image excerpt (for reference).",
       "source": "Publicly released records"
     },
     {
-      "src": "/assets/epstein/gallery/page-002.jpg",
-      "alt": "Document image excerpt.",
-      "caption": "Excerpt from publicly released materials (for reference).",
+      "src": "./images/billclinton2-1024x793.jpg",
+      "alt": "Released image excerpt: Bill Clinton (2).",
+      "caption": "Document image excerpt (for reference).",
+      "source": "Publicly released records"
+    },
+    {
+      "src": "./images/billclinton3-1024x793.jpg",
+      "alt": "Released image excerpt: Bill Clinton (3).",
+      "caption": "Document image excerpt (for reference).",
+      "source": "Publicly released records"
+    },
+    {
+      "src": "./images/copperfield-751x1024.jpg",
+      "alt": "Released image excerpt: Copperfield.",
+      "caption": "Document image excerpt (for reference).",
+      "source": "Publicly released records"
+    },
+    {
+      "src": "./images/epstein1-751x1024.jpg",
+      "alt": "Released image excerpt: Epstein (1).",
+      "caption": "Document image excerpt (for reference).",
+      "source": "Publicly released records"
+    },
+    {
+      "src": "./images/jagger-1024x793.jpg",
+      "alt": "Released image excerpt: Jagger.",
+      "caption": "Document image excerpt (for reference).",
+      "source": "Publicly released records"
+    },
+    {
+      "src": "./images/spacey-1024x793.jpg",
+      "alt": "Released image excerpt: Spacey.",
+      "caption": "Document image excerpt (for reference).",
       "source": "Publicly released records"
     }
   ]
