@@ -1,50 +1,116 @@
 {
   "images": [
     {
-      "src": "/released/epstein/images/billclinton1-1024x793.jpg",
-      "alt": "Released image excerpt: billclinton1.",
+      "src": "/released/epstein/images/HOUSE_OVERSIGHT_083569_Redacted%20-%20Copy.jpg",
+      "alt": "HOUSE OVERSIGHT image excerpt 083569 (Redacted).",
       "caption": "Document image excerpt (for reference).",
       "source": "Publicly released records"
     },
     {
-      "src": "/released/epstein/images/billclinton2-1024x793.jpg",
-      "alt": "Released image excerpt: billclinton2.",
-      "caption": "Document image excerpt (for reference).",
-      "source": "Publicly released records"
-    },
-    {
-      "src": "/released/epstein/images/billclinton3-1024x793.jpg",
-      "alt": "Released image excerpt: billclinton3.",
-      "caption": "Document image excerpt (for reference).",
-      "source": "Publicly released records"
-    },
-    {
-      "src": "/released/epstein/images/copperfield-751x1024.jpg",
-      "alt": "Released image excerpt: copperfield.",
-      "caption": "Document image excerpt (for reference).",
-      "source": "Publicly released records"
-    },
-    {
-      "src": "/released/epstein/images/epstein1-751x1024.jpg",
-      "alt": "Released image excerpt: epstein1.",
-      "caption": "Document image excerpt (for reference).",
-      "source": "Publicly released records"
-    },
-    {
-      "src": "/released/epstein/images/epstein4-1024x793.jpg",
-      "alt": "Released image excerpt: epstein4.",
+      "src": "/released/epstein/images/HOUSE_OVERSIGHT_083642_Redacted%20-%20Copy.jpg",
+      "alt": "HOUSE OVERSIGHT image excerpt 083642 (Redacted).",
       "caption": "Document image excerpt (for reference).",
       "source": "Publicly released records"
     },
     {
       "src": "/released/epstein/images/jagger-1024x793.jpg",
-      "alt": "Released image excerpt: jagger.",
+      "alt": "Released image excerpt: Jagger.",
       "caption": "Document image excerpt (for reference).",
       "source": "Publicly released records"
     },
     {
       "src": "/released/epstein/images/spacey-1024x793.jpg",
-      "alt": "Released image excerpt: spacey.",
+      "alt": "Released image excerpt: Spacey.",
+      "caption": "Document image excerpt (for reference).",
+      "source": "Publicly released records"
+    },
+    {
+      "src": "/released/epstein/images/billclinton1-1024x793.jpg",
+      "alt": "Released image excerpt: Bill Clinton 1.",
+      "caption": "Document image excerpt (for reference).",
+      "source": "Publicly released records"
+    },
+    {
+      "src": "/released/epstein/images/billclinton2-1024x793.jpg",
+      "alt": "Released image excerpt: Bill Clinton 2.",
+      "caption": "Document image excerpt (for reference).",
+      "source": "Publicly released records"
+    },
+    {
+      "src": "/released/epstein/images/billclinton3-1024x793.jpg",
+      "alt": "Released image excerpt: Bill Clinton 3.",
+      "caption": "Document image excerpt (for reference).",
+      "source": "Publicly released records"
+    },
+    {
+      "src": "/released/epstein/images/copperfield-751x1024.jpg",
+      "alt": "Released image excerpt: Copperfield.",
+      "caption": "Document image excerpt (for reference).",
+      "source": "Publicly released records"
+    },
+    {
+      "src": "/released/epstein/images/epstein1-751x1024.jpg",
+      "alt": "Released image excerpt: Epstein 1.",
+      "caption": "Document image excerpt (for reference).",
+      "source": "Publicly released records"
+    },
+    {
+      "src": "/released/epstein/images/epstein4-1024x793.jpg",
+      "alt": "Released image excerpt: Epstein 4.",
+      "caption": "Document image excerpt (for reference).",
+      "source": "Publicly released records"
+    },
+    {
+      "src": "/released/epstein/images/HOUSE_OVERSIGHT_037577.jpg",
+      "alt": "HOUSE OVERSIGHT image excerpt 037577.",
+      "caption": "Document image excerpt (for reference).",
+      "source": "Publicly released records"
+    },
+    {
+      "src": "/released/epstein/images/HOUSE_OVERSIGHT_037629%20-%20Copy.jpg",
+      "alt": "HOUSE OVERSIGHT image excerpt 037629.",
+      "caption": "Document image excerpt (for reference).",
+      "source": "Publicly released records"
+    },
+    {
+      "src": "/released/epstein/images/HOUSE_OVERSIGHT_037638%20-%20Copy.jpg",
+      "alt": "HOUSE OVERSIGHT image excerpt 037638.",
+      "caption": "Document image excerpt (for reference).",
+      "source": "Publicly released records"
+    },
+    {
+      "src": "/released/epstein/images/HOUSE_OVERSIGHT_037702_Redacted%20-%20Copy.jpg",
+      "alt": "HOUSE OVERSIGHT image excerpt 037702 (Redacted).",
+      "caption": "Document image excerpt (for reference).",
+      "source": "Publicly released records"
+    },
+    {
+      "src": "/released/epstein/images/HOUSE_OVERSIGHT_065961_Redactedz%20-%20Copy.jpg",
+      "alt": "HOUSE OVERSIGHT image excerpt 065961 (Redacted).",
+      "caption": "Document image excerpt (for reference).",
+      "source": "Publicly released records"
+    },
+    {
+      "src": "/released/epstein/images/HOUSE_OVERSIGHT_066497%20-%20Copy.jpg",
+      "alt": "HOUSE OVERSIGHT image excerpt 066497.",
+      "caption": "Document image excerpt (for reference).",
+      "source": "Publicly released records"
+    },
+    {
+      "src": "/released/epstein/images/HOUSE_OVERSIGHT_083463%20-%20Copy.jpg",
+      "alt": "HOUSE OVERSIGHT image excerpt 083463.",
+      "caption": "Document image excerpt (for reference).",
+      "source": "Publicly released records"
+    },
+    {
+      "src": "/released/epstein/images/HOUSE_OVERSIGHT_083516_Redacted2%20-%20Copy.jpg",
+      "alt": "HOUSE OVERSIGHT image excerpt 083516 (Redacted).",
+      "caption": "Document image excerpt (for reference).",
+      "source": "Publicly released records"
+    },
+    {
+      "src": "/released/epstein/images/HOUSE_OVERSIGHT_083517_Redactedz%20-%20Copy.jpg",
+      "alt": "HOUSE OVERSIGHT image excerpt 083517 (Redacted).",
       "caption": "Document image excerpt (for reference).",
       "source": "Publicly released records"
     }
