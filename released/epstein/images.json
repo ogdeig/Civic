@@ -1,44 +1,50 @@
 {
   "images": [
     {
-      "src": "./images/billclinton1-1024x793.jpg",
-      "alt": "Released image excerpt: Bill Clinton (1).",
+      "src": "/released/epstein/images/billclinton1-1024x793.jpg",
+      "alt": "Released image excerpt: billclinton1.",
       "caption": "Document image excerpt (for reference).",
       "source": "Publicly released records"
     },
     {
-      "src": "./images/billclinton2-1024x793.jpg",
-      "alt": "Released image excerpt: Bill Clinton (2).",
+      "src": "/released/epstein/images/billclinton2-1024x793.jpg",
+      "alt": "Released image excerpt: billclinton2.",
       "caption": "Document image excerpt (for reference).",
       "source": "Publicly released records"
     },
     {
-      "src": "./images/billclinton3-1024x793.jpg",
-      "alt": "Released image excerpt: Bill Clinton (3).",
+      "src": "/released/epstein/images/billclinton3-1024x793.jpg",
+      "alt": "Released image excerpt: billclinton3.",
       "caption": "Document image excerpt (for reference).",
       "source": "Publicly released records"
     },
     {
-      "src": "./images/copperfield-751x1024.jpg",
-      "alt": "Released image excerpt: Copperfield.",
+      "src": "/released/epstein/images/copperfield-751x1024.jpg",
+      "alt": "Released image excerpt: copperfield.",
       "caption": "Document image excerpt (for reference).",
       "source": "Publicly released records"
     },
     {
-      "src": "./images/epstein1-751x1024.jpg",
-      "alt": "Released image excerpt: Epstein (1).",
+      "src": "/released/epstein/images/epstein1-751x1024.jpg",
+      "alt": "Released image excerpt: epstein1.",
       "caption": "Document image excerpt (for reference).",
       "source": "Publicly released records"
     },
     {
-      "src": "./images/jagger-1024x793.jpg",
-      "alt": "Released image excerpt: Jagger.",
+      "src": "/released/epstein/images/epstein4-1024x793.jpg",
+      "alt": "Released image excerpt: epstein4.",
       "caption": "Document image excerpt (for reference).",
       "source": "Publicly released records"
     },
     {
-      "src": "./images/spacey-1024x793.jpg",
-      "alt": "Released image excerpt: Spacey.",
+      "src": "/released/epstein/images/jagger-1024x793.jpg",
+      "alt": "Released image excerpt: jagger.",
+      "caption": "Document image excerpt (for reference).",
+      "source": "Publicly released records"
+    },
+    {
+      "src": "/released/epstein/images/spacey-1024x793.jpg",
+      "alt": "Released image excerpt: spacey.",
       "caption": "Document image excerpt (for reference).",
       "source": "Publicly released records"
     }
