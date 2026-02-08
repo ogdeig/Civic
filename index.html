@@ -69,7 +69,7 @@
     .hero-block{ padding: 18px 0 6px; }
     .hero-block + .hero-block{ padding-top: 10px; }
 
-    .ct-hero{ text-align:center; }
+    .ct-hero{ text-align: center; }
     .ct-hero h1{
       margin: 0 0 10px;
       font-size: clamp(34px, 5vw, 56px);
@@ -78,7 +78,7 @@
     }
     .ct-hero p{
       margin: 0 auto;
-      max-width: 90ch;
+      max-width: 92ch;
       opacity: .92;
       line-height: 1.75;
       font-size: 15px;
@@ -105,7 +105,7 @@
       margin: 0 0 12px;
       opacity: .9;
       line-height: 1.6;
-      max-width: 78ch;
+      max-width: 80ch;
     }
     .rf-hero .actions{
       display:flex;
@@ -158,11 +158,11 @@
       height: 100%;
       display: flex;
       transform: translateX(0);
-      transition: transform 240ms ease;
+      transition: transform 260ms ease;
       will-change: transform;
     }
     .hero-carousel .slide{
-      min-width: 100%;
+      flex: 0 0 100%;
       height: 100%;
       display:flex;
       align-items:center;
@@ -172,7 +172,7 @@
     .hero-carousel img{
       width: 100%;
       height: 100%;
-      object-fit: contain;
+      object-fit: contain; /* black bars OK */
       background:#000;
       display:block;
     }
@@ -181,21 +181,44 @@
       position:absolute;
       top: 50%;
       transform: translateY(-50%);
-      z-index: 2;
-      width: 42px;
-      height: 42px;
+      z-index: 5;
+      width: 46px;
+      height: 46px;
       border-radius: 0;
-      border: 1px solid rgba(255,255,255,.18);
-      background: rgba(0,0,0,.55);
+      border: 1px solid rgba(255,255,255,.22);
+      background: rgba(0,0,0,.62);
       color:#fff;
       display:flex;
       align-items:center;
       justify-content:center;
       cursor:pointer;
+      font-size: 22px;
+      line-height: 1;
+      pointer-events: auto;
     }
-    .hero-carousel .navbtn:hover{ background: rgba(0,0,0,.72); }
+    .hero-carousel .navbtn:hover{ background: rgba(0,0,0,.78); }
+    .hero-carousel .navbtn[disabled]{ opacity:.35; cursor:not-allowed; }
+
     .hero-carousel .prev{ left: 10px; }
     .hero-carousel .next{ right: 10px; }
+
+    .hero-carousel .hud{
+      position:absolute;
+      left: 10px;
+      bottom: 10px;
+      z-index: 5;
+      display:flex;
+      gap: 10px;
+      align-items:center;
+      padding: 6px 10px;
+      background: rgba(0,0,0,.55);
+      border: 1px solid rgba(255,255,255,.12);
+      font-size: 12px;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      opacity: .92;
+      pointer-events: none;
+    }
 
     .hero-carousel .dots{
       position:absolute;
@@ -203,22 +226,23 @@
       bottom: 10px;
       transform: translateX(-50%);
       display:flex;
-      gap: 8px;
-      z-index: 2;
-      padding: 6px 8px;
-      background: rgba(0,0,0,.35);
-      border: 1px solid rgba(255,255,255,.10);
+      gap: 10px;
+      z-index: 6;
+      padding: 7px 10px;
+      background: rgba(0,0,0,.55);
+      border: 1px solid rgba(255,255,255,.12);
     }
     .hero-carousel .dot{
-      width: 8px;
-      height: 8px;
+      width: 10px;
+      height: 10px;
       border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.35);
-      background: rgba(255,255,255,.16);
+      border: 1px solid rgba(255,255,255,.45);
+      background: rgba(255,255,255,.18);
       cursor:pointer;
+      padding: 0;
     }
     .hero-carousel .dot.on{
-      background: rgba(0,242,234,.85);
+      background: rgba(0,242,234,.95);
       border-color: rgba(0,242,234,.95);
     }
 
@@ -228,6 +252,10 @@
       opacity: .8;
       letter-spacing: .06em;
       text-transform: uppercase;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content: space-between;
     }
 
     .toolbar{ align-items: flex-start; }
@@ -295,6 +323,8 @@
               <button class="navbtn prev" type="button" aria-label="Previous image" id="epPrev">‹</button>
               <button class="navbtn next" type="button" aria-label="Next image" id="epNext">›</button>
 
+              <div class="hud" id="epHud">Loading…</div>
+
               <div class="track" id="epTrack">
                 <div class="slide">
                   <img src="/assets/epstein/epstein-hero.jpg" alt="Released document preview image">
@@ -303,7 +333,11 @@
 
               <div class="dots" id="epDots" aria-label="Carousel dots"></div>
             </div>
-            <div class="hero-media-caption">Released Epstein Images (scroll)</div>
+
+            <div class="hero-media-caption">
+              <span>Released Epstein Images (tap/click to scroll)</span>
+              <a class="btn" style="padding:8px 10px; font-size:12px" href="/released/epstein/epstein-reader">Open reader</a>
+            </div>
           </div>
 
         </div>
@@ -350,7 +384,7 @@
 
   <div id="siteFooter"></div>
 
-  <!-- Epstein scroller: tries the REAL path first (/released/epstein/images.json) then fallbacks -->
+  <!-- Epstein carousel loader -->
   <script>
     (function(){
       const track = document.getElementById("epTrack");
@@ -358,12 +392,12 @@
       const btnPrev = document.getElementById("epPrev");
       const btnNext = document.getElementById("epNext");
       const carousel = document.getElementById("epCarousel");
+      const hud = document.getElementById("epHud");
 
       if(!track || !dotsWrap || !btnPrev || !btnNext || !carousel) return;
 
       let idx = 0;
-      let slides = [];
-      let dots = [];
+      let slideCount = 1;
       let startX = 0;
       let dragging = false;
 
@@ -378,60 +412,35 @@
         if(/^https?:\/\//i.test(s)) return s;
         if(s.startsWith("/released/epstein/images/")) return s;
 
-        // common case: images.json contains "images/filename.jpg"
+        // common: "images/filename.jpg"
         if(s.startsWith("images/")) return "/released/epstein/" + s;
 
-        // root path
+        // absolute from root
         if(s.startsWith("/")) return s;
 
         // filename only
         return "/released/epstein/images/" + s.replace(/^\.?\//,"");
       }
 
-      function setIndex(n){
-        if(!slides.length) return;
-        idx = (n + slides.length) % slides.length;
-        track.style.transform = "translateX(" + (-idx * 100) + "%)";
-        dots.forEach((d,i)=> d.classList.toggle("on", i===idx));
+      function setHud(){
+        if(!hud) return;
+        hud.textContent = (slideCount > 0)
+          ? ("Image " + (idx + 1) + " / " + slideCount)
+          : "No images";
       }
 
-      function buildFromList(list){
-        track.innerHTML = "";
-        dotsWrap.innerHTML = "";
-        slides = [];
-        dots = [];
-
-        list.forEach((img, i) => {
-          const raw = (typeof img === "string") ? img : (img && img.src);
-          const src = normalizeSrc(raw);
-          if(!src) return;
-
-          const alt = (img && img.alt) ? img.alt : "Released document image excerpt";
-
-          const slide = document.createElement("div");
-          slide.className = "slide";
-          slide.innerHTML = '<img loading="lazy" decoding="async" src="' + esc(src) + '" alt="' + esc(alt) + '">';
-          track.appendChild(slide);
-          slides.push(slide);
-
-          const dot = document.createElement("button");
-          dot.type = "button";
-          dot.className = "dot" + (slides.length===1 ? " on" : "");
-          dot.setAttribute("aria-label", "Go to image " + (slides.length));
-          dot.addEventListener("click", () => setIndex(slides.length - 1));
-          dotsWrap.appendChild(dot);
-          dots.push(dot);
-        });
-
-        if(!slides.length){
-          track.innerHTML = '<div class="slide"><img src="/assets/epstein/epstein-hero.jpg" alt="Released document preview image"></div>';
-          dotsWrap.innerHTML = "";
-          slides = [track.firstElementChild];
+      function setIndex(n){
+        if(slideCount <= 1){
           idx = 0;
+          track.style.transform = "translateX(0)";
+          setHud();
           return;
         }
-
-        setIndex(0);
+        idx = (n + slideCount) % slideCount;
+        track.style.transform = "translateX(" + (-idx * 100) + "%)";
+        const dots = Array.from(dotsWrap.querySelectorAll(".dot"));
+        dots.forEach((d,i)=> d.classList.toggle("on", i===idx));
+        setHud();
       }
 
       function prev(){ setIndex(idx - 1); }
@@ -439,6 +448,15 @@
 
       btnPrev.addEventListener("click", prev);
       btnNext.addEventListener("click", next);
+
+      // Click on the image area advances (left half = prev, right half = next)
+      carousel.addEventListener("click", (e)=>{
+        // ignore clicks on buttons/dots
+        if(e.target && (e.target.closest(".navbtn") || e.target.closest(".dot"))) return;
+        const r = carousel.getBoundingClientRect();
+        const x = e.clientX - r.left;
+        (x < r.width * 0.45) ? prev() : next();
+      });
 
       // Swipe
       carousel.addEventListener("pointerdown", (e)=>{
@@ -455,6 +473,55 @@
         }
       });
 
+      function buildFromList(list){
+        track.innerHTML = "";
+        dotsWrap.innerHTML = "";
+
+        const items = [];
+        list.forEach((img)=>{
+          const raw = (typeof img === "string") ? img : (img && img.src);
+          const src = normalizeSrc(raw);
+          if(!src) return;
+          const alt = (img && img.alt) ? img.alt : "Released document image excerpt";
+          items.push({ src, alt });
+        });
+
+        if(!items.length){
+          // keep fallback
+          slideCount = 1;
+          btnPrev.disabled = true;
+          btnNext.disabled = true;
+          setHud();
+          return;
+        }
+
+        items.forEach((it)=>{
+          const slide = document.createElement("div");
+          slide.className = "slide";
+          slide.innerHTML = '<img loading="lazy" decoding="async" src="' + esc(it.src) + '" alt="' + esc(it.alt) + '">';
+          track.appendChild(slide);
+        });
+
+        slideCount = items.length;
+
+        // dots
+        if(slideCount > 1){
+          items.forEach((_, i)=>{
+            const dot = document.createElement("button");
+            dot.type = "button";
+            dot.className = "dot" + (i===0 ? " on" : "");
+            dot.setAttribute("aria-label", "Go to image " + (i + 1));
+            dot.addEventListener("click", ()=> setIndex(i));
+            dotsWrap.appendChild(dot);
+          });
+        }
+
+        btnPrev.disabled = slideCount <= 1;
+        btnNext.disabled = slideCount <= 1;
+
+        setIndex(0);
+      }
+
       async function tryFetchJson(url){
         const r = await fetch(url, { cache: "no-store" });
         if(!r.ok) throw new Error("HTTP " + r.status);
@@ -462,7 +529,8 @@
       }
 
       (async function loadImages(){
-        // IMPORTANT: This is the path your reader page uses (./images.json -> /released/epstein/images.json)
+        if(hud) hud.textContent = "Loading…";
+
         const candidates = [
           "/released/epstein/images.json",
           "/released/epstein/images/index.json",
@@ -470,7 +538,7 @@
         ];
 
         for(const base of candidates){
-          const url = base + (base.includes("?") ? "" : ("?v=" + Date.now()));
+          const url = base + "?v=" + Date.now();
           try{
             const data = await tryFetchJson(url);
             const list = Array.isArray(data) ? data : (Array.isArray(data.images) ? data.images : []);
@@ -478,9 +546,14 @@
               buildFromList(list);
               return;
             }
-          }catch(e){ /* try next */ }
+          }catch(e){}
         }
-        // If all failed, keep fallback image silently (no console spam from us)
+
+        // if all failed, keep fallback and show 1/1
+        slideCount = 1;
+        btnPrev.disabled = true;
+        btnNext.disabled = true;
+        setHud();
       })();
     })();
   </script>
