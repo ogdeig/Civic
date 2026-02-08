@@ -4,13 +4,13 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <meta name="color-scheme" content="dark"/>
-  <title>Facebook Support Posts • Anti-MAGA + Pro-Democracy Discussion | Civic Threat</title>
+  <title>Facebook • Support | Civic Threat</title>
 
-  <meta name="description" content="Browse approved Facebook Support posts curated by Civic Threat. Track Trump/MAGA narratives, highlight pro-democracy voices, and archive links for public discussion. Submit posts for review."/>
+  <meta name="description" content="Browse approved Facebook Support posts curated by Civic Threat. Search by creator or URL and submit posts for review."/>
   <meta name="robots" content="index,follow"/>
 
   <meta property="og:title" content="Facebook • Support | Civic Threat"/>
-  <meta property="og:description" content="Browse approved Support posts and submit links for review and archiving. Public-interest discussion around Trump, MAGA, and pro-democracy topics."/>
+  <meta property="og:description" content="Browse approved support posts and submit links for review and archiving."/>
   <meta property="og:type" content="website"/>
   <meta property="og:url" content="https://civicthreat.us/facebook"/>
   <meta property="og:image" content="https://civicthreat.us/assets/civicthreat-social-1200x630.jpg"/>
@@ -18,23 +18,21 @@
   <link rel="icon" href="/assets/logo.png"/>
   <link rel="stylesheet" href="/styles.css?v=7"/>
 
-  <!-- Page-only styles (search bar + layout helpers) -->
   <style>
-    /* Keep the page clean and readable */
     .feed-top{
       display:flex;
-      gap:12px;
+      gap:14px;
       justify-content:space-between;
       align-items:flex-end;
       flex-wrap:wrap;
-      margin: 8px 0 14px;
+      margin: 10px 0 12px;
     }
 
-    /* Search wrapper (avoid clashing with .search input class in styles.css) */
     .searchwrap{
-      flex: 1 1 420px;
-      min-width: 260px;
+      flex: 1 1 520px;
+      min-width: 280px;
     }
+
     .searchlabel{
       display:flex;
       align-items:center;
@@ -43,7 +41,7 @@
       margin: 0 0 8px;
       font-size: 12px;
       font-weight: 1000;
-      letter-spacing: .04em;
+      letter-spacing: .06em;
       opacity: .9;
       text-transform: uppercase;
     }
@@ -79,6 +77,7 @@
       color: rgba(233,238,248,.55);
       font-weight: 900;
     }
+
     .searchhint{
       margin-top: 8px;
       font-size: 12px;
@@ -86,7 +85,15 @@
       line-height: 1.45;
     }
 
-    /* Counters */
+    .rightcol{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      align-items:flex-end;
+      flex: 0 0 auto;
+      min-width: 320px;
+    }
+
     .counter{
       display:flex;
       gap:10px;
@@ -94,35 +101,39 @@
       justify-content:flex-end;
       align-items:flex-end;
     }
+
     .badge{
-      padding: 10px 10px;
+      padding: 10px 12px;
       border: 1px solid rgba(255,255,255,.14);
       background: rgba(0,0,0,.22);
       font-weight: 1000;
       letter-spacing: .02em;
       border-radius: 0;
-      min-width: 140px;
+      min-width: 160px;
       text-align:center;
+      white-space:nowrap;
+    }
+
+    .badge .lbl{
+      opacity: .9;
+      margin-right: 6px;
     }
     .badge small{
       font-size: 14px;
       opacity: .95;
-      margin-left: 6px;
       font-weight: 1000;
     }
 
-    /* Make "Loading posts…" very obvious */
     .feed-loading{
-      grid-column: 1 / -1;
-      padding: 14px 12px;
+      margin: 0 0 12px;
+      padding: 12px 12px;
       border: 1px solid rgba(255,255,255,.14);
       background: rgba(0,0,0,.22);
       font-weight: 1000;
       letter-spacing: .02em;
-      opacity: .9;
+      opacity: .92;
     }
 
-    /* Helpful SEO text blocks */
     .seo-block{
       margin-top: 12px;
       padding: 12px 12px;
@@ -133,11 +144,6 @@
       opacity: .92;
     }
     .seo-block strong{ font-weight: 1000; }
-    .seo-list{
-      margin: 10px 0 0;
-      padding-left: 18px;
-    }
-    .seo-list li{ margin: 4px 0; }
   </style>
 
   <!-- Google tag (gtag.js) -->
@@ -158,18 +164,12 @@
       <div class="wrap">
         <h1 style="margin:0 0 6px">Facebook • Support</h1>
         <p style="margin:0;opacity:.9;line-height:1.6;max-width:85ch">
-          Browse approved posts from creators and pages you want to support — and archive important links for public-interest discussion.
-          We focus on verifiable sources and civil debate around Trump, MAGA narratives, elections, democracy, and accountability.
+          Browse approved Facebook-friendly support posts. Search by creator, keywords, or URL. If you have a favorite influencer,
+          submit one of their posts for review and archiving.
         </p>
 
-        <!-- Extra on-screen SEO text (not “developer notes”) -->
         <div class="seo-block">
-          <strong>What this page is:</strong> A curated feed of approved Facebook posts submitted by the community.
-          Use the search box to find posts by creator name, keywords, or URL. If you want a post preserved here, use the Submit page.
-          <ul class="seo-list">
-            <li><strong>Sources:</strong> Links open to the original post so you can verify context.</li>
-            <li><strong>Submission:</strong> Posts appear after review to reduce spam and duplicates.</li>
-          </ul>
+          <strong>How it works:</strong> Submit a post link → it gets reviewed → approved posts appear here for easy browsing and sharing.
         </div>
       </div>
     </section>
@@ -181,11 +181,9 @@
           <div class="searchwrap">
             <div class="searchlabel">
               <span>Search the Support feed</span>
-              <a class="btn" href="/submit" style="padding:8px 10px">Submit a Post</a>
             </div>
 
             <div class="searchfield">
-              <!-- magnifier icon -->
               <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                 <path d="M10 2a8 8 0 105.3 14l4.4 4.4 1.4-1.4-4.4-4.4A8 8 0 0010 2zm0 2a6 6 0 110 12 6 6 0 010-12z"/>
               </svg>
@@ -200,31 +198,24 @@
             </div>
 
             <div class="searchhint">
-              Tip: paste part of a Facebook URL, a creator name, or a keyword like <strong>Trump</strong>, <strong>MAGA</strong>, <strong>election</strong>, <strong>ICE</strong>, etc.
+              Tip: search by creator name, outlet, topic, or paste part of the URL.
             </div>
           </div>
 
-          <div class="counter" aria-label="Feed counters">
-            <div class="badge">Approved:<small id="countApproved">0</small></div>
-            <div class="badge">Pending:<small id="countPending">0</small></div>
+          <div class="rightcol">
+            <a class="btn primary" href="/submit" style="padding:10px 12px;">Submit a Post</a>
+
+            <div class="counter" aria-label="Feed counters">
+              <div class="badge"><span class="lbl">Approved:</span><small id="countApproved">0</small></div>
+              <div class="badge"><span class="lbl">Pending:</span><small id="countPending">0</small></div>
+            </div>
           </div>
         </div>
 
-        <!-- KEEP LOADING TEXT VERY APPARENT -->
-        <div id="feedGrid" class="feed-grid">
-          <div class="feed-loading">Loading posts…</div>
-        </div>
+        <div id="loadingBanner" class="feed-loading">Loading posts…</div>
 
-      </div>
-    </section>
+        <div id="feedGrid" class="feed-grid"></div>
 
-    <!-- Extra on-screen text (SEO + clarity) -->
-    <section class="section" style="padding-top:0">
-      <div class="wrap">
-        <div class="seo-block">
-          <strong>Note:</strong> Civic Threat is a public-interest archive and discussion hub. Posts are shown as embeds or links to the original source.
-          If an embed fails to load, click “Go to Post” on a card to open the original Facebook URL.
-        </div>
       </div>
     </section>
   </main>
@@ -234,5 +225,39 @@
   <script src="/config.js?v=12"></script>
   <script src="/data-api.js?v=12"></script>
   <script src="/app.js?v=12"></script>
+
+  <script>
+    (function(){
+      const banner = document.getElementById("loadingBanner");
+      const grid = document.getElementById("feedGrid");
+      const a = document.getElementById("countApproved");
+      const p = document.getElementById("countPending");
+
+      function cleanCounter(el){
+        if(!el) return;
+        const t = (el.textContent || "").trim();
+        el.textContent = t.replace(/^approved:\s*/i, "").replace(/^pending:\s*/i, "").trim();
+      }
+
+      function hasCards(){
+        if(!grid) return false;
+        return !!grid.querySelector(".post-card, .post, article, iframe");
+      }
+
+      let tries = 0;
+      const iv = setInterval(function(){
+        tries++;
+
+        cleanCounter(a);
+        cleanCounter(p);
+
+        if(banner){
+          banner.style.display = hasCards() ? "none" : "";
+        }
+
+        if(tries > 60) clearInterval(iv);
+      }, 500);
+    })();
+  </script>
 </body>
 </html>
