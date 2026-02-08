@@ -7,8 +7,8 @@
   --stroke:rgba(255,255,255,.12);
   --text:#e9eef8;
   --muted:rgba(233,238,248,.72);
-  --red:#b30012;
-  --blue:#2b6cff;
+  --red:#b30012;   /* header/footer red */
+  --blue:#2b6cff;  /* submit blue */
 }
 
 *{box-sizing:border-box}
@@ -36,9 +36,7 @@ a{color:inherit}
   display:flex; align-items:center; justify-content:space-between;
   gap:14px;
   padding:10px 0;
-
-  /* allow wrap on small screens so nav doesn't overflow */
-  flex-wrap:wrap;
+  flex-wrap:wrap; /* prevent overflow */
 }
 
 /* brand block */
@@ -46,8 +44,6 @@ a{color:inherit}
   display:flex;
   align-items:center;
   gap:18px;
-
-  /* allow shrinking on small screens */
   min-width:0;
   flex:1 1 320px;
 }
@@ -80,13 +76,13 @@ a{color:inherit}
   display:flex;
   align-items:center;
   gap:10px;
-
-  /* allow wrapping so buttons don't push off-screen */
   flex-wrap:wrap;
   flex:0 1 auto;
   min-width:0;
   justify-content:flex-end;
 }
+
+/* cta (Submit in header) */
 .cta{
   display:inline-flex;align-items:center;justify-content:center;
   padding:9px 14px;
@@ -97,6 +93,14 @@ a{color:inherit}
   white-space:nowrap;
 }
 .cta:hover{background:rgba(0,0,0,.38)}
+
+/* Make header Submit BLUE always (works with: class="cta btn blue") */
+.cta.btn.blue{
+  background:var(--blue) !important;
+  border-color:rgba(0,0,0,.25) !important;
+  color:#fff !important;
+}
+.cta.btn.blue:hover{filter:brightness(1.05)}
 
 /* dropdown */
 .dropdown{position:relative}
@@ -118,11 +122,8 @@ a{color:inherit}
   top:calc(100% + 8px);
   min-width:320px;
   max-width:420px;
-
-  /* ensure text is visible on all browsers */
   background:#0b0d14;
   color:#ffffff;
-
   border:1px solid rgba(255,255,255,.16);
   box-shadow:0 18px 38px rgba(0,0,0,.55);
   overflow:hidden;
@@ -137,8 +138,6 @@ a{color:inherit}
   text-decoration:none;
   border-bottom:1px solid rgba(255,255,255,.08);
   white-space:nowrap;
-
-  /* force visible text */
   color:#ffffff;
 }
 .dd-item:last-child{border-bottom:none}
@@ -154,36 +153,32 @@ a{color:inherit}
   font-weight:900;
   color:rgba(255,255,255,.78);
 }
-
-/* make sure nested text inherits correctly */
 .dd-item span,
 .dd-item small{ color:inherit; }
 
-/* keep dropdown inside viewport on small screens */
-@media (max-width: 860px){
+/* ===== Dropdown viewport safety =====
+   This prevents the menu from hanging off-screen on mobile.
+   Works even if JS positioning fails. */
+@media (max-width: 720px){
   .dropdown-menu{
-    max-width:min(92vw, 420px);
-    min-width:min(92vw, 320px);
+    left:50% !important;
+    right:auto !important;
+    transform:translateX(-50%) !important;
+    width:min(92vw, 420px) !important;
+    min-width:min(92vw, 320px) !important;
+    max-width:min(92vw, 420px) !important;
   }
 }
 
 /* ===== Header Mobile Breakpoints ===== */
 @media (max-width: 860px){
-  /* Put nav on its own line so it never overflows */
-  .topbar .inner{
-    align-items:flex-start;
-  }
-
+  .topbar .inner{ align-items:flex-start; }
   .nav{
     width:100%;
     justify-content:flex-start;
     gap:8px;
   }
-
-  /* Hide FOLLOW US label on small screens (icons remain) */
   .followlabel{display:none}
-
-  /* Slightly smaller controls to fit better */
   .dropbtn{padding:9px 10px; font-size:14px}
   .cta{padding:9px 12px; font-size:14px}
 }
@@ -226,15 +221,21 @@ a{color:inherit}
   background:rgba(0,0,0,.28);
   box-shadow:0 12px 26px rgba(0,0,0,.45);
   overflow:hidden;
-
-  /* square (your request) */
-  border-radius:0;
+  border-radius:0; /* square */
 }
 .post-head{padding:12px}
 .post-head .meta{font-size:12px;color:rgba(233,238,248,.78);font-weight:900}
 .post-head .title{font-size:16px;font-weight:1000;margin-top:6px;letter-spacing:.2px}
 
-.embed{background:black;border-top:1px solid rgba(255,255,255,.10);border-bottom:1px solid rgba(255,255,255,.10)}
+/* Optional hooks if you later add classes instead of inline color */
+.post-card.support .post-head .title{ color:var(--blue); }
+.post-card.maga .post-head .title{ color:var(--red); }
+
+.embed{
+  background:black;
+  border-top:1px solid rgba(255,255,255,.10);
+  border-bottom:1px solid rgba(255,255,255,.10)
+}
 .fbframe{width:100%;height:420px;border:0;display:block}
 @media (max-width:620px){ .fbframe{height:520px} }
 
@@ -260,14 +261,20 @@ a{color:inherit}
   text-decoration:none;
   font-weight:1000;
   cursor:pointer;
-
-  /* square */
-  border-radius:0;
+  border-radius:0; /* square */
 }
 .btn:hover{background:rgba(255,255,255,.10)}
 .btn.primary{background:var(--blue);border-color:rgba(0,0,0,.25);color:#fff}
 .btn.primary:hover{filter:brightness(1.05)}
 .btn.danger{background:#7a0010;border-color:rgba(0,0,0,.25);color:#fff}
+
+/* Provide a dedicated blue button class (used for Submit-for-review, etc.) */
+.btn.blue{
+  background:var(--blue);
+  border-color:rgba(0,0,0,.25);
+  color:#fff;
+}
+.btn.blue:hover{filter:brightness(1.05)}
 
 .btn:disabled,
 button.btn:disabled{
@@ -279,7 +286,7 @@ button.btn:disabled{
 /* actions row */
 .post-actions{display:flex; gap:10px; flex-wrap:wrap}
 
-/* reaction emoji button (big emoji, no weird container) */
+/* reaction emoji button */
 .reactbar{display:flex; justify-content:flex-end}
 .reactemoji{
   display:inline-flex;align-items:center;gap:10px;
@@ -287,8 +294,6 @@ button.btn:disabled{
   border:1px solid rgba(255,255,255,.16);
   background:rgba(255,255,255,.06);
   cursor:pointer;
-
-  /* square */
   border-radius:0;
 }
 .reactemoji:hover{background:rgba(255,255,255,.10)}
@@ -328,12 +333,13 @@ button.btn:disabled{
   border-top:1px solid rgba(255,255,255,.10);
   margin-top:26px;
   padding:16px 0;
-  background:rgba(0,0,0,.25);
+  background:var(--red); /* FIX: footer red like header */
+  color:#fff;
 }
 .footinner{display:flex;gap:16px;justify-content:space-between;flex-wrap:wrap}
 .footlinks{display:flex;gap:14px;flex-wrap:wrap}
-.footlinks a{opacity:.9;text-decoration:none}
+.footlinks a{opacity:.95;text-decoration:none;color:#fff}
 .footlinks a:hover{text-decoration:underline;opacity:1}
 
-/* PDF reader button visibility fix (your screenshot issue) */
+/* PDF reader button visibility fix */
 button, select, input, textarea { color-scheme: dark; }
