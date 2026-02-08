@@ -4,26 +4,28 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <meta name="color-scheme" content="dark"/>
-  <title>Facebook • Support | Civic Threat</title>
+  <title>Facebook • MAGA / Debate | Civic Threat</title>
 
-  <meta name="description" content="Browse approved Facebook Support posts curated by Civic Threat. Search by creator or URL and submit posts for review."/>
+  <meta name="description" content="Browse approved Facebook MAGA / Debate posts curated by Civic Threat. Track narratives, archive links for public-interest discussion, and submit posts for review."/>
   <meta name="robots" content="index,follow"/>
 
-  <meta property="og:title" content="Facebook • Support | Civic Threat"/>
-  <meta property="og:description" content="Browse approved support posts and submit links for review and archiving."/>
+  <meta property="og:title" content="Facebook • MAGA / Debate | Civic Threat"/>
+  <meta property="og:description" content="Browse approved MAGA / Debate posts and submit links for review and archiving."/>
   <meta property="og:type" content="website"/>
-  <meta property="og:url" content="https://civicthreat.us/facebook"/>
+  <meta property="og:url" content="https://civicthreat.us/facebook-maga"/>
   <meta property="og:image" content="https://civicthreat.us/assets/civicthreat-social-1200x630.jpg"/>
 
   <link rel="icon" href="/assets/logo.png"/>
   <link rel="stylesheet" href="/styles.css?v=7"/>
 
+  <!-- Page-only styles -->
   <style>
+    /* top row */
     .feed-top{
       display:flex;
       gap:14px;
       justify-content:space-between;
-      align-items:flex-end;
+      align-items:flex-end;        /* keeps everything on the same baseline */
       flex-wrap:wrap;
       margin: 10px 0 12px;
     }
@@ -124,6 +126,7 @@
       font-weight: 1000;
     }
 
+    /* VERY VISIBLE loading banner (lives outside the grid so app.js doesn't wipe it) */
     .feed-loading{
       margin: 0 0 12px;
       padding: 12px 12px;
@@ -134,6 +137,7 @@
       opacity: .92;
     }
 
+    /* extra on-screen text block for SEO */
     .seo-block{
       margin-top: 12px;
       padding: 12px 12px;
@@ -144,6 +148,8 @@
       opacity: .92;
     }
     .seo-block strong{ font-weight: 1000; }
+    .seo-list{ margin: 10px 0 0; padding-left: 18px; }
+    .seo-list li{ margin: 4px 0; }
   </style>
 
   <!-- Google tag (gtag.js) -->
@@ -156,20 +162,25 @@
   </script>
 </head>
 
-<body data-page="fb_support">
+<body data-page="fb_maga">
   <div id="siteHeader"></div>
 
   <main>
     <section class="hero" style="padding-bottom:8px">
       <div class="wrap">
-        <h1 style="margin:0 0 6px">Facebook • Support</h1>
+        <h1 style="margin:0 0 6px">Facebook • MAGA / Debate</h1>
         <p style="margin:0;opacity:.9;line-height:1.6;max-width:85ch">
-          Browse approved Facebook-friendly support posts. Search by creator, keywords, or URL. If you have a favorite influencer,
-          submit one of their posts for review and archiving.
+          Browse approved debate-oriented posts and archived links for public-interest discussion. This page is intended for discussion,
+          context-checking, and tracking narratives around Trump, MAGA, and related political topics.
         </p>
 
         <div class="seo-block">
-          <strong>How it works:</strong> Submit a post link → it gets reviewed → approved posts appear here for easy browsing and sharing.
+          <strong>What this page is:</strong> A curated feed of approved Facebook posts submitted by the community for debate and review.
+          Use Search to find posts by creator name, keywords, or URL. If you want a post archived here, use Submit.
+          <ul class="seo-list">
+            <li><strong>Verify context:</strong> Use “Go to Post” to open the original source link.</li>
+            <li><strong>Moderation:</strong> Posts appear after review to reduce spam and duplicates.</li>
+          </ul>
         </div>
       </div>
     </section>
@@ -180,7 +191,7 @@
         <div class="feed-top">
           <div class="searchwrap">
             <div class="searchlabel">
-              <span>Search the Support feed</span>
+              <span>Search the MAGA / Debate feed</span>
             </div>
 
             <div class="searchfield">
@@ -198,11 +209,12 @@
             </div>
 
             <div class="searchhint">
-              Tip: search by creator name, outlet, topic, or paste part of the URL.
+              Tip: try keywords like <strong>Trump</strong>, <strong>MAGA</strong>, <strong>tariffs</strong>, <strong>immigration</strong>, <strong>election</strong>.
             </div>
           </div>
 
           <div class="rightcol">
+            <!-- Submit button BLUE (use .btn.primary everywhere going forward) -->
             <a class="btn primary" href="/submit" style="padding:10px 12px;">Submit a Post</a>
 
             <div class="counter" aria-label="Feed counters">
@@ -212,10 +224,20 @@
           </div>
         </div>
 
+        <!-- VERY APPARENT LOADING (NOT INSIDE #feedGrid) -->
         <div id="loadingBanner" class="feed-loading">Loading posts…</div>
 
         <div id="feedGrid" class="feed-grid"></div>
 
+      </div>
+    </section>
+
+    <section class="section" style="padding-top:0">
+      <div class="wrap">
+        <div class="seo-block">
+          <strong>Note:</strong> Content is embedded or linked for reference and context review. If an embed fails to load,
+          click “Go to Post” on a card to open the original Facebook URL.
+        </div>
       </div>
     </section>
   </main>
@@ -226,6 +248,7 @@
   <script src="/data-api.js?v=12"></script>
   <script src="/app.js?v=12"></script>
 
+  <!-- FIXES: hide loading when cards render + strip duplicate "Approved:" / "Pending:" text -->
   <script>
     (function(){
       const banner = document.getElementById("loadingBanner");
@@ -236,12 +259,13 @@
       function cleanCounter(el){
         if(!el) return;
         const t = (el.textContent || "").trim();
+        // If app.js accidentally sets "Approved: 11" into the small tag, strip the label
         el.textContent = t.replace(/^approved:\s*/i, "").replace(/^pending:\s*/i, "").trim();
       }
 
       function hasCards(){
         if(!grid) return false;
-        return !!grid.querySelector(".post-card, .post, article, iframe");
+        return !!grid.querySelector(".post-card, .post, article, iframe"); // flexible in case markup differs
       }
 
       let tries = 0;
@@ -252,9 +276,14 @@
         cleanCounter(p);
 
         if(banner){
-          banner.style.display = hasCards() ? "none" : "";
+          if(hasCards()){
+            banner.style.display = "none";
+          } else {
+            banner.style.display = "";
+          }
         }
 
+        // stop after ~30s
         if(tries > 60) clearInterval(iv);
       }, 500);
     })();
