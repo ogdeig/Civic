@@ -1,6 +1,6 @@
 {
-  "generatedAt": 1770303299,
-  "count": 23,
+  "generatedAt": 1770529112,
+  "count": 24,
   "items": [
     {
       "file": "ANASTASIA DOE_vs_EPSTEIN_Filed 12-17-19.pdf",
@@ -11,6 +11,11 @@
       "file": "CL_vs_Epstein.pdf",
       "path": "released/epstein/pdfs/CL_vs_Epstein.pdf",
       "label": "CL vs Epstein"
+    },
+    {
+      "file": "EFTA00141124.pdf",
+      "path": "released/epstein/pdfs/EFTA00141124.pdf",
+      "label": "EFTA00141124"
     },
     {
       "file": "FBI Intake D_Trump 10-27-20.pdf",
