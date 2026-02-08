@@ -4,7 +4,27 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <meta name="color-scheme" content="dark"/>
-  <title>Submit | Civic Threat</title>
+
+  <title>Submit a Facebook Post | Civic Threat</title>
+  <meta name="description" content="Submit a Facebook post to Civic Threat for review and archiving. Choose Support or MAGA/Debate, add a headline, then paste an embed iframe or direct URL."/>
+  <meta name="robots" content="index,follow"/>
+
+  <!-- Canonical (best once you move to /submit/index.html) -->
+  <link rel="canonical" href="https://civicthreat.us/submit"/>
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Submit a Facebook Post | Civic Threat"/>
+  <meta property="og:description" content="Submit a Facebook post for review and archiving. Choose Support or MAGA/Debate, add a headline, then paste an embed iframe or direct URL."/>
+  <meta property="og:type" content="website"/>
+  <meta property="og:url" content="https://civicthreat.us/submit"/>
+  <meta property="og:image" content="https://civicthreat.us/assets/civicthreat-social-1200x630.jpg"/>
+
+  <!-- Twitter/X -->
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="Submit a Facebook Post | Civic Threat"/>
+  <meta name="twitter:description" content="Submit a Facebook post for review and archiving. Choose Support or MAGA/Debate, add a headline, then paste an embed iframe or direct URL."/>
+  <meta name="twitter:image" content="https://civicthreat.us/assets/civicthreat-social-1200x630.jpg"/>
+
   <link rel="icon" href="/assets/logo.png"/>
   <link rel="stylesheet" href="/styles.css"/>
 
@@ -18,6 +38,7 @@
   </script>
 
   <style>
+    /* --- Form base (keep your current look) --- */
     label{display:block;font-size:12px;color:rgba(233,238,248,.78);margin:0 0 6px}
     input,select,textarea{
       width:100%;
@@ -30,8 +51,8 @@
       font-size:14px;
     }
     textarea{min-height:160px;resize:vertical}
-    input:focus,select:focus,textarea:focus{border-color:rgba(43,108,255,.65)}
-    .smallnote{font-size:12px;color:rgba(233,238,248,.72);line-height:1.35}
+    input:focus,select:focus,textarea:focus{border-color:rgba(43,108,255,.75)}
+    .smallnote{font-size:12px;color:rgba(233,238,248,.72);line-height:1.45}
     .smallnote a{color:#e9eef8;opacity:.9}
     .smallnote a:hover{text-decoration:underline}
     .hr{height:1px;background:rgba(255,255,255,.08);margin:18px 0}
@@ -45,6 +66,96 @@
     .consentBox input{width:auto;margin-top:2px}
     #submitStatus{display:inline-block;min-height:18px}
     .btn[disabled]{opacity:.6;cursor:not-allowed}
+
+    /* --- Step bar (color + above the fold) --- */
+    .stepbar{
+      margin-top: 12px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      border-radius: 0;
+      overflow: hidden;
+    }
+    .stepbar .row{
+      display:grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    @media (max-width: 860px){
+      .stepbar .row{ grid-template-columns: 1fr; }
+    }
+    .step{
+      padding: 10px 12px;
+      border-right: 1px solid rgba(255,255,255,.10);
+    }
+    .step:last-child{ border-right:none; }
+    .step .tag{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      font-size:11px;
+      font-weight:1000;
+      letter-spacing:.08em;
+      text-transform: uppercase;
+      opacity:.95;
+      margin-bottom: 6px;
+    }
+    .dot{
+      width:10px;height:10px;border-radius:2px;
+      background: rgba(43,108,255,.95);
+      box-shadow: 0 0 0 2px rgba(43,108,255,.18);
+    }
+    .dot.red{ background: rgba(255,0,80,.95); box-shadow: 0 0 0 2px rgba(255,0,80,.18); }
+    .dot.teal{ background: rgba(0,242,234,.95); box-shadow: 0 0 0 2px rgba(0,242,234,.18); }
+    .step p{
+      margin: 0;
+      font-size: 12px;
+      opacity: .88;
+      line-height: 1.45;
+    }
+
+    /* --- Colored field headers --- */
+    .fieldTop{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom: 6px;
+    }
+    .fieldTop .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 4px 8px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.25);
+      font-size: 11px;
+      font-weight: 1000;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      opacity:.95;
+    }
+    .pill .miniDot{
+      width:9px;height:9px;border-radius:2px;
+      background: rgba(43,108,255,.95);
+    }
+    .pill.red .miniDot{ background: rgba(255,0,80,.95); }
+    .pill.teal .miniDot{ background: rgba(0,242,234,.95); }
+
+    /* Keep hero text readable but not bulky */
+    .heroCopy{
+      margin:0;
+      color:rgba(233,238,248,.78);
+      line-height:1.6;
+      max-width: 95ch;
+    }
+    .heroCopy strong{ color:#e9eef8; }
+
+    /* Make "Submit for review" clearly blue (also if .blue class differs elsewhere) */
+    #submitBtn.btn.blue, #submitBtn.btn.primary{
+      background: rgba(43,108,255,.95);
+      border-color: rgba(0,0,0,.25);
+      color: #fff;
+    }
+    #submitBtn.btn.blue:hover{ filter: brightness(1.06); }
   </style>
 </head>
 
@@ -55,9 +166,35 @@
     <section class="hero" style="padding-bottom:10px">
       <div class="wrap">
         <h1 style="font-size:40px; margin:0 0 6px">Submit a Facebook Post</h1>
-        <p style="margin:0;color:rgba(233,238,248,.78)">
-          Paste a Facebook embed code (recommended) <em>or</em> a direct Facebook post URL. Submissions go into review.
+
+        <p class="heroCopy">
+          Use this page to submit a <strong>Facebook post</strong> to Civic Threat for review and archiving.
+          Choose whether it belongs in <strong>Support</strong> or <strong>MAGA / Debate</strong>, add a short headline,
+          then paste the Facebook embed iframe (recommended) or the direct URL. Approved posts appear publicly after moderation.
         </p>
+
+        <!-- Color step bar (compact, above the fold) -->
+        <div class="stepbar" aria-label="How to submit a post">
+          <div class="row">
+            <div class="step">
+              <div class="tag"><span class="dot teal"></span> Step 1 • Choose feed</div>
+              <p>Select <strong>Facebook • Support</strong> or <strong>Facebook • MAGA / Debate</strong> so your post lands in the right place.</p>
+            </div>
+            <div class="step">
+              <div class="tag"><span class="dot"></span> Step 2 • Write headline</div>
+              <p>Add a short title people can search (creator name, topic like Trump/MAGA, tariffs, immigration, etc.).</p>
+            </div>
+            <div class="step">
+              <div class="tag"><span class="dot red"></span> Step 3 • Paste embed</div>
+              <p>Paste the Facebook <strong>Embed</strong> iframe or a direct post URL. Then click <strong>Submit for review</strong>.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="smallnote" style="margin-top:10px">
+          Browse feeds: <a href="/facebook">Support</a> • <a href="/facebook-maga">MAGA / Debate</a> •
+          Released files: <a href="/released/epstein/epstein-reader">Epstein reader</a>
+        </div>
       </div>
     </section>
 
@@ -66,24 +203,40 @@
         <form id="submitForm" autocomplete="off">
           <div class="feed-grid" style="grid-template-columns: 1fr 1fr; gap:14px">
             <div>
-              <label for="category">Category</label>
+              <div class="fieldTop">
+                <label for="category" style="margin:0">Category</label>
+                <span class="pill teal"><span class="miniDot"></span> Step 1</span>
+              </div>
               <select id="category" required>
                 <option value="support">Facebook • Support</option>
                 <option value="maga">Facebook • MAGA / Debate</option>
               </select>
+              <div class="smallnote" style="margin-top:6px">
+                <strong>Support</strong> = creators/pages you support. <strong>MAGA / Debate</strong> = discussion, narrative tracking, and context-checking.
+              </div>
             </div>
 
             <div>
-              <label for="title">Title (max 80 characters)</label>
+              <div class="fieldTop">
+                <label for="title" style="margin:0">Title (max 80 characters)</label>
+                <span class="pill"><span class="miniDot"></span> Step 2</span>
+              </div>
               <input id="title" maxlength="80" placeholder="Short, clear headline…" required/>
+              <div class="smallnote" style="margin-top:6px">
+                Good titles improve search and indexing. Example: “Trump tariff claim — fact check” or “MAGA rally clip — context”.
+              </div>
             </div>
           </div>
 
           <div style="margin-top:14px">
-            <label for="embed">Facebook Embed Code (or direct post URL)</label>
+            <div class="fieldTop">
+              <label for="embed" style="margin:0">Facebook Embed Code (or direct post URL)</label>
+              <span class="pill red"><span class="miniDot"></span> Step 3</span>
+            </div>
             <textarea id="embed" placeholder='Paste the full embed snippet from Facebook… or paste a direct Facebook URL.' required></textarea>
             <div class="smallnote" style="margin-top:8px">
-              Tip: On Facebook, open the post → click the three dots → “Embed” → copy the embed code.
+              Quick embed tip: Open the post → tap the three dots → <strong>Embed</strong> → copy the iframe code.
+              If you only have a URL, paste the direct Facebook link.
             </div>
           </div>
 
@@ -92,7 +245,8 @@
               <label for="username">Your username (optional)</label>
               <input id="username" placeholder="Example: CivicThreat"/>
               <div class="smallnote" style="margin-top:6px">
-                If you consent below, your username appears as “Submitted by”. Otherwise it shows as Anonymous.
+                Don’t forget this if you want credit. With consent checked, your name shows as “Submitted by”.
+                Without consent (or blank username), it shows as Anonymous.
               </div>
             </div>
 
@@ -103,7 +257,9 @@
                 <div class="smallnote">
                   I agree my username may be displayed publicly on this site.
                   <br/>
-                  <a href="/policy/privacy">Privacy</a> • <a href="/policy/terms">Terms</a>
+                  <a href="https://chattokgaming.com/policy/privacy" target="_blank" rel="noopener">Privacy</a>
+                  •
+                  <a href="https://chattokgaming.com/policy/terms" target="_blank" rel="noopener">Terms</a>
                 </div>
               </div>
             </div>
@@ -117,8 +273,9 @@
 
         <div class="hr"></div>
 
-        <div class="smallnote">
+        <div class="smallnote" style="max-width:95ch">
           Submissions are reviewed before appearing publicly. Please keep it civil — no hate speech, doxxing, or harassment.
+          Civic Threat does not endorse wrongdoing and does not make claims about guilt or innocence; this site is for public-interest discussion and context review.
         </div>
       </div>
     </section>
@@ -126,10 +283,10 @@
 
   <div id="siteFooter"></div>
 
-  <!-- IMPORTANT: script order -->
-  <script src="/config.js"></script>
-  <script src="/data-api.js"></script>
-  <script src="/app.js"></script>
+  <!-- IMPORTANT: script order (cache-busted) -->
+  <script src="/config.js?v=12"></script>
+  <script src="/data-api.js?v=12"></script>
+  <script src="/app.js?v=12"></script>
 
   <script>
     (function(){
@@ -185,7 +342,6 @@
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
 
-        // Make sure API exists and has URL
         if (!window.CT_CONFIG || !String(window.CT_CONFIG.API_URL || "").trim()) {
           setStatus("Config error: API_URL missing in config.js", false);
           return;
@@ -236,8 +392,6 @@
         }
       });
     })();
-  </script src="/config.js?v=12"></script>
-  <script src="/data-api.js?v=12"></script>
-  <script src="/app.js?v=12"></script>
+  </script>
 </body>
 </html>
