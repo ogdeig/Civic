@@ -88,6 +88,14 @@
       margin: 0 0 10px;
       font-size: 16px;
       letter-spacing: .02em;
+      font-weight: 1000;
+    }
+    .gallery-sub{
+      margin: 0 0 12px;
+      font-size: 12px;
+      opacity: .82;
+      line-height: 1.5;
+      max-width: 90ch;
     }
     .gallery-grid{
       display:grid;
@@ -117,6 +125,7 @@
       font-size: 12px;
       opacity: .85;
       line-height: 1.35;
+      border-top: 1px solid rgba(255,255,255,.08);
     }
     .g-cap .src{
       margin-top: 6px;
@@ -287,12 +296,16 @@
     <section class="gallery-section ep-box" aria-label="Released images">
       <div class="pad">
         <h2>Released Image Excerpts</h2>
+        <p class="gallery-sub">
+          This gallery auto-loads from <strong>/released/epstein/images.json</strong> and displays images found in <strong>/released/epstein/images/</strong>.
+        </p>
+
         <div id="galleryGrid" class="gallery-grid">
           <div style="opacity:.8;font-size:13px;">Loading images…</div>
         </div>
 
         <div class="legal" style="margin-top:12px">
-          <strong>Image note:</strong> These images are displayed for reference alongside the released PDFs. If you need full context, use the PDF reader above and consult the complete file.
+          <strong>Image note:</strong> Images are shown for reference alongside the released PDFs. For context, use the PDF reader above and consult the complete file.
         </div>
       </div>
     </section>
@@ -343,146 +356,10 @@
     if(window.pdfjsLib){
       window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
     }
-    (function(){
-      function qs(sel, root=document){ return root.querySelector(sel); }
-      function qsa(sel, root=document){ return root ? Array.from(root.querySelectorAll(sel)) : []; }
-      function wireDropdown(dd){
-        if(!dd) return;
-        const btn = qs("button", dd);
-        const menu = qs(".dropdown-menu", dd);
-        if(!btn || !menu) return;
-        function close(){ dd.classList.remove("open"); btn.setAttribute("aria-expanded","false"); }
-        function open(){ dd.classList.add("open"); btn.setAttribute("aria-expanded","true"); }
-        btn.addEventListener("click",(e)=>{ e.preventDefault(); dd.classList.contains("open") ? close() : open(); });
-        document.addEventListener("click",(e)=>{ if(!dd.contains(e.target)) close(); });
-        document.addEventListener("keydown",(e)=>{ if(e.key==="Escape") close(); });
-        qsa("a", menu).forEach(a=>a.addEventListener("click", close));
-      }
-      wireDropdown(qs("#platformsDD"));
-      wireDropdown(qs("#releasedDD"));
-    })();
   </script>
 
+  <!-- Core reader logic -->
   <script src="./epstein-tts.js?v=14"></script>
-
-  <!-- Voice Fix Shim (FB in-app browser / Android WebView) -->
-  <script>
-  /**
-   * Voice Fix Shim (FB in-app browser / Android WebView)
-   * - Retries speechSynthesis voices
-   * - Forces voice init on user gesture (Play click)
-   * - Shows "Open in Chrome" help if voices never load
-   */
-  (function () {
-    const voiceSelect = document.getElementById("voiceSelect");
-    const btnPlay = document.getElementById("btnPlay");
-    const statusTitle = document.getElementById("statusTitle");
-    const statusLine  = document.getElementById("statusLine");
-
-    if (!voiceSelect || !("speechSynthesis" in window)) return;
-
-    // Detect FB/IG in-app browsers (common voice failure)
-    const ua = navigator.userAgent || "";
-    const isInApp = /FBAN|FBAV|Instagram/i.test(ua);
-
-    // Add help message box once
-    function ensureHelpBox() {
-      if (document.getElementById("voiceHelpBox")) return;
-      const box = document.createElement("div");
-      box.id = "voiceHelpBox";
-      box.style.cssText =
-        "margin-top:10px;padding:10px;border:1px solid rgba(255,255,255,.12);" +
-        "background:rgba(0,0,0,.35);font-size:12px;line-height:1.5;display:none;";
-      box.innerHTML =
-        "<strong>Voice not loading?</strong><br>" +
-        "Facebook’s in-app browser sometimes blocks or hides text-to-speech voices.<br>" +
-        "Tap the ⋮ menu and choose <b>Open in browser</b> (Chrome).";
-      // place under the controls/status area
-      const statusBox = document.getElementById("statusBox");
-      if (statusBox && statusBox.parentNode) statusBox.parentNode.insertBefore(box, statusBox.nextSibling);
-    }
-
-    function setStatus(msg) {
-      if (statusTitle) statusTitle.textContent = msg;
-      if (statusLine)  statusLine.textContent  = isInApp
-        ? "If voices don’t appear, open this page in Chrome from the ⋮ menu."
-        : "If voices don’t appear, try Chrome or another browser.";
-    }
-
-    function clearSelect() {
-      voiceSelect.innerHTML = "";
-    }
-
-    function addOption(label, value) {
-      const opt = document.createElement("option");
-      opt.textContent = label;
-      opt.value = value;
-      voiceSelect.appendChild(opt);
-    }
-
-    function renderVoices(voices) {
-      clearSelect();
-
-      // Put a safe default option first
-      addOption("Default device voice", "");
-
-      // Keep list broad; some environments return only a few
-      const list = voices
-        .slice()
-        .sort((a, b) => (a.lang || "").localeCompare(b.lang || "") || (a.name || "").localeCompare(b.name || ""));
-
-      for (const v of list) {
-        const label = `${v.name} (${v.lang || "?"})`;
-        addOption(label, v.name);
-      }
-
-      // Try to auto-select a UK English voice if present
-      const preferred =
-        list.find(v => /en-GB/i.test(v.lang) && /Google|UK|British/i.test(v.name)) ||
-        list.find(v => /en-GB/i.test(v.lang)) ||
-        list.find(v => /en/i.test(v.lang));
-
-      if (preferred) voiceSelect.value = preferred.name;
-
-      setStatus("Voices loaded.");
-      const help = document.getElementById("voiceHelpBox");
-      if (help) help.style.display = "none";
-    }
-
-    let done = false;
-
-    function loadVoicesWithRetry(retries = 20) {
-      if (done) return;
-      const voices = window.speechSynthesis.getVoices ? window.speechSynthesis.getVoices() : [];
-      if (voices && voices.length) {
-        done = true;
-        renderVoices(voices);
-        return;
-      }
-      if (retries <= 0) {
-        ensureHelpBox();
-        const help = document.getElementById("voiceHelpBox");
-        if (help) help.style.display = isInApp ? "block" : "none";
-        clearSelect();
-        addOption("No voices available in this browser", "");
-        setStatus("No voices found.");
-        return;
-      }
-      setTimeout(() => loadVoicesWithRetry(retries - 1), 250);
-    }
-
-    // Kick off and also listen for voice events
-    window.speechSynthesis.onvoiceschanged = () => loadVoicesWithRetry(20);
-    setTimeout(() => loadVoicesWithRetry(20), 0);
-
-    // User-gesture unlock: re-run when Play is tapped
-    if (btnPlay) {
-      btnPlay.addEventListener("click", () => {
-        loadVoicesWithRetry(20);
-      }, { passive: true });
-    }
-  })();
-  </script>
 
   <!-- Auto-Read / Loop / Viewer pop-out logic -->
   <script>
@@ -648,7 +525,7 @@
     })();
   </script>
 
-  <!-- Gallery loader: loads from ./images.json -->
+  <!-- Gallery loader: loads from ./images.json and expects images in ./images/ -->
   <script>
     (function(){
       const grid = document.getElementById("galleryGrid");
@@ -659,8 +536,8 @@
       }
 
       function card(img){
-        const caption = img.caption ? esc(img.caption) : "";
-        const source = img.source ? esc(img.source) : "";
+        const caption = img.caption ? esc(img.caption) : "Excerpt from publicly released materials (for reference).";
+        const source = img.source ? esc(img.source) : "Publicly released records";
         const alt = img.alt ? esc(img.alt) : "Document image excerpt.";
         const src = img.src ? String(img.src) : "";
 
@@ -669,8 +546,8 @@
         fig.innerHTML = `
           <img src="${esc(src)}" alt="${alt}" loading="lazy" decoding="async">
           <figcaption class="g-cap">
-            ${caption ? `<div>${caption}</div>` : ``}
-            ${source ? `<div class="src"><strong>Source:</strong> ${source}</div>` : ``}
+            <div>${caption}</div>
+            <div class="src"><strong>Source:</strong> ${source}</div>
           </figcaption>
         `;
         return fig;
