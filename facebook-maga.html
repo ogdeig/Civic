@@ -4,13 +4,13 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <meta name="color-scheme" content="dark"/>
-  <title>Facebook MAGA / Debate Posts • Trump + MAGA Discussion Archive | Civic Threat</title>
+  <title>Facebook • MAGA / Debate | Civic Threat</title>
 
-  <meta name="description" content="Browse approved Facebook MAGA / Debate posts curated by Civic Threat. Track Trump/MAGA narratives, archive links for public-interest discussion, and submit posts for review."/>
+  <meta name="description" content="Browse approved Facebook MAGA / Debate posts curated by Civic Threat. Track narratives, archive links for public-interest discussion, and submit posts for review."/>
   <meta name="robots" content="index,follow"/>
 
   <meta property="og:title" content="Facebook • MAGA / Debate | Civic Threat"/>
-  <meta property="og:description" content="Browse approved MAGA / Debate posts and submit links for review and archiving. Public-interest discussion around Trump and MAGA narratives."/>
+  <meta property="og:description" content="Browse approved MAGA / Debate posts and submit links for review and archiving."/>
   <meta property="og:type" content="website"/>
   <meta property="og:url" content="https://civicthreat.us/facebook-maga"/>
   <meta property="og:image" content="https://civicthreat.us/assets/civicthreat-social-1200x630.jpg"/>
@@ -18,21 +18,23 @@
   <link rel="icon" href="/assets/logo.png"/>
   <link rel="stylesheet" href="/styles.css?v=7"/>
 
-  <!-- Page-only styles (search bar + layout helpers) -->
+  <!-- Page-only styles -->
   <style>
+    /* top row */
     .feed-top{
       display:flex;
-      gap:12px;
+      gap:14px;
       justify-content:space-between;
-      align-items:flex-end;
+      align-items:flex-end;        /* keeps everything on the same baseline */
       flex-wrap:wrap;
-      margin: 8px 0 14px;
+      margin: 10px 0 12px;
     }
 
     .searchwrap{
-      flex: 1 1 420px;
-      min-width: 260px;
+      flex: 1 1 520px;
+      min-width: 280px;
     }
+
     .searchlabel{
       display:flex;
       align-items:center;
@@ -41,7 +43,7 @@
       margin: 0 0 8px;
       font-size: 12px;
       font-weight: 1000;
-      letter-spacing: .04em;
+      letter-spacing: .06em;
       opacity: .9;
       text-transform: uppercase;
     }
@@ -77,11 +79,21 @@
       color: rgba(233,238,248,.55);
       font-weight: 900;
     }
+
     .searchhint{
       margin-top: 8px;
       font-size: 12px;
       opacity: .78;
       line-height: 1.45;
+    }
+
+    .rightcol{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      align-items:flex-end;
+      flex: 0 0 auto;
+      min-width: 320px;
     }
 
     .counter{
@@ -91,35 +103,41 @@
       justify-content:flex-end;
       align-items:flex-end;
     }
+
     .badge{
-      padding: 10px 10px;
+      padding: 10px 12px;
       border: 1px solid rgba(255,255,255,.14);
       background: rgba(0,0,0,.22);
       font-weight: 1000;
       letter-spacing: .02em;
       border-radius: 0;
-      min-width: 140px;
+      min-width: 160px;
       text-align:center;
+      white-space:nowrap;
+    }
+
+    .badge .lbl{
+      opacity: .9;
+      margin-right: 6px;
     }
     .badge small{
       font-size: 14px;
       opacity: .95;
-      margin-left: 6px;
       font-weight: 1000;
     }
 
-    /* Make "Loading posts…" very obvious */
+    /* VERY VISIBLE loading banner (lives outside the grid so app.js doesn't wipe it) */
     .feed-loading{
-      grid-column: 1 / -1;
-      padding: 14px 12px;
+      margin: 0 0 12px;
+      padding: 12px 12px;
       border: 1px solid rgba(255,255,255,.14);
       background: rgba(0,0,0,.22);
       font-weight: 1000;
       letter-spacing: .02em;
-      opacity: .9;
+      opacity: .92;
     }
 
-    /* Extra on-screen SEO text blocks */
+    /* extra on-screen text block for SEO */
     .seo-block{
       margin-top: 12px;
       padding: 12px 12px;
@@ -130,10 +148,7 @@
       opacity: .92;
     }
     .seo-block strong{ font-weight: 1000; }
-    .seo-list{
-      margin: 10px 0 0;
-      padding-left: 18px;
-    }
+    .seo-list{ margin: 10px 0 0; padding-left: 18px; }
     .seo-list li{ margin: 4px 0; }
   </style>
 
@@ -177,7 +192,6 @@
           <div class="searchwrap">
             <div class="searchlabel">
               <span>Search the MAGA / Debate feed</span>
-              <a class="btn" href="/submit" style="padding:8px 10px">Submit a Post</a>
             </div>
 
             <div class="searchfield">
@@ -195,20 +209,25 @@
             </div>
 
             <div class="searchhint">
-              Tip: try keywords like <strong>Trump</strong>, <strong>MAGA</strong>, <strong>tariffs</strong>, <strong>immigration</strong>, <strong>election</strong>, etc.
+              Tip: try keywords like <strong>Trump</strong>, <strong>MAGA</strong>, <strong>tariffs</strong>, <strong>immigration</strong>, <strong>election</strong>.
             </div>
           </div>
 
-          <div class="counter" aria-label="Feed counters">
-            <div class="badge">Approved:<small id="countApproved">0</small></div>
-            <div class="badge">Pending:<small id="countPending">0</small></div>
+          <div class="rightcol">
+            <!-- Submit button BLUE (use .btn.primary everywhere going forward) -->
+            <a class="btn primary" href="/submit" style="padding:10px 12px;">Submit a Post</a>
+
+            <div class="counter" aria-label="Feed counters">
+              <div class="badge"><span class="lbl">Approved:</span><small id="countApproved">0</small></div>
+              <div class="badge"><span class="lbl">Pending:</span><small id="countPending">0</small></div>
+            </div>
           </div>
         </div>
 
-        <!-- KEEP LOADING TEXT VERY APPARENT -->
-        <div id="feedGrid" class="feed-grid">
-          <div class="feed-loading">Loading posts…</div>
-        </div>
+        <!-- VERY APPARENT LOADING (NOT INSIDE #feedGrid) -->
+        <div id="loadingBanner" class="feed-loading">Loading posts…</div>
+
+        <div id="feedGrid" class="feed-grid"></div>
 
       </div>
     </section>
@@ -228,5 +247,46 @@
   <script src="/config.js?v=12"></script>
   <script src="/data-api.js?v=12"></script>
   <script src="/app.js?v=12"></script>
+
+  <!-- FIXES: hide loading when cards render + strip duplicate "Approved:" / "Pending:" text -->
+  <script>
+    (function(){
+      const banner = document.getElementById("loadingBanner");
+      const grid = document.getElementById("feedGrid");
+      const a = document.getElementById("countApproved");
+      const p = document.getElementById("countPending");
+
+      function cleanCounter(el){
+        if(!el) return;
+        const t = (el.textContent || "").trim();
+        // If app.js accidentally sets "Approved: 11" into the small tag, strip the label
+        el.textContent = t.replace(/^approved:\s*/i, "").replace(/^pending:\s*/i, "").trim();
+      }
+
+      function hasCards(){
+        if(!grid) return false;
+        return !!grid.querySelector(".post-card, .post, article, iframe"); // flexible in case markup differs
+      }
+
+      let tries = 0;
+      const iv = setInterval(function(){
+        tries++;
+
+        cleanCounter(a);
+        cleanCounter(p);
+
+        if(banner){
+          if(hasCards()){
+            banner.style.display = "none";
+          } else {
+            banner.style.display = "";
+          }
+        }
+
+        // stop after ~30s
+        if(tries > 60) clearInterval(iv);
+      }, 500);
+    })();
+  </script>
 </body>
 </html>
