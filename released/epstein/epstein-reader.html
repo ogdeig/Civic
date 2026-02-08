@@ -80,25 +80,6 @@
       background:#000;
     }
 
-    /* Text layer overlay for highlighting */
-    .textLayer{
-      position:absolute;
-      inset:0;
-      pointer-events:none;
-      user-select:none;
-    }
-    .textLayer span{
-      position:absolute;
-      transform-origin: 0 0;
-      color: transparent; /* keep page clean */
-      background: transparent;
-      white-space: pre;
-    }
-    .textLayer span.hl{
-      background: rgba(255, 235, 59, .45);
-      outline: 1px solid rgba(255, 235, 59, .28);
-    }
-
     /* Disclosure */
     .legal{
       margin-top: 12px;
@@ -477,751 +458,39 @@
   <script src="/config.js?v=12"></script>
   <script src="/app.js?v=12"></script>
 
-  <!-- Reader + gallery logic -->
+  <!-- ✅ Epstein PDF Reader (uses /released/epstein/index.json) -->
+  <!-- IMPORTANT: this MUST be your working reader JS file (the one you shared earlier). -->
+  <script src="./epstein-tts.js?v=15"></script>
+
+  <!-- ✅ Images Gallery (uses ./images.json ONLY) -->
   <script>
     (function(){
       "use strict";
 
-      // ---- IMPORTANT PATHS (per your repo structure) ----
-      // PDFs are inside: /released/epstein/PDF/
-      // PDF list file:  /released/epstein/PDF/pdfs.json
-      const PDF_MANIFEST_URL = "./PDF/pdfs.json";
+      // ✅ Correct file per your message
+      const IMAGE_MANIFEST_URL = "./images.json";
 
-      // Images list file is: /released/epstein/image.json  (as you stated)
-      // (If your actual filename is images.json, rename it OR change this constant.)
-      const IMAGE_MANIFEST_URL = "./image.json";
+      const galleryGrid = document.getElementById("galleryGrid");
+      const imgModal = document.getElementById("imgModal");
+      const imgBig = document.getElementById("imgBig");
+      const imgMeta = document.getElementById("imgMeta");
+      const imgPrev = document.getElementById("imgPrev");
+      const imgNext = document.getElementById("imgNext");
+      const imgClose = document.getElementById("imgClose");
 
-      const LS_GATE = "ct_epstein_21_ok";
-      const LS_AUTO = "ct_ep_autoRead";
-      const LS_LOOP = "ct_ep_loop";
-      const LS_VOICE = "ct_ep_voice";
-      const LS_SPEED = "ct_ep_speed";
-      const LS_PDF   = "ct_ep_pdf";
-
-      const el = (id) => document.getElementById(id);
-
-      const pdfSelect   = el("pdfSelect");
-      const voiceSelect = el("voiceSelect");
-      const speedSelect = el("speedSelect");
-
-      const btnPlay     = el("btnPlay");
-      const btnPause    = el("btnPause");
-      const btnStop     = el("btnStop");
-      const btnPrev     = el("btnPrev");
-      const btnNext     = el("btnNext");
-      const btnMute     = el("btnMute");
-      const btnSkipWord = el("btnSkipWord");
-      const btnAutoRead = el("btnAutoRead");
-      const btnLoop     = el("btnLoop");
-      const btnSkipFile = el("btnSkipFile");
-
-      const statusTitle = el("statusTitle");
-      const statusLine  = el("statusLine");
-      const pageMeta    = el("pageMeta");
-
-      const canvas      = el("pdfCanvas");
-      const ctx         = canvas && canvas.getContext ? canvas.getContext("2d") : null;
-      const textLayer   = el("textLayer");
-
-      const canvasBig   = el("pdfCanvasBig");
-      const ctxBig      = canvasBig && canvasBig.getContext ? canvasBig.getContext("2d") : null;
-      const textLayerBig= el("textLayerBig");
-
-      const viewerModal = el("viewerModal");
-      const btnPopViewer= el("btnPopViewer");
-      const btnViewerClose = el("btnViewerClose");
-      const viewerModalMeta = el("viewerModalMeta");
-
-      // 21+ gate
-      const ageGate  = el("ageGate");
-      const gateCheck= el("gateCheck");
-      const gateEnter= el("gateEnter");
-      const gateLeave= el("gateLeave");
-
-      // Gallery
-      const galleryGrid = el("galleryGrid");
-      const imgModal = el("imgModal");
-      const imgBig = el("imgBig");
-      const imgMeta = el("imgMeta");
-      const imgPrev = el("imgPrev");
-      const imgNext = el("imgNext");
-      const imgClose = el("imgClose");
-
-      function setStatus(title, line){
-        if (statusTitle) statusTitle.textContent = title || "";
-        if (statusLine)  statusLine.textContent = line || "";
-      }
-
-      function setBtnState(btn, on, labelOn, labelOff){
-        if(!btn) return;
-        btn.setAttribute("aria-pressed", on ? "true" : "false");
-        btn.textContent = on ? labelOn : labelOff;
-      }
-
-      function syncToggleButtons(autoRead, loopOn){
-        setBtnState(btnAutoRead, autoRead, "⏭ Auto-Read: On", "⏭ Auto-Read: Off");
-        setBtnState(btnLoop, loopOn, "🔁 Loop: On", "🔁 Loop: Off");
-      }
-
-      function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
+      let imageList = [];
+      let imageIdx = 0;
 
       function esc(s){
         return String(s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
       }
+      function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
 
-      // ---------- Age gate ----------
-      function showGate(){ if (ageGate) ageGate.style.display = "flex"; }
-      function hideGate(){ if (ageGate) ageGate.style.display = "none"; }
-
-      function initGate(){
-        const ok = localStorage.getItem(LS_GATE) === "1";
-        if (!ok) showGate();
-        if (gateEnter) gateEnter.disabled = true;
-
-        if (gateCheck){
-          gateCheck.checked = false;
-          gateCheck.addEventListener("change", () => {
-            if (gateEnter) gateEnter.disabled = !gateCheck.checked;
-          });
-        }
-        if (gateLeave){
-          gateLeave.addEventListener("click", () => { location.href = "/"; });
-        }
-        if (gateEnter){
-          gateEnter.addEventListener("click", () => {
-            if (!gateCheck || !gateCheck.checked) return;
-            localStorage.setItem(LS_GATE, "1");
-            hideGate();
-          });
-        }
-      }
-
-      // ---------- Voices ----------
-      function populateVoices(){
-        if (!("speechSynthesis" in window) || !voiceSelect) return;
-
-        const voices = speechSynthesis.getVoices ? speechSynthesis.getVoices() : [];
-        voiceSelect.innerHTML = "";
-
-        if (!voices.length){
-          const opt = document.createElement("option");
-          opt.value = "";
-          opt.textContent = "Loading voices…";
-          voiceSelect.appendChild(opt);
-          return;
-        }
-
-        voices.sort((a,b) => (a.lang||"").localeCompare(b.lang||"") || (a.name||"").localeCompare(b.name||""));
-
-        const saved = localStorage.getItem(LS_VOICE) || "";
-        let bestIdx = -1;
-
-        for (let i=0;i<voices.length;i++){
-          const v = voices[i];
-          const n = (v.name||"").toLowerCase();
-          const lang = (v.lang||"").toLowerCase();
-          if (saved && v.name === saved){ bestIdx = i; break; }
-          if (bestIdx === -1 && n.includes("google") && lang.startsWith("en-gb") && (n.includes("female") || n.includes("woman"))){
-            bestIdx = i;
-          }
-        }
-        if (bestIdx === -1){
-          for (let i=0;i<voices.length;i++){
-            const v = voices[i];
-            const n = (v.name||"").toLowerCase();
-            const lang = (v.lang||"").toLowerCase();
-            if (lang.startsWith("en-gb") && n.includes("google")) { bestIdx = i; break; }
-          }
-        }
-        if (bestIdx === -1){
-          for (let i=0;i<voices.length;i++){
-            const v = voices[i];
-            if ((v.lang||"").toLowerCase().startsWith("en")) { bestIdx = i; break; }
-          }
-        }
-        if (bestIdx === -1) bestIdx = 0;
-
-        voices.forEach((v, i) => {
-          const opt = document.createElement("option");
-          opt.value = v.name;
-          opt.textContent = `${v.name} (${v.lang})`;
-          if (i === bestIdx) opt.selected = true;
-          voiceSelect.appendChild(opt);
-        });
-
-        localStorage.setItem(LS_VOICE, voiceSelect.value || voices[bestIdx].name);
-      }
-
-      if ("speechSynthesis" in window){
-        populateVoices();
-        speechSynthesis.onvoiceschanged = populateVoices;
-      }
-
-      if (speedSelect){
-        const saved = localStorage.getItem(LS_SPEED);
-        if (saved) speedSelect.value = saved;
-        speedSelect.addEventListener("change", () => localStorage.setItem(LS_SPEED, speedSelect.value));
-      }
-      if (voiceSelect){
-        voiceSelect.addEventListener("change", () => localStorage.setItem(LS_VOICE, voiceSelect.value || ""));
-      }
-
-      // ---------- Manifests (FIXES YOUR 404s) ----------
-      // This now ONLY fetches the correct paths you told me:
-      // - ./PDF/pdfs.json
-      // - ./image.json
       async function fetchJsonStrict(url){
         const r = await fetch(url, { cache: "no-store" });
         if (!r.ok) throw new Error(`HTTP ${r.status} for ${url}`);
         return r.json();
       }
-
-      function normalizePdfList(data){
-        let arr = [];
-        if (!data) return arr;
-        if (Array.isArray(data)) arr = data;
-        else if (Array.isArray(data.pdfs)) arr = data.pdfs;
-
-        const out = [];
-        arr.forEach((x, idx) => {
-          if (!x) return;
-          if (typeof x === "string"){
-            out.push({ label: `PDF ${idx+1}`, url: x });
-          }else{
-            const url = x.url || x.src || x.file || "";
-            const label = x.label || x.title || x.name || `PDF ${idx+1}`;
-            if (url) out.push({ label, url });
-          }
-        });
-        return out;
-      }
-
-      function absolutizeIfNeeded(u){
-        // keep relative paths relative to this directory
-        return String(u || "").trim();
-      }
-
-      let pdfList = [];
-      function populatePdfSelect(list){
-        if (!pdfSelect) return;
-
-        pdfSelect.innerHTML = "";
-        if (!list.length){
-          const opt = document.createElement("option");
-          opt.value = "";
-          opt.textContent = "No PDFs found (missing ./PDF/pdfs.json)";
-          pdfSelect.appendChild(opt);
-          return;
-        }
-
-        const saved = localStorage.getItem(LS_PDF) || "";
-        let foundSaved = false;
-
-        list.forEach((p) => {
-          const opt = document.createElement("option");
-          opt.value = absolutizeIfNeeded(p.url);
-          opt.textContent = p.label;
-          if (saved && opt.value === saved){ opt.selected = true; foundSaved = true; }
-          pdfSelect.appendChild(opt);
-        });
-
-        if (!foundSaved){
-          pdfSelect.selectedIndex = 0;
-          localStorage.setItem(LS_PDF, pdfSelect.value || "");
-        }
-
-        pdfSelect.addEventListener("change", async () => {
-          localStorage.setItem(LS_PDF, pdfSelect.value || "");
-          await openSelectedPdf();
-        });
-      }
-
-      // ---------- PDF.js rendering + text highlight ----------
-      let pdfDoc = null;
-      let pageNum = 1;
-      let numPages = 0;
-
-      let speaking = false;
-      let paused = false;
-      let muted = false;
-      let utter = null;
-
-      let pageText = "";
-      let words = [];
-      let currentWordIndex = 0;
-
-      function setMeta(){
-        if (pageMeta){
-          if (!pdfDoc) pageMeta.textContent = "No PDF loaded.";
-          else pageMeta.textContent = `Page ${pageNum} of ${numPages}`;
-        }
-        if (viewerModalMeta){
-          viewerModalMeta.textContent = pageMeta ? pageMeta.textContent : "";
-        }
-      }
-
-      function clearHighlights(){
-        if (textLayer) textLayer.querySelectorAll(".hl").forEach(s => s.classList.remove("hl"));
-        if (textLayerBig) textLayerBig.querySelectorAll(".hl").forEach(s => s.classList.remove("hl"));
-      }
-
-      function tokenizeTextWithPositions(text){
-        const out = [];
-        const s = String(text || "");
-        let i = 0;
-        while (i < s.length){
-          while (i < s.length && /\s/.test(s[i])) i++;
-          if (i >= s.length) break;
-          const start = i;
-          while (i < s.length && !/\s/.test(s[i])) i++;
-          const end = i;
-          out.push({ w: s.slice(start,end), start, end });
-        }
-        return out;
-      }
-
-      function findWordByCharRange(start, end){
-        for (let i=0;i<words.length;i++){
-          const w = words[i];
-          if (end <= w.start) continue;
-          if (start >= w.end) continue;
-          return w;
-        }
-        return null;
-      }
-
-      function highlightWord(i){
-        clearHighlights();
-        const w = words[i];
-        if (!w) return;
-        if (w.spanSmall) w.spanSmall.classList.add("hl");
-        if (w.spanBig)   w.spanBig.classList.add("hl");
-      }
-
-      async function buildWordSpans(page, viewport, layerEl, which){
-        if (!layerEl || !window.pdfjsLib || !window.pdfjsLib.Util) return;
-
-        layerEl.innerHTML = "";
-        clearHighlights();
-
-        const textContent = await page.getTextContent();
-
-        const parts = [];
-        textContent.items.forEach(it => {
-          const t = it.str || "";
-          if (t) parts.push(t);
-        });
-        pageText = parts.join(" ").replace(/\s+/g," ").trim();
-        const wordList = tokenizeTextWithPositions(pageText);
-        words = wordList.map(w => ({...w, spanSmall:null, spanBig:null}));
-
-        const frag = document.createDocumentFragment();
-        let pageTextCursor = 0;
-
-        for (const item of textContent.items){
-          const strRaw = item.str || "";
-          const str = strRaw.replace(/\s+/g," ").trim();
-          if (!str) continue;
-
-          let idx = pageText.indexOf(str, pageTextCursor);
-          if (idx === -1) idx = pageText.indexOf(str);
-          if (idx !== -1) pageTextCursor = idx + str.length;
-
-          const transform = pdfjsLib.Util.transform(viewport.transform, item.transform);
-          const x = transform[4];
-          const y = transform[5];
-
-          const fontHeight = Math.hypot(transform[2], transform[3]);
-          const itemWidth = item.width ? (item.width * viewport.scale) : (str.length * fontHeight * 0.5);
-
-          const wds = str.split(" ").filter(Boolean);
-          const totalChars = wds.reduce((a,b)=>a+b.length,0) + Math.max(0, wds.length-1);
-          const pxPerChar = totalChars ? (itemWidth / totalChars) : (itemWidth / Math.max(1, str.length));
-
-          let localX = x;
-          let localCharCursor = 0;
-
-          for (let wi=0; wi<wds.length; wi++){
-            const w = wds[wi];
-            const wLen = w.length;
-
-            if (wi > 0){
-              localCharCursor += 1;
-              localX += pxPerChar;
-            }
-
-            const wWidth = pxPerChar * wLen;
-
-            const span = document.createElement("span");
-            span.textContent = w;
-            span.style.left = `${localX}px`;
-            span.style.top  = `${(viewport.height - y)}px`;
-            span.style.height = `${fontHeight}px`;
-            span.style.width  = `${Math.max(2, wWidth)}px`;
-            span.style.fontSize = `${fontHeight}px`;
-            span.style.transform = `translateY(-${fontHeight}px)`;
-            frag.appendChild(span);
-
-            if (idx !== -1){
-              const chunkStart = idx;
-              const guessStart = chunkStart + localCharCursor;
-              const guessEnd   = guessStart + wLen;
-
-              const best = findWordByCharRange(guessStart, guessEnd);
-              if (best){
-                if (which === "small") best.spanSmall = span;
-                else best.spanBig = span;
-              }
-            }
-
-            localCharCursor += wLen;
-            localX += wWidth;
-          }
-        }
-
-        layerEl.appendChild(frag);
-      }
-
-      async function renderPage(toBigAlso){
-        if (!pdfDoc || !ctx || !window.pdfjsLib) return;
-        const page = await pdfDoc.getPage(pageNum);
-
-        const container = el("viewerShell");
-        const targetW = container ? container.clientWidth : 900;
-
-        const unscaled = page.getViewport({ scale: 1.0 });
-        const scale = targetW / unscaled.width;
-        const viewport = page.getViewport({ scale });
-
-        canvas.width = Math.floor(viewport.width);
-        canvas.height= Math.floor(viewport.height);
-
-        await page.render({ canvasContext: ctx, viewport }).promise;
-        await buildWordSpans(page, viewport, textLayer, "small");
-
-        if (toBigAlso && viewerModal && viewerModal.classList.contains("open")){
-          await renderBig(page);
-        }
-
-        setMeta();
-      }
-
-      async function renderBig(page){
-        if (!ctxBig || !canvasBig) return;
-
-        const shell = el("viewerShellBig");
-        const targetW = shell ? shell.clientWidth : 980;
-
-        const unscaled = page.getViewport({ scale: 1.0 });
-        const scale = targetW / unscaled.width;
-        const viewport = page.getViewport({ scale });
-
-        canvasBig.width = Math.floor(viewport.width);
-        canvasBig.height= Math.floor(viewport.height);
-
-        await page.render({ canvasContext: ctxBig, viewport }).promise;
-        await buildWordSpans(page, viewport, textLayerBig, "big");
-
-        setMeta();
-      }
-
-      // ---------- Speech ----------
-      function getSelectedVoice(){
-        const voices = ("speechSynthesis" in window && speechSynthesis.getVoices) ? speechSynthesis.getVoices() : [];
-        const name = (voiceSelect && voiceSelect.value) ? voiceSelect.value : (localStorage.getItem(LS_VOICE) || "");
-        return voices.find(v => v.name === name) || voices[0] || null;
-      }
-
-      function stopSpeech(){
-        try{ speechSynthesis.cancel(); }catch(e){}
-        utter = null;
-        speaking = false;
-        paused = false;
-      }
-
-      function speakFromWord(startIndex){
-        if (!("speechSynthesis" in window)) {
-          setStatus("Speech not supported.", "Your browser doesn’t support text-to-speech.");
-          return;
-        }
-        if (!pageText){
-          setStatus("No text found.", "This page has no extractable text to read.");
-          return;
-        }
-
-        stopSpeech();
-
-        currentWordIndex = clamp(startIndex|0, 0, Math.max(0, words.length-1));
-        const startChar = words[currentWordIndex] ? words[currentWordIndex].start : 0;
-        const text = pageText.slice(startChar);
-
-        utter = new SpeechSynthesisUtterance(text);
-        const v = getSelectedVoice();
-        if (v) utter.voice = v;
-
-        const rate = Number(speedSelect && speedSelect.value || 1);
-        utter.rate = clamp(rate, 0.5, 2.5);
-        utter.volume = muted ? 0 : 1;
-
-        utter.onboundary = function(ev){
-          if (!ev) return;
-          const pageChar = startChar + (ev.charIndex || 0);
-
-          // binary search word
-          let lo = 0, hi = words.length - 1, hit = -1;
-          while (lo <= hi){
-            const mid = (lo + hi) >> 1;
-            const w = words[mid];
-            if (pageChar < w.start) hi = mid - 1;
-            else if (pageChar >= w.end) lo = mid + 1;
-            else { hit = mid; break; }
-          }
-          if (hit !== -1){
-            currentWordIndex = hit;
-            highlightWord(hit);
-          }
-        };
-
-        utter.onend = async function(){
-          speaking = false;
-          paused = false;
-          clearHighlights();
-
-          if (!pdfDoc) return;
-
-          if (pageNum < numPages){
-            pageNum++;
-            await renderPage(true);
-            if (autoRead || loopOn){
-              setStatus("Reading…", `Page ${pageNum} of ${numPages}`);
-              speakFromWord(0);
-            }else{
-              setStatus("Finished page.", "Use Next Page or Play to continue.");
-            }
-            return;
-          }
-
-          // End of PDF
-          if (autoRead){
-            const ok = await advanceToNextPdf(loopOn);
-            if (!ok) setStatus("Done.", "Reached the last PDF in the list.");
-          }else if (loopOn){
-            pageNum = 1;
-            await renderPage(true);
-            speakFromWord(0);
-          }else{
-            setStatus("Finished PDF.", "Use Skip File or choose another PDF.");
-          }
-        };
-
-        utter.onerror = function(){
-          speaking = false;
-          paused = false;
-          setStatus("Audio error.", "Try a different voice, then press Play again.");
-        };
-
-        speaking = true;
-        paused = false;
-        setStatus("Reading…", `Page ${pageNum} of ${numPages}`);
-        speechSynthesis.speak(utter);
-      }
-
-      function pauseSpeech(){
-        if (!("speechSynthesis" in window)) return;
-        if (!speaking) return;
-        try{ speechSynthesis.pause(); paused = true; setStatus("Paused.", `Page ${pageNum} of ${numPages}`); }catch(e){}
-      }
-      function resumeSpeech(){
-        if (!("speechSynthesis" in window)) return;
-        if (!speaking) return;
-        try{ speechSynthesis.resume(); paused = false; setStatus("Reading…", `Page ${pageNum} of ${numPages}`); }catch(e){}
-      }
-
-      // ---------- PDF open / navigation ----------
-      async function openPdf(url){
-        if (!window.pdfjsLib) {
-          setStatus("PDF engine missing.", "PDF.js failed to load.");
-          return;
-        }
-        stopSpeech();
-        clearHighlights();
-
-        setStatus("Loading PDF…", "Please wait.");
-        if (pageMeta) pageMeta.textContent = "Loading…";
-
-        const loadingTask = pdfjsLib.getDocument({ url, withCredentials:false });
-        pdfDoc = await loadingTask.promise;
-
-        numPages = pdfDoc.numPages || 0;
-        pageNum = 1;
-
-        await renderPage(true);
-        setStatus("Ready.", "Press Play to start reading.");
-      }
-
-      async function openSelectedPdf(){
-        const url = (pdfSelect && pdfSelect.value) ? pdfSelect.value : "";
-        if (!url){
-          setStatus("Ready.", "Select a PDF to begin.");
-          return;
-        }
-        await openPdf(url);
-      }
-
-      async function advanceToNextPdf(loopAll){
-        if (!pdfList.length || !pdfSelect) return false;
-        const cur = pdfSelect.value;
-        let idx = pdfList.findIndex(p => absolutizeIfNeeded(p.url) === cur);
-        if (idx < 0) idx = 0;
-
-        let nextIdx = idx + 1;
-        if (nextIdx >= pdfList.length){
-          if (loopAll) nextIdx = 0;
-          else return false;
-        }
-
-        pdfSelect.value = absolutizeIfNeeded(pdfList[nextIdx].url);
-        localStorage.setItem(LS_PDF, pdfSelect.value);
-        await openSelectedPdf();
-        speakFromWord(0);
-        return true;
-      }
-
-      // ---------- Controls wiring ----------
-      let autoRead = localStorage.getItem(LS_AUTO) === "1";
-      let loopOn   = localStorage.getItem(LS_LOOP) === "1";
-      syncToggleButtons(autoRead, loopOn);
-
-      if (btnPlay){
-        btnPlay.addEventListener("click", async () => {
-          if (localStorage.getItem(LS_GATE) !== "1"){
-            showGate();
-            return;
-          }
-
-          if (!pdfDoc){
-            await openSelectedPdf();
-          }
-          if (!pdfDoc){
-            setStatus("No PDF selected.", "Pick a PDF first.");
-            return;
-          }
-
-          if (speaking && paused){ resumeSpeech(); return; }
-          if (speaking && !paused){ return; }
-
-          currentWordIndex = 0;
-          speakFromWord(0);
-        });
-      }
-
-      if (btnPause){
-        btnPause.addEventListener("click", () => {
-          if (!speaking) return;
-          if (!paused) pauseSpeech();
-          else resumeSpeech();
-        });
-      }
-
-      if (btnStop){
-        btnStop.addEventListener("click", () => {
-          stopSpeech();
-          clearHighlights();
-          currentWordIndex = 0;
-          setStatus("Stopped.", "Press Play to start again.");
-        });
-      }
-
-      if (btnPrev){
-        btnPrev.addEventListener("click", async () => {
-          if (!pdfDoc) return;
-          stopSpeech(); clearHighlights(); currentWordIndex = 0;
-          pageNum = clamp(pageNum - 1, 1, numPages);
-          await renderPage(true);
-          setStatus("Ready.", "Press Play to read this page.");
-        });
-      }
-
-      if (btnNext){
-        btnNext.addEventListener("click", async () => {
-          if (!pdfDoc) return;
-          stopSpeech(); clearHighlights(); currentWordIndex = 0;
-          pageNum = clamp(pageNum + 1, 1, numPages);
-          await renderPage(true);
-          setStatus("Ready.", "Press Play to read this page.");
-        });
-      }
-
-      if (btnMute){
-        btnMute.addEventListener("click", () => {
-          muted = !muted;
-          btnMute.textContent = muted ? "🔈 Unmute" : "🔇 Mute";
-          if (utter){
-            try{ utter.volume = muted ? 0 : 1; }catch(e){}
-          }
-        });
-      }
-
-      if (btnSkipWord){
-        btnSkipWord.addEventListener("click", () => {
-          if (!pdfDoc) return;
-          const next = clamp((currentWordIndex|0) + 1, 0, Math.max(0, words.length-1));
-          currentWordIndex = next;
-          highlightWord(next);
-          if (speaking) speakFromWord(next);
-        });
-      }
-
-      if (btnAutoRead){
-        btnAutoRead.addEventListener("click", () => {
-          autoRead = !autoRead;
-          localStorage.setItem(LS_AUTO, autoRead ? "1" : "0");
-          syncToggleButtons(autoRead, loopOn);
-        });
-      }
-
-      if (btnLoop){
-        btnLoop.addEventListener("click", () => {
-          loopOn = !loopOn;
-          localStorage.setItem(LS_LOOP, loopOn ? "1" : "0");
-          syncToggleButtons(autoRead, loopOn);
-        });
-      }
-
-      if (btnSkipFile){
-        btnSkipFile.addEventListener("click", async () => {
-          if (!pdfList.length){
-            setStatus("No PDF list.", "Missing ./PDF/pdfs.json.");
-            return;
-          }
-          stopSpeech(); clearHighlights(); currentWordIndex = 0;
-          const ok = await advanceToNextPdf(true);
-          if (!ok) setStatus("No next PDF.", "You’re already on the last one.");
-        });
-      }
-
-      // ---------- Pop-out viewer ----------
-      function openViewer(){
-        if (!viewerModal) return;
-        viewerModal.classList.add("open");
-        if (viewerModalMeta) viewerModalMeta.textContent = pageMeta ? pageMeta.textContent : "";
-        if (pdfDoc){
-          pdfDoc.getPage(pageNum).then(p => renderBig(p)).catch(()=>{});
-        }
-      }
-      function closeViewer(){
-        if (!viewerModal) return;
-        viewerModal.classList.remove("open");
-      }
-      if (btnPopViewer) btnPopViewer.addEventListener("click", openViewer);
-      if (btnViewerClose) btnViewerClose.addEventListener("click", closeViewer);
-      if (viewerModal){
-        viewerModal.addEventListener("click", (e) => { if (e.target === viewerModal) closeViewer(); });
-      }
-
-      // ---------- Image lightbox ----------
-      let imageList = [];
-      let imageIdx = 0;
 
       function openImgModal(i){
         if (!imgModal || !imgBig) return;
@@ -1257,97 +526,60 @@
 
       document.addEventListener("keydown", (e) => {
         if (e.key === "Escape"){
-          if (viewerModal && viewerModal.classList.contains("open")) closeViewer();
           if (imgModal && imgModal.classList.contains("open")) closeImgModal();
         }
       });
 
-      // ---------- Init ----------
-      async function init(){
-        initGate();
+      async function initGallery(){
+        if (!galleryGrid) return;
 
-        // Load PDF list (ONLY the correct path)
         try{
-          const data = await fetchJsonStrict(PDF_MANIFEST_URL);
-          pdfList = normalizePdfList(data);
+          const data = await fetchJsonStrict(IMAGE_MANIFEST_URL);
 
-          // If the manifest contains relative PDF filenames, it’s common they’re relative to the PDF folder.
-          // We will NOT auto-prefix anything here (to avoid breaking your existing setup).
-          // Just populate exactly what your json provides.
-          populatePdfSelect(pdfList);
+          // Supports: { "images": [...] } OR [ ... ]
+          const list = Array.isArray(data?.images) ? data.images : (Array.isArray(data) ? data : []);
+          imageList = list.filter(x => x && x.src).map(x => ({
+            src: String(x.src),
+            caption: x.caption || "",
+            source: x.source || "",
+            alt: x.alt || ""
+          }));
+
+          galleryGrid.innerHTML = "";
+
+          if(!imageList.length){
+            galleryGrid.innerHTML = `<div style="opacity:.8;font-size:13px;">No images available.</div>`;
+            return;
+          }
+
+          imageList.forEach((img, idx) => {
+            const caption = img.caption ? esc(img.caption) : "Released excerpt image (publicly available).";
+            const source = img.source ? esc(img.source) : "Publicly released records";
+            const alt = img.alt ? esc(img.alt) : "Released document image.";
+            const src = esc(img.src);
+
+            const fig = document.createElement("figure");
+            fig.className = "g-card ep-box";
+            fig.innerHTML = `
+              <img src="${src}" alt="${alt}" loading="lazy" decoding="async">
+              <figcaption class="g-cap">
+                <div>${caption}</div>
+                <div class="src"><strong>Source:</strong> ${source}</div>
+              </figcaption>
+            `;
+            fig.addEventListener("click", () => openImgModal(idx));
+            galleryGrid.appendChild(fig);
+          });
+
         }catch(e){
-          pdfList = [];
-          populatePdfSelect([]);
-          setStatus("PDF list missing.", "Could not load ./PDF/pdfs.json (check filename + case).");
+          galleryGrid.innerHTML =
+            `<div style="opacity:.85;font-size:13px;line-height:1.5;">
+              Images unavailable right now (could not load <strong>./images.json</strong> — check filename + case).
+            </div>`;
         }
-
-        // Restore last selected pdf if it exists
-        const savedPdf = localStorage.getItem(LS_PDF);
-        if (savedPdf && pdfSelect){
-          const opt = Array.from(pdfSelect.options).find(o => o.value === savedPdf);
-          if (opt) pdfSelect.value = savedPdf;
-        }
-
-        // Preload if gate already accepted
-        if (localStorage.getItem(LS_GATE) === "1"){
-          if (pdfSelect && pdfSelect.value){
-            await openSelectedPdf();
-          } else {
-            setStatus("Ready.", "Select a PDF to begin.");
-          }
-        } else {
-          setStatus("Locked (21+).", "Confirm age to use the reader.");
-        }
-
-        // Gallery images (ONLY the correct path)
-        if (galleryGrid){
-          try{
-            const data = await fetchJsonStrict(IMAGE_MANIFEST_URL);
-            const list = Array.isArray(data.images) ? data.images : (Array.isArray(data) ? data : []);
-            imageList = list.filter(x => x && x.src).map(x => ({
-              src: String(x.src),
-              caption: x.caption || "",
-              source: x.source || "",
-              alt: x.alt || ""
-            }));
-
-            galleryGrid.innerHTML = "";
-            if(!imageList.length){
-              galleryGrid.innerHTML = `<div style="opacity:.8;font-size:13px;">No images available.</div>`;
-            }else{
-              imageList.forEach((img, idx) => {
-                const caption = img.caption ? esc(img.caption) : "Released excerpt image (publicly available).";
-                const source = img.source ? esc(img.source) : "Publicly released records";
-                const alt = img.alt ? esc(img.alt) : "Released document image.";
-                const src = esc(img.src);
-
-                const fig = document.createElement("figure");
-                fig.className = "g-card ep-box";
-                fig.innerHTML = `
-                  <img src="${src}" alt="${alt}" loading="lazy" decoding="async">
-                  <figcaption class="g-cap">
-                    <div>${caption}</div>
-                    <div class="src"><strong>Source:</strong> ${source}</div>
-                  </figcaption>
-                `;
-                fig.addEventListener("click", () => openImgModal(idx));
-                galleryGrid.appendChild(fig);
-              });
-            }
-          }catch(e){
-            galleryGrid.innerHTML = `<div style="opacity:.85;font-size:13px;line-height:1.5;">Images unavailable right now (could not load <strong>./image.json</strong> — check filename + case).</div>`;
-          }
-        }
-
-        // Re-render on resize
-        let resizeTimer = 0;
-        window.addEventListener("resize", () => {
-          clearTimeout(resizeTimer);
-          resizeTimer = setTimeout(() => { if (pdfDoc) renderPage(true).catch(()=>{}); }, 200);
-        }, { passive:true });
       }
 
-      document.addEventListener("DOMContentLoaded", init);
+      document.addEventListener("DOMContentLoaded", initGallery);
     })();
   </script>
 </body>
