@@ -10,10 +10,8 @@
   <meta name="description" content="Civic Threat tracks and discusses viral political content from Trump and MAGA supporters and critics alike. Browse curated Facebook posts, and explore released public-interest documents like the Epstein files with our PDF reader + text-to-speech."/>
   <meta name="robots" content="index,follow"/>
 
-  <!-- Canonical -->
   <link rel="canonical" href="https://civicthreat.us/"/>
 
-  <!-- Open Graph -->
   <meta property="og:title" content="Civic Threat | Trump & MAGA Debate, Released Files, Epstein PDF Reader"/>
   <meta property="og:description" content="Track and discuss political content (Trump/MAGA and beyond), browse curated posts, and explore released public-interest documents like the Epstein files with our PDF reader + text-to-speech."/>
   <meta property="og:type" content="website"/>
@@ -21,7 +19,6 @@
   <meta property="og:image" content="https://civicthreat.us/assets/civicthreat-social-1200x630.jpg"/>
   <meta property="og:site_name" content="Civic Threat"/>
 
-  <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image"/>
   <meta name="twitter:title" content="Civic Threat | Trump & MAGA Debate, Released Files, Epstein PDF Reader"/>
   <meta name="twitter:description" content="Track and discuss political content (Trump/MAGA and beyond), browse curated posts, and explore released public-interest documents like the Epstein files with our PDF reader + text-to-speech."/>
@@ -30,7 +27,6 @@
   <link rel="icon" href="/assets/logo.png"/>
   <link rel="stylesheet" href="/styles.css"/>
 
-  <!-- Schema: Organization + Website + WebPage -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -68,14 +64,13 @@
   }
   </script>
 
-  <!-- Page-only styles -->
   <style>
     main{ padding-top: 14px; }
 
     .hero-block{ padding: 18px 0 6px; }
     .hero-block + .hero-block{ padding-top: 10px; }
 
-    .ct-hero{ text-align: center; }
+    .ct-hero{ text-align:center; }
     .ct-hero h1{
       margin: 0 0 10px;
       font-size: clamp(34px, 5vw, 56px);
@@ -84,9 +79,9 @@
     }
     .ct-hero p{
       margin: 0 auto;
-      max-width: 86ch;
-      opacity: .9;
-      line-height: 1.7;
+      max-width: 90ch;
+      opacity: .92;
+      line-height: 1.75;
       font-size: 15px;
     }
 
@@ -111,7 +106,7 @@
       margin: 0 0 12px;
       opacity: .9;
       line-height: 1.6;
-      max-width: 75ch;
+      max-width: 78ch;
     }
     .rf-hero .actions{
       display:flex;
@@ -120,23 +115,36 @@
       margin-top: 10px;
     }
 
-    /* Button color overrides for THIS page */
-    .btn.red{
-      background: #ff0050;
-      border-color: rgba(255,255,255,.12);
-      color: #fff;
+    /* Force exact header red + force submit blue */
+    .btn.epstein-red{
+      background:#b30000 !important; /* match header red */
+      border-color: rgba(255,255,255,.14) !important;
+      color:#fff !important;
     }
-    .btn.red:hover{ filter: brightness(1.03); }
+    .btn.epstein-red:hover{ filter: brightness(1.05); }
+
+    .btn.submit-blue{
+      background: rgba(43,108,255,.95) !important;
+      border-color: rgba(255,255,255,.14) !important;
+      color:#fff !important;
+    }
+    .btn.submit-blue:hover{ filter: brightness(1.05); }
 
     .ep-meta{
       margin-top: 12px;
       font-size: 12px;
       opacity: .85;
       line-height: 1.5;
-      max-width: 80ch;
+      max-width: 84ch;
     }
 
-    /* Carousel frame (black background, contain images) */
+    .hero-sep{
+      margin: 18px 0 0;
+      border: 0;
+      border-top: 1px solid rgba(255,255,255,.10);
+    }
+
+    /* Carousel */
     .hero-carousel{
       width: 100%;
       aspect-ratio: 16 / 10;
@@ -165,8 +173,8 @@
     .hero-carousel img{
       width: 100%;
       height: 100%;
-      object-fit: contain;   /* <-- letterbox/pillarbox */
-      background:#000;       /* <-- black background behind image */
+      object-fit: contain;
+      background:#000;
       display:block;
     }
 
@@ -175,8 +183,8 @@
       top: 50%;
       transform: translateY(-50%);
       z-index: 2;
-      width: 40px;
-      height: 40px;
+      width: 42px;
+      height: 42px;
       border-radius: 0;
       border: 1px solid rgba(255,255,255,.18);
       background: rgba(0,0,0,.55);
@@ -186,7 +194,7 @@
       justify-content:center;
       cursor:pointer;
     }
-    .hero-carousel .navbtn:hover{ background: rgba(0,0,0,.70); }
+    .hero-carousel .navbtn:hover{ background: rgba(0,0,0,.72); }
     .hero-carousel .prev{ left: 10px; }
     .hero-carousel .next{ right: 10px; }
 
@@ -223,27 +231,18 @@
       text-transform: uppercase;
     }
 
-    .hero-sep{
-      margin: 18px 0 0;
-      border: 0;
-      border-top: 1px solid rgba(255,255,255,.10);
-    }
-
-    /* Raise “View all” and keep it aligned cleanly */
     .toolbar{ align-items: flex-start; }
     .toolbar > a.btn{ margin-top: 4px; }
 
-    /* Slightly richer on-page text for SEO */
-    .sub-boost{
+    .onepara{
       margin: 6px 0 0;
-      max-width: 92ch;
-      opacity: .88;
+      opacity: .9;
       line-height: 1.55;
+      max-width: 92ch;
       font-size: 13px;
     }
   </style>
 
-  <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-Z03YK1FYXW"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
@@ -258,37 +257,33 @@
 
   <main>
 
-    <!-- HERO 1: CIVIC THREAT -->
     <section class="hero hero-block ct-hero">
       <div class="wrap">
         <h1>CIVIC THREAT</h1>
         <p>
-          Civic Threat grew out of our social channels — where we track and discuss political posts from Trump supporters and critics alike, focused on facts and civil debate.
-          We host released public-interest documents (including the Epstein files) and a file reader that can play PDFs aloud for accessible listening. We also feature other investigative and declassified-style releases to help people verify sources and stay informed.
+          Welcome to Civic Threat — where we collect political posts, debate the chaos, and keep receipts.
+          If it’s Trump, MAGA, tariffs, immigration, elections, or the latest “this is totally normal” headline, it’ll probably show up here.
+          We curate posts for discussion, and we host released public-interest documents (including the Epstein files) with a reader that plays PDFs aloud so you can listen while you multitask.
         </p>
       </div>
       <hr class="hero-sep" />
     </section>
 
-    <!-- HERO 2: RELEASED FILES • EPSTEIN FILES -->
     <section class="hero hero-block rf-hero">
       <div class="wrap">
         <div class="grid">
 
-          <!-- LEFT -->
           <div>
             <h2>Released Files • Epstein Files</h2>
             <p>
               Explore publicly available released documents — including the Epstein files and other government or investigative releases.
-              Our built-in reader lets you open a PDF, choose a voice, and play it page-by-page using text-to-speech for accessibility and easy listening.
+              Open a PDF, choose a voice, and play it page-by-page with text-to-speech for accessibility and easy listening.
             </p>
 
             <div class="actions">
-              <!-- Epstein button RED -->
-              <a class="btn red" href="/released/epstein/epstein-reader.html">Open Epstein Files Player</a>
-
-              <!-- Submit button BLUE -->
-              <a class="btn blue" href="/submit.html">Submit a Post</a>
+              <!-- NO .html -->
+              <a class="btn epstein-red" href="/released/epstein/epstein-reader">Open Epstein Files Player</a>
+              <a class="btn submit-blue" href="/submit">Submit a Post</a>
             </div>
 
             <div class="ep-meta">
@@ -297,21 +292,19 @@
             </div>
           </div>
 
-          <!-- RIGHT: AUTO-LOADING IMAGE SCROLLER -->
           <div>
-            <a href="/released/epstein/epstein-reader.html" aria-label="Open Epstein Files Player" style="text-decoration:none;color:inherit;">
-              <div class="hero-carousel" id="epCarousel" aria-label="Epstein released images carousel">
-                <button class="navbtn prev" type="button" aria-label="Previous image" id="epPrev">‹</button>
-                <button class="navbtn next" type="button" aria-label="Next image" id="epNext">›</button>
-                <div class="track" id="epTrack">
-                  <!-- Fallback slide (replaced once images load) -->
-                  <div class="slide">
-                    <img src="/assets/epstein/epstein-hero.jpg" alt="Epstein files preview image">
-                  </div>
+            <div class="hero-carousel" id="epCarousel" aria-label="Released Epstein images scroller">
+              <button class="navbtn prev" type="button" aria-label="Previous image" id="epPrev">‹</button>
+              <button class="navbtn next" type="button" aria-label="Next image" id="epNext">›</button>
+
+              <div class="track" id="epTrack">
+                <div class="slide">
+                  <img src="/assets/epstein/epstein-hero.jpg" alt="Released document preview image">
                 </div>
-                <div class="dots" id="epDots" aria-label="Carousel dots"></div>
               </div>
-            </a>
+
+              <div class="dots" id="epDots" aria-label="Carousel dots"></div>
+            </div>
             <div class="hero-media-caption">Released Epstein Images (scroll)</div>
           </div>
 
@@ -321,51 +314,39 @@
       </div>
     </section>
 
-    <!-- Facebook Support -->
     <section class="section">
       <div class="wrap">
         <div class="toolbar">
           <div>
             <h2>Facebook • Support</h2>
-            <p class="sub">Latest approved posts for creators and pages you want to support.</p>
-            <p class="sub-boost">
-              This feed highlights pro-democracy creators, anti-MAGA commentary, fact-based explainers, and community voices.
-              Use it to quickly find shareable posts, track narratives, and support pages calling out Trump/MAGA disinformation.
+            <p class="onepara">
+              A curated feed of approved Facebook posts from creators and pages worth boosting — fact checks, sharp commentary, pro-democracy voices, and the occasional meme that says what everyone’s thinking.
+              Use “View all” to browse the full archive, then share what matters.
             </p>
           </div>
-          <a class="btn" href="/facebook.html">View all</a>
+          <!-- NO .html -->
+          <a class="btn" href="/facebook">View all</a>
         </div>
         <div id="homeSupport" class="feed-grid"></div>
       </div>
     </section>
 
-    <!-- Divider between Support and MAGA -->
     <div class="wrap"><hr class="hero-sep" style="margin: 6px 0 0"/></div>
 
-    <!-- Facebook MAGA / Debate -->
     <section class="section">
       <div class="wrap">
         <div class="toolbar">
           <div>
             <h2>Facebook • MAGA / Debate</h2>
-            <p class="sub">Latest approved posts from MAGA / Trump social accounts open for debate and discussion.</p>
-            <p class="sub-boost">
-              This section archives debate-oriented posts and links so people can analyze claims, check sources, and discuss context.
-              Search and share posts related to Trump, MAGA, immigration, tariffs, elections, and current political talking points.
+            <p class="onepara">
+              Approved debate posts from MAGA / Trump social accounts — archived here so claims can be discussed with context, sources, and receipts.
+              Search it, share it, and if something needs to be tracked, submit it.
             </p>
           </div>
-          <a class="btn" href="/facebook-maga.html">View all</a>
+          <!-- NO .html -->
+          <a class="btn" href="/facebook-maga">View all</a>
         </div>
         <div id="homeMaga" class="feed-grid"></div>
-      </div>
-    </section>
-
-    <!-- Submit -->
-    <section class="section">
-      <div class="wrap">
-        <h2>Submit a post</h2>
-        <p class="sub">Paste the Facebook embed code (or a direct post URL). Posts appear after review.</p>
-        <a class="btn blue" href="/submit.html">Submit</a>
       </div>
     </section>
 
@@ -373,7 +354,7 @@
 
   <div id="siteFooter"></div>
 
-  <!-- Epstein carousel loader (auto-loads from /released/epstein/images/images.json) -->
+  <!-- Epstein scroller: loads from /released/epstein/images/images.json -->
   <script>
     (function(){
       const track = document.getElementById("epTrack");
@@ -388,7 +369,6 @@
       let slides = [];
       let dots = [];
       let startX = 0;
-      let dx = 0;
       let dragging = false;
 
       function esc(s){
@@ -397,103 +377,108 @@
 
       function normalizeSrc(src){
         if(!src) return "";
-        const s = String(src);
+        const s = String(src).trim();
+
+        // Already absolute
         if(/^https?:\/\//i.test(s)) return s;
+
+        // Already correct site path
+        if(s.startsWith("/released/epstein/images/")) return s;
+
+        // Root path (but not in images folder)
         if(s.startsWith("/")) return s;
-        // filename-only -> prefix with released images folder
+
+        // Relative file name -> images folder
         return "/released/epstein/images/" + s.replace(/^\.?\//,"");
       }
 
-      function render(){
+      function setIndex(n){
+        if(!slides.length) return;
+        idx = (n + slides.length) % slides.length;
         track.style.transform = "translateX(" + (-idx * 100) + "%)";
         dots.forEach((d,i)=> d.classList.toggle("on", i===idx));
       }
 
-      function go(n){
-        if(!slides.length) return;
-        idx = (n + slides.length) % slides.length;
-        render();
-      }
-
-      function build(list){
+      function buildFromList(list){
         track.innerHTML = "";
         dotsWrap.innerHTML = "";
         slides = [];
         dots = [];
 
-        list.forEach((it, i) => {
-          const src = normalizeSrc(it && it.src);
+        list.forEach((img, i) => {
+          const raw = (typeof img === "string") ? img : (img && img.src);
+          const src = normalizeSrc(raw);
           if(!src) return;
 
-          const alt = esc((it && it.alt) || (it && it.caption) || "Released document image");
+          const alt = (img && img.alt) ? img.alt : "Released document image excerpt";
+
           const slide = document.createElement("div");
           slide.className = "slide";
-          slide.innerHTML = `<img src="${esc(src)}" alt="${alt}" loading="lazy" decoding="async">`;
+          slide.innerHTML = '<img loading="lazy" decoding="async" src="' + esc(src) + '" alt="' + esc(alt) + '">';
           track.appendChild(slide);
           slides.push(slide);
 
           const dot = document.createElement("button");
           dot.type = "button";
           dot.className = "dot" + (i===0 ? " on" : "");
-          dot.setAttribute("aria-label","Go to image " + (i+1));
-          dot.addEventListener("click", (e)=>{ e.preventDefault(); go(i); });
+          dot.setAttribute("aria-label", "Go to image " + (i+1));
+          dot.addEventListener("click", () => setIndex(i));
           dotsWrap.appendChild(dot);
           dots.push(dot);
         });
 
+        // If JSON had junk and produced 0 slides, keep fallback
         if(!slides.length){
-          // keep the fallback already in HTML
+          track.innerHTML = '<div class="slide"><img src="/assets/epstein/epstein-hero.jpg" alt="Released document preview image"></div>';
           dotsWrap.innerHTML = "";
+          slides = [track.firstElementChild];
+          idx = 0;
           return;
         }
-        idx = 0;
-        render();
+
+        setIndex(0);
       }
 
-      function load(){
-        fetch("/released/epstein/images/images.json?v=" + Date.now(), { cache: "no-store" })
-          .then(r => { if(!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
-          .then(data => {
-            const list = Array.isArray(data && data.images) ? data.images : [];
-            build(list);
-          })
-          .catch(()=> {
-            // leave fallback slide in place
-            dotsWrap.innerHTML = "";
-          });
-      }
+      function prev(){ setIndex(idx - 1); }
+      function next(){ setIndex(idx + 1); }
 
-      btnPrev.addEventListener("click", (e)=>{ e.preventDefault(); go(idx - 1); });
-      btnNext.addEventListener("click", (e)=>{ e.preventDefault(); go(idx + 1); });
+      btnPrev.addEventListener("click", prev);
+      btnNext.addEventListener("click", next);
 
-      // Keyboard support
-      carousel.tabIndex = 0;
-      carousel.addEventListener("keydown", (e)=>{
-        if(e.key === "ArrowLeft") go(idx - 1);
-        if(e.key === "ArrowRight") go(idx + 1);
-      });
-
-      // Swipe support
+      // Swipe
       carousel.addEventListener("pointerdown", (e)=>{
         dragging = true;
         startX = e.clientX;
-        dx = 0;
         carousel.setPointerCapture && carousel.setPointerCapture(e.pointerId);
       });
       carousel.addEventListener("pointermove", (e)=>{
         if(!dragging) return;
-        dx = e.clientX - startX;
-      });
-      carousel.addEventListener("pointerup", ()=>{
+        const dx = e.clientX - startX;
+        // only prevent on meaningful horizontal drag
+        if(Math.abs(dx) > 10) e.preventDefault();
+      }, { passive: false });
+      carousel.addEventListener("pointerup", (e)=>{
         if(!dragging) return;
         dragging = false;
+        const dx = e.clientX - startX;
         if(Math.abs(dx) > 40){
-          go(idx + (dx < 0 ? 1 : -1));
+          dx > 0 ? prev() : next();
         }
       });
-      carousel.addEventListener("pointercancel", ()=>{ dragging = false; });
 
-      load();
+      // Load images.json (supports {"images":[...]} OR [...])
+      fetch("/released/epstein/images/images.json?v=" + Date.now(), { cache: "no-store" })
+        .then(r => {
+          if(!r.ok) throw new Error("HTTP " + r.status);
+          return r.json();
+        })
+        .then(data => {
+          const list = Array.isArray(data) ? data : (Array.isArray(data.images) ? data.images : []);
+          buildFromList(list);
+        })
+        .catch(() => {
+          // Leave the single fallback image
+        });
     })();
   </script>
 
