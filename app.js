@@ -8,60 +8,78 @@
   function byId(id){ return document.getElementById(id); }
   function esc(s){ return String(s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
-  // --- Paths (NO .html, absolute so subfolders like /admin don't double-prefix) ---
+  /* -------------------------------------------------------
+     ROUTES (NO .html)
+     - All internal nav/buttons should point to clean routes.
+     - IMPORTANT: if you deploy on GitHub Pages, you must
+       have matching folders with index.html (e.g. /submit/index.html)
+       or Cloudflare/host rewrite rules. You said it works, so we use it.
+  ------------------------------------------------------- */
   const LINKS = {
     home: "/",
     fbSupport: "/facebook",
     fbMaga: "/facebook-maga",
     submit: "/submit",
     epsteinPlayer: "/released/epstein/epstein-reader",
+
+    // Root-level legal pages (NO /policy and NO .html)
     about: "/about",
     contact: "/contact",
-    privacy: "/policy/privacy",
-    terms: "/policy/terms",
-    cookies: "/cookie-policy",
+    privacy: "/privacy",
+    terms: "/terms",
+    cookies: "/cookies",
     dmca: "/dmca",
     ads: "/advertising-disclosure"
   };
 
-  // --- Mobile dropdown positioning (prevents menu hanging off screen) ---
-  function isMobileNarrow(){
-    return window.matchMedia && window.matchMedia("(max-width: 720px)").matches;
+  /* -------------------------------------------------------
+     Helper: remove trailing .html from any internal URL
+  ------------------------------------------------------- */
+  function stripHtml(url){
+    const s = String(url || "");
+    // only touch site-relative links
+    if (!s.startsWith("/")) return s;
+    return s.replace(/\.html(\?|#|$)/i, (m) => m.toLowerCase().startsWith(".html") ? m.replace(".html","") : m);
   }
 
+  /* -------------------------------------------------------
+     Dropdown positioning fix for mobile (menu stays on-screen)
+     - centers dropdown on small screens; clamps to viewport
+  ------------------------------------------------------- */
   function positionDropdown(dd){
-    if(!dd) return;
+    if (!dd) return;
     const menu = dd.querySelector(".dropdown-menu");
     const btn  = dd.querySelector(".dropbtn");
-    if(!menu || !btn) return;
+    if (!menu || !btn) return;
 
-    // Reset first
+    // reset first
     menu.style.left = "";
     menu.style.right = "";
     menu.style.transform = "";
-    menu.style.maxWidth = "";
-    menu.style.width = "";
-    menu.style.marginLeft = "";
-    menu.style.marginRight = "";
+    menu.style.minWidth = "";
 
-    // On mobile, center the dropdown and constrain width so nothing is offscreen
-    if(isMobileNarrow()){
-      // make it centered, not anchored to button edge
+    const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+
+    // On mobile: center it under the button and clamp to viewport
+    if (vw <= 720){
       menu.style.left = "50%";
+      menu.style.right = "auto";
       menu.style.transform = "translateX(-50%)";
-      menu.style.maxWidth = "min(92vw, 420px)";
-      menu.style.width = "min(92vw, 420px)";
-    } else {
-      // Desktop: keep default CSS positioning
+      menu.style.minWidth = "min(92vw, 420px)";
+      return;
+    }
+
+    // On desktop: right-align to button, but clamp if it would overflow left
+    const rect = menu.getBoundingClientRect();
+    if (rect.left < 8){
+      menu.style.left = "0";
+      menu.style.right = "auto";
     }
   }
 
-  function positionAllDropdowns(){
-    const dds = document.querySelectorAll(".dropdown.open");
-    dds.forEach(positionDropdown);
-  }
-
-  // --- Header/Footer mount ---
+  /* -------------------------------------------------------
+     Header/Footer
+  ------------------------------------------------------- */
   function mountHeader() {
     const host = byId("siteHeader");
     if (!host) return;
@@ -92,7 +110,7 @@
 
             <nav class="nav" aria-label="Site navigation">
               <div class="dropdown" id="ddPlatforms">
-                <button class="dropbtn" type="button" aria-haspopup="true" aria-expanded="false">Platforms ▾</button>
+                <button class="dropbtn" type="button" aria-expanded="false" aria-haspopup="true">Platforms ▾</button>
                 <div class="dropdown-menu" role="menu" aria-label="Platforms menu">
                   <a class="dd-item" href="${LINKS.fbSupport}">
                     <span class="dd-main">Facebook • Support</span>
@@ -106,7 +124,7 @@
               </div>
 
               <div class="dropdown" id="ddReleased">
-                <button class="dropbtn" type="button" aria-haspopup="true" aria-expanded="false">Released Files ▾</button>
+                <button class="dropbtn" type="button" aria-expanded="false" aria-haspopup="true">Released Files ▾</button>
                 <div class="dropdown-menu" role="menu" aria-label="Released files menu">
                   <a class="dd-item" href="${LINKS.epsteinPlayer}">
                     <span class="dd-main">Epstein Files • PDF reader + audio</span>
@@ -115,7 +133,7 @@
                 </div>
               </div>
 
-              <!-- Submit should be BLUE everywhere -->
+              <!-- Make submit BLUE: uses your CSS .cta.btn.blue -->
               <a class="cta btn blue" href="${LINKS.submit}">Submit</a>
             </nav>
           </div>
@@ -124,35 +142,34 @@
     `;
 
     const ddPlatforms = byId("ddPlatforms");
-    const ddReleased = byId("ddReleased");
+    const ddReleased  = byId("ddReleased");
+
+    function setExpanded(dd, on){
+      const btn = dd && dd.querySelector(".dropbtn");
+      if (btn) btn.setAttribute("aria-expanded", on ? "true" : "false");
+    }
 
     function closeAll(){
-      [ddPlatforms, ddReleased].forEach(dd => {
-        if(!dd) return;
-        dd.classList.remove("open");
-        const b = dd.querySelector(".dropbtn");
-        if(b) b.setAttribute("aria-expanded","false");
-      });
+      if (ddPlatforms){ ddPlatforms.classList.remove("open"); setExpanded(ddPlatforms,false); }
+      if (ddReleased){  ddReleased.classList.remove("open");  setExpanded(ddReleased,false); }
     }
 
     host.querySelectorAll(".dropdown .dropbtn").forEach(btn => {
       btn.addEventListener("click", (e) => {
         e.preventDefault();
         const dd = btn.closest(".dropdown");
-        if (!dd) return;
-
         const wasOpen = dd.classList.contains("open");
         closeAll();
-
-        if (!wasOpen) {
+        if (!wasOpen){
           dd.classList.add("open");
-          btn.setAttribute("aria-expanded","true");
-          positionDropdown(dd);
+          setExpanded(dd,true);
+          // position after open so menu has dimensions
+          setTimeout(() => positionDropdown(dd), 0);
         }
       });
     });
 
-    // Close on outside click
+    // Close dropdowns when clicking outside
     document.addEventListener("click", (e) => {
       const t = e.target;
       if (!t) return;
@@ -161,58 +178,62 @@
       closeAll();
     }, { passive:true });
 
-    // Reposition open menus on resize/orientation
-    window.addEventListener("resize", positionAllDropdowns, { passive:true });
+    // Close on ESC
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeAll();
+    });
+
+    // Clamp menus on resize if open
+    window.addEventListener("resize", () => {
+      if (ddPlatforms && ddPlatforms.classList.contains("open")) positionDropdown(ddPlatforms);
+      if (ddReleased && ddReleased.classList.contains("open")) positionDropdown(ddReleased);
+    }, { passive:true });
   }
 
   function mountFooter() {
     const host = byId("siteFooter");
     if (!host) return;
 
-    // Footer: red like header, logo + socials + links
+    // Footer = same red as header
     host.innerHTML = `
-      <footer class="site-footer" style="background:#b30000;border-top:1px solid rgba(255,255,255,.10);">
-        <div class="wrap" style="padding:18px 16px;">
-          <div class="footinner" style="display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;">
-            <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-              <a href="${LINKS.home}" style="display:flex;align-items:center;gap:10px;color:#fff;text-decoration:none;">
-                <img src="/assets/logo.png" alt="Civic Threat" style="width:28px;height:28px;display:block;"/>
-                <strong style="letter-spacing:.06em;">CIVIC THREAT</strong>
-              </a>
-
-              <div class="iconrow" aria-label="Follow us" style="display:flex;gap:10px;align-items:center;">
-                <a class="iconbtn" href="https://www.facebook.com/CivicThreat/" target="_blank" rel="noopener" aria-label="Facebook" style="color:#fff">${iconFacebook()}</a>
-                <a class="iconbtn" href="https://www.youtube.com/@civicthreat" target="_blank" rel="noopener" aria-label="YouTube" style="color:#fff">${iconYoutube()}</a>
-                <a class="iconbtn" href="https://www.tiktok.com/@civicthreat" target="_blank" rel="noopener" aria-label="TikTok" style="color:#fff">${iconTikTok()}</a>
-                <a class="iconbtn" href="https://x.com/CivicThreat" target="_blank" rel="noopener" aria-label="X" style="color:#fff">${iconX()}</a>
-              </div>
-            </div>
-
-            <div style="opacity:.95;color:#fff;font-size:12px;">
-              © ${Number(CFG.COPYRIGHT_YEAR || new Date().getFullYear())} Civic Threat. All rights reserved.
-            </div>
+      <footer class="site-footer">
+        <div class="wrap footinner" style="align-items:center">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <a href="${LINKS.home}" style="display:inline-flex;align-items:center;gap:10px;text-decoration:none">
+              <img src="/assets/logo.png" alt="Civic Threat" style="width:28px;height:28px;object-fit:contain"/>
+              <strong style="letter-spacing:.06em">CIVIC THREAT</strong>
+            </a>
+            <span style="opacity:.95">© ${Number(CFG.COPYRIGHT_YEAR || new Date().getFullYear())}</span>
           </div>
 
-          <div class="footlinks" style="margin-top:12px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
-            <a href="${LINKS.about}" style="color:#fff;opacity:.95">About</a>
-            <a href="${LINKS.contact}" style="color:#fff;opacity:.95">Contact</a>
-            <a href="${LINKS.privacy}" style="color:#fff;opacity:.95">Privacy</a>
-            <a href="${LINKS.terms}" style="color:#fff;opacity:.95">Terms</a>
-            <a href="${LINKS.cookies}" style="color:#fff;opacity:.95">Cookies</a>
-            <a href="${LINKS.ads}" style="color:#fff;opacity:.95">Advertising</a>
-            <a href="${LINKS.dmca}" style="color:#fff;opacity:.95">DMCA</a>
+          <div class="footlinks" aria-label="Footer links">
+            <a href="${LINKS.about}">About</a>
+            <a href="${LINKS.contact}">Contact</a>
+            <a href="${LINKS.privacy}">Privacy</a>
+            <a href="${LINKS.terms}">Terms</a>
+            <a href="${LINKS.cookies}">Cookies</a>
+            <a href="${LINKS.ads}">Advertising</a>
+            <a href="${LINKS.dmca}">DMCA</a>
+          </div>
+
+          <div class="iconrow" aria-label="Follow Civic Threat">
+            <a class="iconbtn" href="https://www.facebook.com/CivicThreat/" target="_blank" rel="noopener" aria-label="Facebook">${iconFacebook()}</a>
+            <a class="iconbtn" href="https://www.youtube.com/@civicthreat" target="_blank" rel="noopener" aria-label="YouTube">${iconYoutube()}</a>
+            <a class="iconbtn" href="https://www.tiktok.com/@civicthreat" target="_blank" rel="noopener" aria-label="TikTok">${iconTikTok()}</a>
+            <a class="iconbtn" href="https://x.com/CivicThreat" target="_blank" rel="noopener" aria-label="X">${iconX()}</a>
           </div>
         </div>
       </footer>
     `;
   }
 
-  // --- Facebook URL normalization (fixes plugin URLs stored in sheet) ---
+  /* -------------------------------------------------------
+     Facebook URL normalization (fixes plugin URLs stored in sheet)
+  ------------------------------------------------------- */
   function normalizeFacebookPostUrl(raw) {
     const s = String(raw || "").trim();
     if (!s) return "";
 
-    // If the sheet accidentally contains a Facebook plugin URL, extract the real href=
     if (/facebook\.com\/plugins\//i.test(s)) {
       try {
         const u = new URL(s);
@@ -221,7 +242,6 @@
       } catch (_) {}
     }
 
-    // If URL is itself encoded inside string
     if (/https%3A%2F%2F(.*)facebook\.com/i.test(s)) {
       try {
         const decoded = decodeURIComponent(s);
@@ -243,7 +263,9 @@
     return `https://www.facebook.com/plugins/post.php?href=${u}&show_text=true&width=500`;
   }
 
-  // --- Reactions (cooldown 5s per browser) ---
+  /* -------------------------------------------------------
+     Reactions (cooldown 5s per browser)
+  ------------------------------------------------------- */
   function canReactNow() {
     const ms = Number(CFG.REACTION_COOLDOWN_MS || 5000);
     const key = "ct_react_last_ts";
@@ -278,18 +300,18 @@
     }
   }
 
-  // --- Card renderer ---
-  function renderPostCard(item) {
+  /* -------------------------------------------------------
+     Card renderer
+     - Headlines: Support BLUE, MAGA RED
+  ------------------------------------------------------- */
+  function renderPostCard(item, contextCategory) {
     const card = document.createElement("article");
     card.className = "post-card";
 
     const isMaga = (item.category || "").toLowerCase() === "maga";
     const categoryLabel = isMaga ? "Facebook • MAGA / Debate" : "Facebook • Support";
+    const titleText = item.title ? esc(item.title) : "Facebook Post";
 
-    // Headline colors: Support = blue, MAGA = red (header red)
-    const titleColor = isMaga ? "#b30000" : "rgba(43,108,255,.95)";
-
-    const title = item.title ? esc(item.title) : "Facebook Post";
     const submittedBy = item.submitterName ? esc(item.submitterName) : "Anonymous";
     const dateMs = Number(item.approvedAt || item.submittedAt || 0);
     const dateStr = dateMs ? new Date(dateMs).toLocaleDateString(undefined, { year:"numeric", month:"short", day:"2-digit" }) : "";
@@ -298,11 +320,12 @@
     const embedUrl = getFacebookEmbedUrl(realPostUrl);
 
     const browseHref = isMaga ? LINKS.fbMaga : LINKS.fbSupport;
+    const titleColor = isMaga ? "var(--red)" : "var(--blue)";
 
     card.innerHTML = `
       <div class="post-head">
         <div class="meta">${esc(categoryLabel)} ${dateStr ? "• " + esc(dateStr) : ""}</div>
-        <div class="title" style="color:${titleColor};">${title}</div>
+        <div class="title" style="color:${titleColor}">${titleText}</div>
       </div>
 
       <div class="embed">
@@ -346,13 +369,15 @@
     return card;
   }
 
-  // --- Loading helpers ---
+  /* -------------------------------------------------------
+     Page loaders
+     - Ensure "Loading posts…" is visible (block)
+  ------------------------------------------------------- */
   function setLoading(host, msg) {
     if (!host) return;
     host.innerHTML = `<div class="more" style="display:block">${esc(msg || "Loading posts…")}</div>`;
   }
 
-  // --- Page loaders ---
   async function loadHome() {
     const supportHost = byId("homeSupport");
     const magaHost = byId("homeMaga");
@@ -362,7 +387,6 @@
     if (magaHost) setLoading(magaHost, "Loading posts…");
 
     const items = await API.listApproved();
-
     const support = items.filter(x => (x.category || "").toLowerCase() !== "maga").slice(0, 6);
     const maga = items.filter(x => (x.category || "").toLowerCase() === "maga").slice(0, 6);
 
@@ -385,9 +409,9 @@
 
     if (!grid) return;
 
-    // Make the "loading posts" very obvious
-    setLoading(grid, "Loading posts…");
-    if (more) { more.style.display = "block"; more.textContent = "Loading posts…"; }
+    // visible loading state
+    grid.innerHTML = `<div class="more" style="display:block">Loading posts…</div>`;
+    if (more){ more.style.display = "block"; more.textContent = "Loading more posts…"; }
 
     const [approved, pending] = await Promise.all([
       API.listApproved(),
@@ -399,21 +423,15 @@
       return categoryWanted === "maga" ? cat === "maga" : cat !== "maga";
     });
 
-    // IMPORTANT: your HTML already says "Approved:" / "Pending:" so only write numbers (no duplication)
+    // NOTE: If your HTML already includes "Approved:" text, you should set ONLY the number there.
+    // We'll keep it numeric to avoid double "Approved: Approved: X"
     if (countApproved) countApproved.textContent = String(filtered.length);
     if (countPending) countPending.textContent = String(pending.length);
 
     function draw(list) {
       grid.innerHTML = "";
-      list.forEach(item => grid.appendChild(renderPostCard(item)));
-
-      // Hide "more/loading" if present
+      list.forEach(item => grid.appendChild(renderPostCard(item, categoryWanted)));
       if (more) more.style.display = "none";
-
-      // If nothing to show, keep an explicit empty-state
-      if (!list.length) {
-        setLoading(grid, "No posts found yet. Try a different search.");
-      }
     }
 
     draw(filtered);
@@ -427,42 +445,50 @@
           const hay = `${x.title||""} ${x.postUrl||""} ${x.submitterName||""}`.toLowerCase();
           return hay.includes(q);
         });
-
         draw(list);
       });
     }
   }
 
-  // --- Icons ---
+  /* -------------------------------------------------------
+     Icons
+  ------------------------------------------------------- */
   function iconFacebook(){ return `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M22 12a10 10 0 1 0-11.6 9.9v-7H8v-3h2.4V9.8c0-2.4 1.4-3.7 3.6-3.7 1 0 2.1.2 2.1.2v2.3h-1.2c-1.2 0-1.6.7-1.6 1.5V12H16l-.4 3h-2.3v7A10 10 0 0 0 22 12z"/></svg>`; }
   function iconYoutube(){ return `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.6 7.2a3 3 0 0 0-2.1-2.1C17.7 4.6 12 4.6 12 4.6s-5.7 0-7.5.5A3 3 0 0 0 2.4 7.2 31.5 31.5 0 0 0 2 12a31.5 31.5 0 0 0 .4 4.8 3 3 0 0 0 2.1 2.1c1.8.5 7.5.5 7.5.5s5.7 0 7.5-.5a3 3 0 0 0 2.1-2.1A31.5 31.5 0 0 0 22 12a31.5 31.5 0 0 0-.4-4.8zM10 15.5v-7l6 3.5-6 3.5z"/></svg>`; }
   function iconTikTok(){ return `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.7 5.3c1 .8 2.2 1.3 3.5 1.4v3.2c-1.7 0-3.3-.5-4.6-1.4v6.6c0 3-2.5 5.5-5.5 5.5S4.6 18 4.6 15s2.5-5.5 5.5-5.5c.5 0 1 .1 1.4.2v3.4c-.4-.2-.9-.3-1.4-.3-1.2 0-2.2 1-2.2 2.2s1 2.2 2.2 2.2 2.2-1 2.2-2.2V2h3c.1 1.3.7 2.5 1.4 3.3z"/></svg>`; }
   function iconX(){ return `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.9 2H22l-6.8 7.8L23 22h-6.4l-5-6.5L6 22H2.9l7.3-8.4L1 2h6.6l4.5 5.9L18.9 2zm-1.1 18h1.7L6.7 3.9H5L17.8 20z"/></svg>`; }
 
-  // --- Init ---
+  /* -------------------------------------------------------
+     Init
+     - Also auto-strip .html from any internal anchors we render
+       (safety net if some HTML still contains .html)
+  ------------------------------------------------------- */
+  function fixInternalAnchors(){
+    document.querySelectorAll('a[href^="/"]').forEach(a => {
+      const href = a.getAttribute("href") || "";
+      const cleaned = stripHtml(href);
+      if (cleaned !== href) a.setAttribute("href", cleaned);
+    });
+  }
+
   async function init() {
     mountHeader();
     mountFooter();
+    fixInternalAnchors();
 
-    // If API isn't present yet, still keep header/footer functional
     if (!API) return;
 
     const page = (document.body.getAttribute("data-page") || "").toLowerCase();
-    const path = (location.pathname || "").toLowerCase();
 
     try {
       if (page === "home") await loadHome();
 
-      // Support feed page
+      // feed pages
       if (page === "fb_support" || page === "facebook") {
-        const isMagaPath = /\/facebook-maga\/?$/.test(path);
-        await loadFeedPage(isMagaPath ? "maga" : "support");
+        // support page
+        await loadFeedPage("support");
       }
-
-      // MAGA feed page
-      if (page === "fb_maga") {
-        await loadFeedPage("maga");
-      }
+      if (page === "fb_maga") await loadFeedPage("maga");
     } catch (e) {
       console.error(e);
     }
