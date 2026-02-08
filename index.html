@@ -68,19 +68,14 @@
   }
   </script>
 
-  <!-- Page-only styles for the homepage hero layout -->
+  <!-- Page-only styles -->
   <style>
-    /* Extra breathing room under sticky top bar */
     main{ padding-top: 14px; }
 
-    /* Section spacing */
     .hero-block{ padding: 18px 0 6px; }
     .hero-block + .hero-block{ padding-top: 10px; }
 
-    /* Civic Threat (top, centered, bigger) */
-    .ct-hero{
-      text-align: center;
-    }
+    .ct-hero{ text-align: center; }
     .ct-hero h1{
       margin: 0 0 10px;
       font-size: clamp(34px, 5vw, 56px);
@@ -95,7 +90,6 @@
       font-size: 15px;
     }
 
-    /* Released Files (second section, keep same vibe) */
     .rf-hero .grid{
       display:grid;
       grid-template-columns: 1.05fr .95fr;
@@ -113,7 +107,6 @@
       font-weight: 1000;
       white-space: nowrap;
     }
-
     .rf-hero p{
       margin: 0 0 12px;
       opacity: .9;
@@ -127,6 +120,14 @@
       margin-top: 10px;
     }
 
+    /* Button color overrides for THIS page */
+    .btn.red{
+      background: #ff0050;
+      border-color: rgba(255,255,255,.12);
+      color: #fff;
+    }
+    .btn.red:hover{ filter: brightness(1.03); }
+
     .ep-meta{
       margin-top: 12px;
       font-size: 12px;
@@ -135,31 +136,85 @@
       max-width: 80ch;
     }
 
-    /* Image only (no frame) */
-    .hero-media{
-      display:block;
+    /* Carousel frame (black background, contain images) */
+    .hero-carousel{
       width: 100%;
       aspect-ratio: 16 / 10;
-      background: rgba(0,0,0,.25);
-      overflow:hidden;
+      background: #000;
+      border: 1px solid rgba(255,255,255,.10);
+      overflow: hidden;
+      position: relative;
+      user-select: none;
+      touch-action: pan-y;
     }
-    .hero-media img{
-      width: 100%;
+    .hero-carousel .track{
       height: 100%;
-      object-fit: cover;
-      display:block;
+      display: flex;
+      transform: translateX(0);
+      transition: transform 240ms ease;
+      will-change: transform;
     }
-    .hero-media .fallback{
+    .hero-carousel .slide{
+      min-width: 100%;
       height: 100%;
       display:flex;
       align-items:center;
       justify-content:center;
-      text-align:center;
-      padding: 14px;
-      font-size: 12px;
-      opacity: .8;
-      line-height: 1.45;
+      background:#000;
     }
+    .hero-carousel img{
+      width: 100%;
+      height: 100%;
+      object-fit: contain;   /* <-- letterbox/pillarbox */
+      background:#000;       /* <-- black background behind image */
+      display:block;
+    }
+
+    .hero-carousel .navbtn{
+      position:absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 2;
+      width: 40px;
+      height: 40px;
+      border-radius: 0;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(0,0,0,.55);
+      color:#fff;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+    }
+    .hero-carousel .navbtn:hover{ background: rgba(0,0,0,.70); }
+    .hero-carousel .prev{ left: 10px; }
+    .hero-carousel .next{ right: 10px; }
+
+    .hero-carousel .dots{
+      position:absolute;
+      left: 50%;
+      bottom: 10px;
+      transform: translateX(-50%);
+      display:flex;
+      gap: 8px;
+      z-index: 2;
+      padding: 6px 8px;
+      background: rgba(0,0,0,.35);
+      border: 1px solid rgba(255,255,255,.10);
+    }
+    .hero-carousel .dot{
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.35);
+      background: rgba(255,255,255,.16);
+      cursor:pointer;
+    }
+    .hero-carousel .dot.on{
+      background: rgba(0,242,234,.85);
+      border-color: rgba(0,242,234,.95);
+    }
+
     .hero-media-caption{
       margin-top: 8px;
       font-size: 12px;
@@ -168,11 +223,23 @@
       text-transform: uppercase;
     }
 
-    /* Subtle separator line */
     .hero-sep{
       margin: 18px 0 0;
       border: 0;
       border-top: 1px solid rgba(255,255,255,.10);
+    }
+
+    /* Raise “View all” and keep it aligned cleanly */
+    .toolbar{ align-items: flex-start; }
+    .toolbar > a.btn{ margin-top: 4px; }
+
+    /* Slightly richer on-page text for SEO */
+    .sub-boost{
+      margin: 6px 0 0;
+      max-width: 92ch;
+      opacity: .88;
+      line-height: 1.55;
+      font-size: 13px;
     }
   </style>
 
@@ -191,7 +258,7 @@
 
   <main>
 
-    <!-- HERO 1: CIVIC THREAT (centered, bigger, SEO H1) -->
+    <!-- HERO 1: CIVIC THREAT -->
     <section class="hero hero-block ct-hero">
       <div class="wrap">
         <h1>CIVIC THREAT</h1>
@@ -203,7 +270,7 @@
       <hr class="hero-sep" />
     </section>
 
-    <!-- HERO 2: RELEASED FILES • EPSTEIN FILES (H2, keep same) -->
+    <!-- HERO 2: RELEASED FILES • EPSTEIN FILES -->
     <section class="hero hero-block rf-hero">
       <div class="wrap">
         <div class="grid">
@@ -217,8 +284,11 @@
             </p>
 
             <div class="actions">
-              <a class="btn blue" href="/released/epstein/epstein-reader.html">Open Epstein Files Player</a>
-              <a class="btn" href="/submit.html">Submit a Post</a>
+              <!-- Epstein button RED -->
+              <a class="btn red" href="/released/epstein/epstein-reader.html">Open Epstein Files Player</a>
+
+              <!-- Submit button BLUE -->
+              <a class="btn blue" href="/submit.html">Submit a Post</a>
             </div>
 
             <div class="ep-meta">
@@ -227,19 +297,22 @@
             </div>
           </div>
 
-          <!-- RIGHT (image only) -->
+          <!-- RIGHT: AUTO-LOADING IMAGE SCROLLER -->
           <div>
-            <a class="hero-media" href="/released/epstein/epstein-reader.html" aria-label="Open Epstein Files Player">
-              <img
-                src="/assets/epstein/epstein-hero.jpg"
-                alt="Epstein files preview image"
-                onerror="this.style.display='none'; this.parentElement.querySelector('.fallback').style.display='flex';"
-              />
-              <div class="fallback" style="display:none;">
-                Add an image at <strong style="margin-left:6px">/assets/epstein/epstein-hero.jpg</strong>
+            <a href="/released/epstein/epstein-reader.html" aria-label="Open Epstein Files Player" style="text-decoration:none;color:inherit;">
+              <div class="hero-carousel" id="epCarousel" aria-label="Epstein released images carousel">
+                <button class="navbtn prev" type="button" aria-label="Previous image" id="epPrev">‹</button>
+                <button class="navbtn next" type="button" aria-label="Next image" id="epNext">›</button>
+                <div class="track" id="epTrack">
+                  <!-- Fallback slide (replaced once images load) -->
+                  <div class="slide">
+                    <img src="/assets/epstein/epstein-hero.jpg" alt="Epstein files preview image">
+                  </div>
+                </div>
+                <div class="dots" id="epDots" aria-label="Carousel dots"></div>
               </div>
             </a>
-            <div class="hero-media-caption">Epstein Files</div>
+            <div class="hero-media-caption">Released Epstein Images (scroll)</div>
           </div>
 
         </div>
@@ -248,13 +321,17 @@
       </div>
     </section>
 
-    <!-- Existing sections stay -->
+    <!-- Facebook Support -->
     <section class="section">
       <div class="wrap">
         <div class="toolbar">
           <div>
             <h2>Facebook • Support</h2>
             <p class="sub">Latest approved posts for creators and pages you want to support.</p>
+            <p class="sub-boost">
+              This feed highlights pro-democracy creators, anti-MAGA commentary, fact-based explainers, and community voices.
+              Use it to quickly find shareable posts, track narratives, and support pages calling out Trump/MAGA disinformation.
+            </p>
           </div>
           <a class="btn" href="/facebook.html">View all</a>
         </div>
@@ -262,12 +339,20 @@
       </div>
     </section>
 
+    <!-- Divider between Support and MAGA -->
+    <div class="wrap"><hr class="hero-sep" style="margin: 6px 0 0"/></div>
+
+    <!-- Facebook MAGA / Debate -->
     <section class="section">
       <div class="wrap">
         <div class="toolbar">
           <div>
             <h2>Facebook • MAGA / Debate</h2>
             <p class="sub">Latest approved posts from MAGA / Trump social accounts open for debate and discussion.</p>
+            <p class="sub-boost">
+              This section archives debate-oriented posts and links so people can analyze claims, check sources, and discuss context.
+              Search and share posts related to Trump, MAGA, immigration, tariffs, elections, and current political talking points.
+            </p>
           </div>
           <a class="btn" href="/facebook-maga.html">View all</a>
         </div>
@@ -275,6 +360,7 @@
       </div>
     </section>
 
+    <!-- Submit -->
     <section class="section">
       <div class="wrap">
         <h2>Submit a post</h2>
@@ -286,6 +372,130 @@
   </main>
 
   <div id="siteFooter"></div>
+
+  <!-- Epstein carousel loader (auto-loads from /released/epstein/images/images.json) -->
+  <script>
+    (function(){
+      const track = document.getElementById("epTrack");
+      const dotsWrap = document.getElementById("epDots");
+      const btnPrev = document.getElementById("epPrev");
+      const btnNext = document.getElementById("epNext");
+      const carousel = document.getElementById("epCarousel");
+
+      if(!track || !dotsWrap || !btnPrev || !btnNext || !carousel) return;
+
+      let idx = 0;
+      let slides = [];
+      let dots = [];
+      let startX = 0;
+      let dx = 0;
+      let dragging = false;
+
+      function esc(s){
+        return String(s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+      }
+
+      function normalizeSrc(src){
+        if(!src) return "";
+        const s = String(src);
+        if(/^https?:\/\//i.test(s)) return s;
+        if(s.startsWith("/")) return s;
+        // filename-only -> prefix with released images folder
+        return "/released/epstein/images/" + s.replace(/^\.?\//,"");
+      }
+
+      function render(){
+        track.style.transform = "translateX(" + (-idx * 100) + "%)";
+        dots.forEach((d,i)=> d.classList.toggle("on", i===idx));
+      }
+
+      function go(n){
+        if(!slides.length) return;
+        idx = (n + slides.length) % slides.length;
+        render();
+      }
+
+      function build(list){
+        track.innerHTML = "";
+        dotsWrap.innerHTML = "";
+        slides = [];
+        dots = [];
+
+        list.forEach((it, i) => {
+          const src = normalizeSrc(it && it.src);
+          if(!src) return;
+
+          const alt = esc((it && it.alt) || (it && it.caption) || "Released document image");
+          const slide = document.createElement("div");
+          slide.className = "slide";
+          slide.innerHTML = `<img src="${esc(src)}" alt="${alt}" loading="lazy" decoding="async">`;
+          track.appendChild(slide);
+          slides.push(slide);
+
+          const dot = document.createElement("button");
+          dot.type = "button";
+          dot.className = "dot" + (i===0 ? " on" : "");
+          dot.setAttribute("aria-label","Go to image " + (i+1));
+          dot.addEventListener("click", (e)=>{ e.preventDefault(); go(i); });
+          dotsWrap.appendChild(dot);
+          dots.push(dot);
+        });
+
+        if(!slides.length){
+          // keep the fallback already in HTML
+          dotsWrap.innerHTML = "";
+          return;
+        }
+        idx = 0;
+        render();
+      }
+
+      function load(){
+        fetch("/released/epstein/images/images.json?v=" + Date.now(), { cache: "no-store" })
+          .then(r => { if(!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+          .then(data => {
+            const list = Array.isArray(data && data.images) ? data.images : [];
+            build(list);
+          })
+          .catch(()=> {
+            // leave fallback slide in place
+            dotsWrap.innerHTML = "";
+          });
+      }
+
+      btnPrev.addEventListener("click", (e)=>{ e.preventDefault(); go(idx - 1); });
+      btnNext.addEventListener("click", (e)=>{ e.preventDefault(); go(idx + 1); });
+
+      // Keyboard support
+      carousel.tabIndex = 0;
+      carousel.addEventListener("keydown", (e)=>{
+        if(e.key === "ArrowLeft") go(idx - 1);
+        if(e.key === "ArrowRight") go(idx + 1);
+      });
+
+      // Swipe support
+      carousel.addEventListener("pointerdown", (e)=>{
+        dragging = true;
+        startX = e.clientX;
+        dx = 0;
+        carousel.setPointerCapture && carousel.setPointerCapture(e.pointerId);
+      });
+      carousel.addEventListener("pointermove", (e)=>{
+        if(!dragging) return;
+        dx = e.clientX - startX;
+      });
+      carousel.addEventListener("pointerup", ()=>{
+        if(!dragging) return;
+        dragging = false;
+        if(Math.abs(dx) > 40){
+          go(idx + (dx < 0 ? 1 : -1));
+        }
+      });
+      carousel.addEventListener("pointercancel", ()=>{ dragging = false; });
+
+      load();
+    })();
+  </script>
 
   <script src="/config.js?v=12"></script>
   <script src="/data-api.js?v=12"></script>
