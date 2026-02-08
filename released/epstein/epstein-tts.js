@@ -1,578 +1,1079 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Released Files • Epstein Files | Civic Threat</title>
+/* Epstein Reader (TTS) — CivicThreat.us
+   Structure:
+   - /released/epstein/index.json
+   - /released/epstein/pdfs/<file>.pdf
+*/
+(function(){
+  "use strict";
 
-  <meta name="description" content="Listen to released Epstein court PDFs with text-to-speech, page-by-page controls, and a built-in viewer. Adults 21+ only." />
-  <meta name="robots" content="index,follow" />
+  const VERSION = "v16";
+  const INDEX_URL = "/released/epstein/index.json";
+  const CONSENT_KEY = "ct_epstein_21_gate_v1";
 
-  <meta property="og:title" content="Released Files • Epstein Files | Civic Threat" />
-  <meta property="og:description" content="Listen to released Epstein court PDFs with text-to-speech, page-by-page controls, and a built-in viewer. Adults 21+ only." />
-  <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://civicthreat.us/released/epstein/epstein-reader" />
-  <meta property="og:image" content="https://civicthreat.us/assets/civicthreat-social-1200x630.jpg" />
+  // Ignore repeated PDF header/footer regions for TTS (does not affect viewer)
+  const TTS_IGNORE_TOP_PCT = 0.08;     // top 8% of page
+  const TTS_IGNORE_BOTTOM_PCT = 0.06;  // bottom 6% of page
 
-  <link rel="icon" href="/assets/logo.png" />
-  <link rel="stylesheet" href="/styles.css" />
+  const $ = (sel, root=document) => root.querySelector(sel);
 
-  <style>
-    .page-wrap{ max-width: 1120px; margin: 0 auto; padding: 22px 16px 42px; }
-    .hero{ padding: 18px 0 10px; }
-    .hero h1{ margin: 0 0 6px; font-size: clamp(26px, 4vw, 38px); letter-spacing:.02em; }
-    .hero p{ margin: 0; opacity: .9; line-height: 1.5; }
+  const el = {};
 
-    /* Square containers (match rest of site) */
-    .ep-box{ border-radius: 0 !important; }
-    .ep-grid{ display:grid; grid-template-columns: 1.15fr .85fr; gap: 16px; margin-top: 16px; }
-    @media (max-width: 980px){ .ep-grid{ grid-template-columns: 1fr; } }
+  const state = {
+    pdfDoc: null,
+    pdfUrl: "",
+    pdfLabel: "",
+    page: 1,
+    totalPages: 0,
 
-    .ep-panel{ border: 1px solid rgba(255,255,255,.12); background: rgba(0,0,0,.25); }
-    .ep-panel .pad{ padding: 14px; }
+    voices: [],
+    selectedVoiceURI: "",
+    selectedRate: 1.0,
+    muted: false,
+    playing: false,
+    paused: false,
 
-    .ep-label{ font-size: 12px; opacity: .85; margin: 0 0 6px; }
-    .ep-row{ display:flex; gap:12px; flex-wrap: wrap; align-items: end; }
-    .ep-row > .field{ flex: 1 1 240px; min-width: 220px; }
-    .ep-row > .field.small{ flex: 0 0 180px; min-width: 160px; }
+    // text + word map for skip-word
+    pageTextCache: new Map(), // pageNum -> text
+    wordMapCache: new Map(),  // pageNum -> [{start,end,word}]
+    currentWordIndex: 0,
 
-    select{
-      width: 100%;
-      padding: 10px 12px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.35);
-      color: #fff;
-      outline: none;
-      border-radius: 0;
+    // chunked speech from a char offset
+    chunks: [],
+    chunkStarts: [],
+    chunkIndex: 0,
+    currentChunkStart: 0,
+
+    loadSeq: 0,
+    loadingPdf: false,
+
+    // render serialization / cancellation
+    renderTask: null,
+    renderQueue: Promise.resolve(),
+    renderSeq: 0,
+
+    // speech callback guard
+    speechSeq: 0,
+
+    // navigation guard
+    navSeq: 0,
+    navBusy: false,
+
+    // toggles
+    autoRead: false,
+    loopOn: false,
+
+    // throttle status updates
+    lastWordUiAt: 0,
+  };
+
+  window.CT_EPSTEIN_TTS = { version: VERSION };
+
+  function setStatus(title, line){
+    if(el.statusTitle) el.statusTitle.textContent = title || "";
+    if(el.statusLine) el.statusLine.textContent = line || "";
+  }
+
+  function bust(){ return String(Date.now()); }
+
+  async function safeFetchJson(url){
+    const u = url + (url.includes("?") ? "&" : "?") + "_=" + bust();
+    const r = await fetch(u, { cache: "no-store" });
+    if(!r.ok) throw new Error("Failed to load index.json (" + r.status + ")");
+    return r.json();
+  }
+
+  function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
+
+  // ✅ IMPORTANT: encode URLs (handles spaces in filenames reliably)
+  function normalizePdfUrlFromIndexPath(path){
+    // index.json uses "released/epstein/pdfs/Some File.pdf"
+    // We want "/released/epstein/pdfs/Some%20File.pdf"
+    let p = String(path || "").trim().replace(/^\/+/, "");
+    if(!p) return "";
+    const full = "/" + p;
+    // encode spaces + any unsafe chars, but keep slashes
+    return encodeURI(full);
+  }
+
+  function cancelSpeech(){
+    state.speechSeq++; // invalidate any pending utterance callbacks
+    try{ window.speechSynthesis.cancel(); }catch(_){}
+  }
+
+  function clearPlaybackBuffers(){
+    state.chunks = [];
+    state.chunkStarts = [];
+    state.chunkIndex = 0;
+    state.currentChunkStart = 0;
+  }
+
+  function stopAllAudio(){
+    cancelSpeech();
+    state.playing = false;
+    state.paused = false;
+    clearPlaybackBuffers();
+  }
+
+  function wireStopOnLeave(){
+    window.addEventListener("pagehide", stopAllAudio);
+    window.addEventListener("beforeunload", stopAllAudio);
+    window.addEventListener("popstate", stopAllAudio);
+
+    document.addEventListener("click", (e) => {
+      const a = e.target && e.target.closest ? e.target.closest("a") : null;
+      if(!a) return;
+      const href = (a.getAttribute("href") || "").trim();
+      if(!href) return;
+      if(href.startsWith("#")) return;
+      if(/^javascript:/i.test(href)) return;
+      stopAllAudio();
+    }, true);
+
+    document.addEventListener("visibilitychange", () => {
+      if(document.hidden) stopAllAudio();
+    });
+  }
+
+  // ---- 21+ gate ----
+  function hasConsent(){
+    try{ return localStorage.getItem(CONSENT_KEY) === "yes"; }catch(_){ return false; }
+  }
+  function setConsent(){
+    try{ localStorage.setItem(CONSENT_KEY, "yes"); }catch(_){}
+  }
+  function showGate(){
+    if(!el.gate) return;
+    el.gate.style.display = "flex";
+    document.body.style.overflow = "hidden";
+    if(el.gateCheck) el.gateCheck.checked = false;
+    if(el.gateEnter) el.gateEnter.disabled = true;
+  }
+  function hideGate(){
+    if(!el.gate) return;
+    el.gate.style.display = "none";
+    document.body.style.overflow = "";
+  }
+  function wireGate(onEnter){
+    if(!el.gate || !el.gateCheck || !el.gateEnter || !el.gateLeave) return onEnter();
+
+    el.gateCheck.addEventListener("change", () => {
+      el.gateEnter.disabled = !el.gateCheck.checked;
+    });
+
+    el.gateLeave.addEventListener("click", () => {
+      stopAllAudio();
+      location.href = "/";
+    });
+
+    el.gateEnter.addEventListener("click", () => {
+      if(!el.gateCheck.checked) return;
+      setConsent();
+      hideGate();
+      onEnter();
+    });
+
+    if(hasConsent()){
+      hideGate();
+      onEnter();
+    }else{
+      showGate();
+    }
+  }
+
+  // ---- PDF.js ----
+  async function ensurePdfJs(){
+    if(window.pdfjsLib) return window.pdfjsLib;
+    throw new Error("PDF.js failed to load (pdfjsLib missing).");
+  }
+
+  // ---- Voices ----
+  function listVoices(){
+    state.voices = window.speechSynthesis?.getVoices?.() || [];
+    if(!el.voiceSelect) return;
+
+    el.voiceSelect.innerHTML = "";
+
+    if(!state.voices.length){
+      const o = document.createElement("option");
+      o.value = "";
+      o.textContent = "No voices found (try again)";
+      el.voiceSelect.appendChild(o);
+      return;
     }
 
-    .ep-controls{ display:flex; gap:10px; flex-wrap: wrap; margin-top: 12px; }
-    .ep-controls .btn{ border-radius: 0 !important; }
+    const sorted = [...state.voices].sort((a,b) => {
+      const ae = (a.lang||"").toLowerCase().startsWith("en") ? 0 : 1;
+      const be = (b.lang||"").toLowerCase().startsWith("en") ? 0 : 1;
+      if(ae !== be) return ae - be;
+      return (a.name||"").localeCompare(b.name||"");
+    });
 
-    .ep-status{
-      margin-top: 12px;
-      padding: 12px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.35);
-      border-radius: 0;
-      min-height: 54px;
-    }
-    .ep-status strong{ display:block; margin-bottom: 4px; }
-    .ep-status .big{ font-size: 16px; font-weight: 900; letter-spacing:.02em; }
-
-    .viewer-wrap{ display:flex; flex-direction: column; gap: 10px; }
-    .viewer-top{ display:flex; justify-content: space-between; align-items: center; gap: 10px; }
-    .viewer-top .meta{ font-size: 12px; opacity: .85; }
-
-    .viewer-shell{
-      width: 100%;
-      background: #000;
-      border: 1px solid rgba(255,255,255,.12);
-      border-radius: 0;
-      min-height: 420px;
-      overflow: hidden;
-    }
-    .viewer-canvas{
-      width: 100%;
-      height: auto;
-      display:block;
-      background:#000;
+    for(const v of sorted){
+      const o = document.createElement("option");
+      o.value = v.voiceURI;
+      o.textContent = `${v.name} (${v.lang})`;
+      el.voiceSelect.appendChild(o);
     }
 
-    /* Disclosure */
-    .legal{
-      margin-top: 12px;
-      font-size: 12px;
-      opacity: .82;
-      line-height: 1.5;
+    const prefer =
+      sorted.find(v => /google/i.test(v.name) && (v.lang||"").toLowerCase()==="en-gb") ||
+      sorted.find(v => (v.lang||"").toLowerCase() === "en-gb") ||
+      sorted.find(v => (v.lang||"").toLowerCase().startsWith("en-")) ||
+      sorted[0];
+
+    state.selectedVoiceURI = prefer?.voiceURI || "";
+    el.voiceSelect.value = state.selectedVoiceURI;
+  }
+
+  function getVoice(){
+    return state.voices.find(v => v.voiceURI === state.selectedVoiceURI) || null;
+  }
+
+  function wireVoices(){
+    listVoices();
+    if(window.speechSynthesis){
+      window.speechSynthesis.onvoiceschanged = listVoices;
+      setTimeout(listVoices, 300);
+      setTimeout(listVoices, 1000);
     }
 
-    /* FULL-WIDTH GALLERY SECTION */
-    .gallery-section{
-      margin-top: 18px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.25);
-    }
-    .gallery-section .pad{ padding: 14px; }
-    .gallery-section h2{
-      margin: 0 0 6px;
-      font-size: 16px;
-      letter-spacing: .02em;
-      font-weight: 1000;
-    }
-    .gallery-sub{
-      margin: 0 0 12px;
-      font-size: 12px;
-      opacity: .82;
-      line-height: 1.5;
-      max-width: 92ch;
-    }
-    .gallery-grid{
-      display:grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 10px;
-    }
-    @media (max-width: 980px){
-      .gallery-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    }
-    @media (max-width: 700px){
-      .gallery-grid{ grid-template-columns: 1fr; }
-    }
-    .g-card{
-      margin: 0;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.25);
-      overflow: hidden;
-      cursor: pointer;
-    }
-    .g-card img{
-      width: 100%;
-      height: auto;
-      display:block;
-      background:#000;
-    }
-    .g-cap{
-      padding: 8px 10px;
-      font-size: 12px;
-      opacity: .85;
-      line-height: 1.35;
-      border-top: 1px solid rgba(255,255,255,.08);
-    }
-    .g-cap .src{
-      margin-top: 6px;
-      opacity: .75;
-      font-size: 11px;
+    if(el.voiceSelect){
+      el.voiceSelect.addEventListener("change", () => {
+        state.selectedVoiceURI = el.voiceSelect.value || "";
+        if(state.playing && !state.paused) restartReading();
+      });
     }
 
-    /* Viewer pop-out modal (PDF) */
-    .viewer-modal{
-      position: fixed;
-      inset: 0;
-      z-index: 9998;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      background: rgba(0,0,0,.82);
-      padding: 18px;
+    if(el.speedSelect){
+      el.speedSelect.addEventListener("change", () => {
+        const r = parseFloat(el.speedSelect.value || "1");
+        state.selectedRate = clamp(isFinite(r)?r:1, 0.5, 2);
+        if(state.playing && !state.paused) restartReading();
+      });
     }
-    .viewer-modal.open{ display:flex; }
-    .viewer-modal .card{
-      width: min(1080px, 96vw);
-      max-height: 92vh;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(10,10,10,.94);
-      border-radius: 0;
-      box-shadow: 0 20px 60px rgba(0,0,0,.6);
-      display:flex;
-      flex-direction: column;
-    }
-    .viewer-modal .head{
-      padding: 12px 12px 10px;
-      border-bottom: 1px solid rgba(255,255,255,.10);
-      display:flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    .viewer-modal .head strong{ letter-spacing:.02em; }
-    .viewer-modal .body{
-      padding: 12px;
-      overflow: auto;
-    }
+  }
 
-    /* Image Lightbox */
-    .img-modal{
-      position: fixed;
-      inset: 0;
-      z-index: 9997;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      background: rgba(0,0,0,.88);
-      padding: 16px;
+  // ---- Toggles ----
+  const LS_AUTO = "ep_reader_autoRead";
+  const LS_LOOP = "ep_reader_loop";
+
+  function setBtnState(btn, on, labelOn, labelOff){
+    if(!btn) return;
+    btn.setAttribute("aria-pressed", on ? "true" : "false");
+    btn.textContent = on ? labelOn : labelOff;
+  }
+
+  function syncToggleButtons(){
+    setBtnState(el.btnAutoRead, state.autoRead, "⏭ Auto-Read: On", "⏭ Auto-Read: Off");
+    setBtnState(el.btnLoop, state.loopOn, "🔁 Loop: On", "🔁 Loop: Off");
+  }
+
+  function loadTogglePrefs(){
+    try{
+      state.autoRead = localStorage.getItem(LS_AUTO) === "1";
+      state.loopOn   = localStorage.getItem(LS_LOOP) === "1";
+    }catch(_){
+      state.autoRead = false;
+      state.loopOn = false;
     }
-    .img-modal.open{ display:flex; }
-    .img-modal .card{
-      width: min(1100px, 96vw);
-      max-height: 92vh;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(10,10,10,.94);
-      border-radius: 0;
-      box-shadow: 0 20px 60px rgba(0,0,0,.65);
-      display:flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-    .img-modal .head{
-      padding: 10px 12px;
-      border-bottom: 1px solid rgba(255,255,255,.10);
-      display:flex;
-      align-items:center;
-      justify-content: space-between;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    .img-modal .body{
-      padding: 12px;
-      overflow: auto;
-      display:flex;
-      justify-content:center;
-      align-items:flex-start;
-    }
-    .img-modal img{
-      width: 100%;
-      height: auto;
-      max-width: 980px;
-      background:#000;
-      border: 1px solid rgba(255,255,255,.12);
+    syncToggleButtons();
+  }
+
+  function saveTogglePrefs(){
+    try{
+      localStorage.setItem(LS_AUTO, state.autoRead ? "1" : "0");
+      localStorage.setItem(LS_LOOP, state.loopOn ? "1" : "0");
+    }catch(_){}
+  }
+
+  // ---- Index ----
+  async function loadIndex(){
+    setStatus("Loading…", `(${VERSION}) Fetching PDF list…`);
+
+    const data = await safeFetchJson(INDEX_URL);
+    const items = Array.isArray(data.items) ? data.items : [];
+
+    if(!el.pdfSelect){
+      setStatus("Error", "Missing element: #pdfSelect (PDF dropdown).");
+      return [];
     }
 
-    /* 21+ gate */
-    .gate{
-      position: fixed; inset: 0; z-index: 9999;
-      background: rgba(0,0,0,.78);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 18px;
+    el.pdfSelect.innerHTML = "";
+
+    if(!items.length){
+      const o = document.createElement("option");
+      o.value = "";
+      o.textContent = "No PDFs found";
+      el.pdfSelect.appendChild(o);
+      setStatus("Ready.", `(${VERSION}) No PDFs found.`);
+      return [];
     }
-    .gate .card{
-      width: min(720px, 100%);
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(10,10,10,.92);
-      border-radius: 0;
-      padding: 18px;
-      box-shadow: 0 20px 60px rgba(0,0,0,.6);
+
+    for(const it of items){
+      const pdfUrl = normalizePdfUrlFromIndexPath(it.path);
+      if(!pdfUrl) continue;
+
+      const o = document.createElement("option");
+      o.value = pdfUrl; // ✅ encoded here
+      o.textContent = it.label || it.file || it.path;
+      el.pdfSelect.appendChild(o);
     }
-    .gate h2{ margin: 0 0 10px; font-size: 22px; }
-    .gate p{ margin: 0 0 10px; opacity: .9; line-height: 1.55; }
-    .gate .row{ display:flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
-    .gate label{ display:flex; gap:10px; align-items:center; cursor:pointer; }
-    .gate input[type="checkbox"]{ width: 18px; height: 18px; }
-    .gate .actions{ display:flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; margin-top: 14px; }
-    .gate .btn{ border-radius: 0 !important; }
-    .gate .legal{ margin-top: 10px; font-size: 12px; opacity: .8; line-height: 1.45; }
 
-    /* safety net: ensure footer matches header red */
-    .site-footer{ background: var(--red) !important; color:#fff; }
-    .site-footer a{ color:#fff; }
-  </style>
+    setStatus("Ready.", `(${VERSION}) Select a PDF, then press Play.`);
+    return items;
+  }
 
-  <!-- Google tag (gtag.js) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-Z03YK1FYXW"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-Z03YK1FYXW');
-  </script>
-</head>
-
-<body>
-  <!-- Header injected by app.js -->
-  <div id="siteHeader"></div>
-
-  <main class="page-wrap">
-    <header class="hero">
-      <h1>Released Files • Epstein Files</h1>
-      <p>
-        Pick a PDF, choose a voice and speed, then press Play. Use Prev/Next to move one page at a time.
-        Use Skip Word to jump forward quickly while listening.
-      </p>
-    </header>
-
-    <!-- PLAYER + VIEWER (TOP AREA) -->
-    <section class="ep-grid">
-      <!-- LEFT: Player -->
-      <div class="ep-panel ep-box">
-        <div class="pad">
-          <div class="ep-row">
-            <div class="field">
-              <div class="ep-label">Choose a PDF</div>
-              <select id="pdfSelect" aria-label="Choose a PDF">
-                <option value="">Loading PDFs…</option>
-              </select>
-            </div>
-            <div class="field">
-              <div class="ep-label">Voice</div>
-              <select id="voiceSelect" aria-label="Choose a voice">
-                <option value="">Loading voices…</option>
-              </select>
-            </div>
-            <div class="field small">
-              <div class="ep-label">Speed</div>
-              <select id="speedSelect" aria-label="Choose reading speed">
-                <option value="1">1.0×</option>
-                <option value="1.25">1.25×</option>
-                <option value="1.5">1.5×</option>
-                <option value="2">2.0×</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="ep-controls" role="group" aria-label="Playback controls">
-            <button class="btn blue" id="btnPlay" type="button">▶ Play</button>
-            <button class="btn" id="btnPause" type="button">⏸ Pause</button>
-            <button class="btn danger" id="btnStop" type="button">⏹ Stop</button>
-
-            <button class="btn" id="btnPrev" type="button">← Prev Page</button>
-            <button class="btn" id="btnNext" type="button">Next Page →</button>
-
-            <button class="btn" id="btnMute" type="button">🔇 Mute</button>
-
-            <button class="btn" id="btnSkipWord" type="button" title="Skip forward one word (tap repeatedly to skip faster)">⏩ Skip Word</button>
-
-            <button class="btn" id="btnAutoRead" type="button" aria-pressed="false" title="Automatically advance to the next PDF when finished">⏭ Auto-Read: Off</button>
-            <button class="btn" id="btnLoop" type="button" aria-pressed="false" title="Loops current PDF (unless Auto-Read is on, then loops all PDFs)">🔁 Loop: Off</button>
-
-            <button class="btn" id="btnSkipFile" type="button" title="Skip to the next PDF file">⏭ Skip File</button>
-          </div>
-
-          <div class="ep-status ep-box" id="statusBox" aria-live="polite">
-            <strong class="big" id="statusTitle">Ready.</strong>
-            <div id="statusLine">Select a PDF to begin.</div>
-          </div>
-
-          <div class="legal">
-            <strong>Disclosure:</strong> This page provides text-to-speech playback and viewing of publicly released documents.
-            Content may be explicit, disturbing, or contain allegations. Civic Threat does not endorse wrongdoing and does not make claims about guilt or innocence.
-            This tool is provided for accessibility, public-interest review, and discussion. For full context, consult the complete PDF and primary sources.
-          </div>
-        </div>
-      </div>
-
-      <!-- RIGHT: Viewer -->
-      <div class="ep-panel ep-box">
-        <div class="pad viewer-wrap">
-          <div class="viewer-top">
-            <div><strong>Viewer</strong></div>
-            <div style="display:flex; gap:10px; align-items:center;">
-              <div class="meta" id="pageMeta">No PDF loaded.</div>
-              <button class="btn" id="btnPopViewer" type="button" title="Pop out a larger viewer">🔍 Pop-out</button>
-            </div>
-          </div>
-
-          <div class="viewer-shell ep-box" id="viewerShell">
-            <canvas id="pdfCanvas" class="viewer-canvas" width="1000" height="1400"></canvas>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- FULL-WIDTH IMAGES SECTION -->
-    <section class="gallery-section ep-box" aria-label="Released Epstein images">
-      <div class="pad">
-        <h2>Released Epstein Images</h2>
-        <p class="gallery-sub">
-          A quick-scroll gallery of publicly released Epstein document images and excerpts. Tap any image to open a larger viewer and flip through the set.
-        </p>
-
-        <div id="galleryGrid" class="gallery-grid">
-          <div style="opacity:.8;font-size:13px;">Loading images…</div>
-        </div>
-
-        <div class="legal" style="margin-top:12px">
-          <strong>Image note:</strong> Images are shown for reference alongside the released PDFs. For context, use the PDF reader above and consult the complete file.
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <!-- Footer injected by app.js -->
-  <div id="siteFooter"></div>
-
-  <!-- PDF pop-out modal -->
-  <div class="viewer-modal" id="viewerModal" role="dialog" aria-modal="true" aria-label="Pop-out PDF viewer">
-    <div class="card ep-box">
-      <div class="head">
-        <div>
-          <strong>PDF Viewer</strong>
-          <span class="meta" id="viewerModalMeta" style="margin-left:10px; opacity:.85; font-size:12px;"></span>
-        </div>
-        <div style="display:flex; gap:10px;">
-          <button class="btn" id="btnViewerClose" type="button">✕ Close</button>
-        </div>
-      </div>
-      <div class="body">
-        <div class="viewer-shell ep-box" id="viewerShellBig">
-          <canvas id="pdfCanvasBig" class="viewer-canvas" width="1600" height="2200"></canvas>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Image lightbox -->
-  <div class="img-modal" id="imgModal" role="dialog" aria-modal="true" aria-label="Image viewer">
-    <div class="card ep-box">
-      <div class="head">
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-          <strong id="imgTitle">Released Epstein Images</strong>
-          <span id="imgMeta" style="opacity:.85;font-size:12px"></span>
-        </div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap">
-          <button class="btn" id="imgPrev" type="button">← Prev</button>
-          <button class="btn" id="imgNext" type="button">Next →</button>
-          <button class="btn" id="imgClose" type="button">✕ Close</button>
-        </div>
-      </div>
-      <div class="body">
-        <img id="imgBig" alt="Released image" />
-      </div>
-    </div>
-  </div>
-
-  <!-- 21+ gate -->
-  <div class="gate" id="ageGate" role="dialog" aria-modal="true" aria-labelledby="gateTitle">
-    <div class="card ep-box">
-      <h2 id="gateTitle">Adults 21+ Only</h2>
-      <p>This section may contain sexually explicit descriptions. You must confirm you are twenty-one (21) or older to view and use the reader.</p>
-      <div class="row">
-        <label for="gateCheck">
-          <input id="gateCheck" type="checkbox" />
-          <span>I confirm that I am 21 or older.</span>
-        </label>
-      </div>
-      <div class="actions">
-        <button class="btn" id="gateLeave" type="button">Leave</button>
-        <button class="btn blue" id="gateEnter" type="button" disabled>Continue</button>
-      </div>
-      <div class="legal">
-        By continuing, you agree you are 21+ and understand the content may be explicit.
-      </div>
-    </div>
-  </div>
-
-  <!-- PDF.js -->
-  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js" crossorigin="anonymous"></script>
-  <script>
-    if(window.pdfjsLib){
-      window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
-    }
-  </script>
-
-  <!-- Site header/footer injection -->
-  <script src="/config.js?v=12"></script>
-  <script src="/app.js?v=12"></script>
-
-  <!-- Epstein Reader logic -->
-  <script src="./epstein-tts.js?v=15"></script>
-
-  <!-- Images Gallery (./images.json) -->
-  <script>
-    (function(){
-      "use strict";
-
-      const IMAGE_MANIFEST_URL = "./images.json";
-      const galleryGrid = document.getElementById("galleryGrid");
-
-      const imgModal = document.getElementById("imgModal");
-      const imgBig = document.getElementById("imgBig");
-      const imgMeta = document.getElementById("imgMeta");
-      const imgPrev = document.getElementById("imgPrev");
-      const imgNext = document.getElementById("imgNext");
-      const imgClose = document.getElementById("imgClose");
-
-      let imageList = [];
-      let imageIdx = 0;
-
-      function esc(s){
-        return String(s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  async function destroyCurrentPdf(){
+    try{
+      if(state.pdfDoc && typeof state.pdfDoc.destroy === "function"){
+        await state.pdfDoc.destroy();
       }
-      function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
+    }catch(_){}
+    state.pdfDoc = null;
+  }
 
-      async function fetchJsonStrict(url){
-        const r = await fetch(url, { cache: "no-store" });
-        if (!r.ok) throw new Error(`HTTP ${r.status} for ${url}`);
-        return r.json();
+  function cancelRenderTask(){
+    try{
+      if(state.renderTask && typeof state.renderTask.cancel === "function"){
+        state.renderTask.cancel();
+      }
+    }catch(_){}
+    state.renderTask = null;
+  }
+
+  async function loadPdf(url, label){
+    const seq = ++state.loadSeq;
+
+    stopAllAudio();
+    state.pageTextCache.clear();
+    state.wordMapCache.clear();
+    state.currentWordIndex = 0;
+    clearPlaybackBuffers();
+    cancelRenderTask();
+
+    state.loadingPdf = true;
+
+    setStatus("Loading PDF…", `(${VERSION}) Loading: ${label || url}`);
+    if(el.pageMeta) el.pageMeta.textContent = "Loading…";
+
+    const pdfjsLib = await ensurePdfJs();
+    try{
+      pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
+    }catch(_){}
+
+    try{
+      await destroyCurrentPdf();
+      if(seq !== state.loadSeq) return;
+
+      const baseOpts = {
+        url, // already encoded
+        withCredentials: false,
+        disableRange: true,
+        disableStream: true,
+      };
+
+      let doc = null;
+
+      try{
+        const task = pdfjsLib.getDocument(baseOpts);
+        doc = await task.promise;
+      }catch(firstErr){
+        console.warn("PDF load retry without worker:", firstErr);
+        setStatus("Loading PDF…", `(${VERSION}) Retrying (worker disabled)…`);
+        const task2 = pdfjsLib.getDocument({ ...baseOpts, disableWorker: true });
+        doc = await task2.promise;
       }
 
-      function openImgModal(i){
-        if (!imgModal || !imgBig) return;
-        imageIdx = clamp(i|0, 0, Math.max(0, imageList.length-1));
-        const it = imageList[imageIdx];
-        if (!it) return;
-
-        imgBig.src = it.src;
-        imgBig.alt = it.alt || "Released image";
-
-        if (imgMeta) imgMeta.textContent = `Image ${imageIdx+1} of ${imageList.length}`;
-        imgModal.classList.add("open");
+      if(seq !== state.loadSeq){
+        try{ await doc.destroy(); }catch(_){}
+        return;
       }
 
-      function closeImgModal(){
-        if (!imgModal) return;
-        imgModal.classList.remove("open");
-        if (imgBig) imgBig.src = "";
+      state.pdfDoc = doc;
+      state.pdfUrl = url;
+      state.pdfLabel = label || "";
+      state.totalPages = state.pdfDoc.numPages || 0;
+      state.page = 1;
+
+      await renderPageQueued(1);
+
+      setStatus("Ready.", `(${VERSION}) PDF loaded. Press Play to read page 1.`);
+    }catch(err){
+      console.error(err);
+      setStatus("Error", `(${VERSION}) Failed to load/parse PDF. Check Network tab for ${url}`);
+      if(el.pageMeta) el.pageMeta.textContent = "Failed to load PDF.";
+      await destroyCurrentPdf();
+    }finally{
+      state.loadingPdf = false;
+    }
+  }
+
+  function renderPageQueued(n){
+    state.renderQueue = state.renderQueue.then(() => renderPageInternal(n));
+    return state.renderQueue;
+  }
+
+  async function renderPageInternal(n){
+    if(!state.pdfDoc) return;
+
+    const mySeq = ++state.renderSeq;
+    cancelRenderTask();
+
+    if(!el.canvas){
+      setStatus("Error", "Missing element: #pdfCanvas (PDF viewer canvas).");
+      return;
+    }
+
+    n = clamp(n, 1, state.totalPages || 1);
+    state.page = n;
+
+    if(el.pageMeta) el.pageMeta.textContent = `Page ${state.page} / ${state.totalPages || "?"}`;
+    if(el.viewerModalMeta && el.pageMeta) el.viewerModalMeta.textContent = el.pageMeta.textContent || "";
+
+    const page = await state.pdfDoc.getPage(n);
+    const canvas = el.canvas;
+    const ctx = canvas.getContext("2d", { alpha: false });
+
+    const containerWidth = canvas.clientWidth || 800;
+    const vp1 = page.getViewport({ scale: 1 });
+    const scale = containerWidth / vp1.width;
+    const vp = page.getViewport({ scale: Math.max(0.75, Math.min(scale, 2.0)) });
+
+    canvas.width = Math.floor(vp.width);
+    canvas.height = Math.floor(vp.height);
+
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0,0,canvas.width, canvas.height);
+
+    const task = page.render({ canvasContext: ctx, viewport: vp });
+    state.renderTask = task;
+
+    try{
+      await task.promise;
+    }catch(err){
+      const msg = String(err && err.message ? err.message : err);
+      if(/cancel/i.test(msg) || /RenderingCancelledException/i.test(msg)){
+        return;
+      }
+      if(mySeq !== state.renderSeq) return;
+      throw err;
+    }finally{
+      if(state.renderTask === task) state.renderTask = null;
+    }
+
+    // If popout open, mirror the canvas fast (no re-render).
+    if(el.viewerModal && el.viewerModal.classList.contains("open")){
+      mirrorToBigCanvas();
+    }
+  }
+
+  function mirrorToBigCanvas(){
+    if(!el.canvas || !el.canvasBig) return;
+    const src = el.canvas;
+    const dst = el.canvasBig;
+    const ctx = dst.getContext ? dst.getContext("2d") : null;
+    if(!ctx) return;
+
+    try{
+      const w = src.width || 1;
+      const h = src.height || 1;
+
+      dst.width = w;
+      dst.height = h;
+
+      ctx.clearRect(0,0,dst.width,dst.height);
+      ctx.drawImage(src, 0, 0);
+    }catch(_){}
+  }
+
+  // ✅ filters out repeated header/footer text by position
+  async function getPageText(n){
+    if(state.pageTextCache.has(n)) return state.pageTextCache.get(n);
+
+    setStatus("Working…", `(${VERSION}) Extracting text from page ${n}…`);
+
+    const page = await state.pdfDoc.getPage(n);
+    const viewport = page.getViewport({ scale: 1 });
+
+    const topCut = viewport.height * (1 - TTS_IGNORE_TOP_PCT);
+    const bottomCut = viewport.height * (TTS_IGNORE_BOTTOM_PCT);
+
+    const tc = await page.getTextContent();
+
+    const parts = [];
+    for(const it of (tc.items || [])){
+      const str = (it.str || "").trim();
+      if(!str) continue;
+
+      let y = null;
+      try{
+        const tx = window.pdfjsLib.Util.transform(viewport.transform, it.transform);
+        y = tx[5];
+      }catch(_){
+        parts.push(str);
+        continue;
       }
 
-      function stepImg(dir){
-        if (!imageList.length) return;
-        const next = (imageIdx + dir + imageList.length) % imageList.length;
-        openImgModal(next);
+      if(y >= topCut) continue;
+      if(y <= bottomCut) continue;
+
+      parts.push(str);
+    }
+
+    const text = parts.join(" ").replace(/\s+/g, " ").trim();
+    state.pageTextCache.set(n, text);
+    return text;
+  }
+
+  function buildWordMap(text){
+    const s = String(text || "");
+    const out = [];
+    const re = /\S+/g;
+    let m;
+    while((m = re.exec(s))){
+      const w = m[0];
+      out.push({ start: m.index, end: m.index + w.length, word: w });
+      if(out.length > 20000) break; // safety
+    }
+    return out;
+  }
+
+  function getWordMapForPage(n, text){
+    if(state.wordMapCache.has(n)) return state.wordMapCache.get(n);
+    const map = buildWordMap(text);
+    state.wordMapCache.set(n, map);
+    return map;
+  }
+
+  function chunkFromOffset(text, startChar){
+    const clean = String(text || "");
+    const maxLen = 1100;
+
+    const chunks = [];
+    const starts = [];
+
+    let i = clamp(startChar|0, 0, clean.length);
+    if(i >= clean.length){
+      return { chunks: ["(No readable text on this page.)"], starts: [0] };
+    }
+
+    while(i > 0 && i < clean.length && !/\s/.test(clean[i-1]) && !/\s/.test(clean[i])) i--;
+
+    while(i < clean.length){
+      const end = Math.min(clean.length, i + maxLen);
+      let cut = end;
+
+      for(let j=end; j>i+300; j--){
+        const ch = clean[j-1];
+        if(ch === "." || ch === "!" || ch === "?" || ch === "\n"){
+          cut = j;
+          break;
+        }
+        if(/\s/.test(ch)){
+          cut = j;
+          break;
+        }
       }
 
-      if (imgPrev) imgPrev.addEventListener("click", () => stepImg(-1));
-      if (imgNext) imgNext.addEventListener("click", () => stepImg( 1));
-      if (imgClose) imgClose.addEventListener("click", closeImgModal);
-      if (imgModal){
-        imgModal.addEventListener("click", (e) => { if (e.target === imgModal) closeImgModal(); });
+      const part = clean.slice(i, cut).trim();
+      if(part) {
+        chunks.push(part);
+        starts.push(i);
       }
+      i = cut;
+      while(i < clean.length && /\s/.test(clean[i])) i++;
+      if(chunks.length > 60) break;
+    }
 
+    if(!chunks.length){
+      return { chunks: ["(No readable text on this page.)"], starts: [0] };
+    }
+    return { chunks, starts };
+  }
+
+  function updateReadingMarker(word){
+    const now = Date.now();
+    if(now - state.lastWordUiAt < 180) return;
+    state.lastWordUiAt = now;
+
+    if(!el.statusLine) return;
+    const safe = String(word || "").slice(0, 40);
+    if(safe){
+      el.statusLine.textContent = `Reading… (word: “${safe}”)`;
+    }
+  }
+
+  function getWordIndexByChar(wordMap, charPos){
+    let lo = 0, hi = wordMap.length - 1, hit = -1;
+    while(lo <= hi){
+      const mid = (lo + hi) >> 1;
+      const w = wordMap[mid];
+      if(charPos < w.start) hi = mid - 1;
+      else if(charPos >= w.end) lo = mid + 1;
+      else { hit = mid; break; }
+    }
+    return hit;
+  }
+
+  function speakNextChunk(localSpeechSeq, pageText, wordMap){
+    if(localSpeechSeq !== state.speechSeq) return;
+    if(!state.playing || state.paused) return;
+
+    if(state.chunkIndex >= state.chunks.length){
+      return onPageDone(localSpeechSeq);
+    }
+
+    const voice = getVoice();
+    const u = new SpeechSynthesisUtterance(state.chunks[state.chunkIndex]);
+    u.rate = state.selectedRate || 1;
+    u.voice = voice || null;
+    u.lang = voice?.lang || "en-US";
+    u.volume = state.muted ? 0 : 1;
+
+    const thisChunkStart = state.chunkStarts[state.chunkIndex] || 0;
+    state.currentChunkStart = thisChunkStart;
+
+    u.onboundary = (ev) => {
+      if(localSpeechSeq !== state.speechSeq) return;
+      if(!ev) return;
+      const globalChar = thisChunkStart + (ev.charIndex || 0);
+
+      const wi = getWordIndexByChar(wordMap, globalChar);
+      if(wi !== -1){
+        state.currentWordIndex = wi;
+        updateReadingMarker(wordMap[wi]?.word || "");
+      }
+    };
+
+    u.onend = () => {
+      if(localSpeechSeq !== state.speechSeq) return;
+      if(!state.playing || state.paused) return;
+      state.chunkIndex += 1;
+      speakNextChunk(localSpeechSeq, pageText, wordMap);
+    };
+    u.onerror = () => {
+      if(localSpeechSeq !== state.speechSeq) return;
+      if(!state.playing || state.paused) return;
+      state.chunkIndex += 1;
+      speakNextChunk(localSpeechSeq, pageText, wordMap);
+    };
+
+    try{
+      window.speechSynthesis.speak(u);
+    }catch(err){
+      console.error(err);
+      setStatus("Error", `(${VERSION}) TTS failed to start on this device/browser.`);
+      state.playing = false;
+      state.paused = false;
+    }
+  }
+
+  async function startReadingFromWord(wordIndex){
+    if(!state.pdfDoc) return;
+
+    const localSeq = state.speechSeq;
+    const pageNum = state.page;
+
+    setStatus("Playing…", `(${VERSION}) Reading page ${pageNum}…`);
+
+    const pageText = await getPageText(pageNum);
+    const wordMap = getWordMapForPage(pageNum, pageText);
+
+    if(!wordMap.length){
+      setStatus("Playing…", `(${VERSION}) No readable text on page ${pageNum}.`);
+      state.chunks = ["(No readable text on this page.)"];
+      state.chunkStarts = [0];
+      state.chunkIndex = 0;
+      speakNextChunk(localSeq, pageText, wordMap);
+      return;
+    }
+
+    const wi = clamp(wordIndex|0, 0, wordMap.length - 1);
+    state.currentWordIndex = wi;
+
+    const startChar = wordMap[wi].start;
+    const { chunks, starts } = chunkFromOffset(pageText, startChar);
+
+    clearPlaybackBuffers();
+    state.chunks = chunks;
+    state.chunkStarts = starts;
+    state.chunkIndex = 0;
+
+    updateReadingMarker(wordMap[wi]?.word || "");
+    speakNextChunk(localSeq, pageText, wordMap);
+  }
+
+  async function gotoPage(targetPage, opts){
+    opts = opts || {};
+    if(!state.pdfDoc) return;
+
+    const myNav = ++state.navSeq;
+    const keepPlaying = !!opts.keepPlaying;
+
+    state.navBusy = true;
+
+    cancelSpeech();
+    clearPlaybackBuffers();
+    state.currentWordIndex = 0;
+
+    const p = clamp(targetPage, 1, state.totalPages || 1);
+    state.page = p;
+
+    try{
+      await renderPageQueued(p);
+      if(myNav !== state.navSeq) return;
+
+      if(keepPlaying){
+        state.playing = true;
+        state.paused = false;
+        await startReadingFromWord(0);
+      }else{
+        setStatus("Ready.", `(${VERSION}) Moved to page ${p}. Press Play to read.`);
+      }
+    }catch(err){
+      console.error(err);
+      if(myNav !== state.navSeq) return;
+      setStatus("Error", `(${VERSION}) Failed to render page ${p}.`);
+      state.playing = false;
+      state.paused = false;
+    }finally{
+      if(myNav === state.navSeq) state.navBusy = false;
+    }
+  }
+
+  async function advanceToNextPdf(loopAll){
+    if(!el.pdfSelect) return false;
+    const opts = Array.from(el.pdfSelect.options || []).filter(o => o && o.value);
+    if(!opts.length) return false;
+
+    const cur = el.pdfSelect.value;
+    let idx = opts.findIndex(o => o.value === cur);
+    if(idx < 0) idx = 0;
+
+    let nextIdx = idx + 1;
+    if(nextIdx >= opts.length){
+      if(loopAll) nextIdx = 0;
+      else return false;
+    }
+
+    el.pdfSelect.value = opts[nextIdx].value;
+    el.pdfSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    return true;
+  }
+
+  function onPageDone(localSpeechSeq){
+    if(localSpeechSeq !== state.speechSeq) return;
+    if(!state.playing || state.paused) return;
+
+    if(state.page >= (state.totalPages || 1)){
+      if(state.autoRead){
+        setStatus("Working…", `(${VERSION}) Next PDF…`);
+        advanceToNextPdf(state.loopOn).then((ok) => {
+          if(!ok){
+            setStatus("Done.", `(${VERSION}) Reached the last PDF.`);
+            state.playing = false;
+            state.paused = false;
+          }else{
+            setTimeout(() => { try{ el.btnPlay && el.btnPlay.click(); }catch(_){} }, 700);
+          }
+        });
+      }else if(state.loopOn){
+        gotoPage(1, { keepPlaying: true });
+      }else{
+        setStatus("Done.", `(${VERSION}) Reached the end of the PDF.`);
+        state.playing = false;
+        state.paused = false;
+      }
+      return;
+    }
+
+    const next = clamp(state.page + 1, 1, state.totalPages);
+    gotoPage(next, { keepPlaying: true });
+  }
+
+  function restartReading(){
+    if(!state.pdfDoc) return;
+    state.playing = true;
+    state.paused = false;
+    startReadingFromWord(state.currentWordIndex || 0);
+  }
+
+  function showMissingIds(missing){
+    const msg =
+      "Missing elements on page: " + missing.join(", ") +
+      ". Make sure epstein-reader.html contains those IDs.";
+    console.error(msg);
+    setStatus("Page setup error", msg);
+  }
+
+  function wirePopout(){
+    if(el.btnPopViewer){
+      el.btnPopViewer.addEventListener("click", () => {
+        if(!el.viewerModal) return;
+        el.viewerModal.classList.add("open");
+        if(el.viewerModalMeta && el.pageMeta) el.viewerModalMeta.textContent = el.pageMeta.textContent || "";
+        mirrorToBigCanvas();
+      });
+    }
+    if(el.btnViewerClose){
+      el.btnViewerClose.addEventListener("click", () => {
+        if(!el.viewerModal) return;
+        el.viewerModal.classList.remove("open");
+      });
+    }
+    if(el.viewerModal){
+      el.viewerModal.addEventListener("click", (e) => {
+        if(e.target === el.viewerModal) el.viewerModal.classList.remove("open");
+      });
       document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape"){
-          if (imgModal && imgModal.classList.contains("open")) closeImgModal();
+        if(e.key === "Escape" && el.viewerModal.classList.contains("open")){
+          el.viewerModal.classList.remove("open");
         }
       });
+    }
 
-      async function initGallery(){
-        if (!galleryGrid) return;
+    setInterval(() => {
+      if(el.viewerModal && el.viewerModal.classList.contains("open")){
+        if(el.viewerModalMeta && el.pageMeta) el.viewerModalMeta.textContent = el.pageMeta.textContent || "";
+        mirrorToBigCanvas();
+      }
+    }, 450);
+  }
 
-        try{
-          const data = await fetchJsonStrict(IMAGE_MANIFEST_URL);
-          const list = Array.isArray(data?.images) ? data.images : (Array.isArray(data) ? data : []);
-          imageList = list.filter(x => x && x.src).map(x => ({
-            src: String(x.src),
-            caption: x.caption || "",
-            source: x.source || "",
-            alt: x.alt || ""
-          }));
+  function wireControls(){
+    const missing = [];
+    if(!el.pdfSelect) missing.push("#pdfSelect");
+    if(!el.voiceSelect) missing.push("#voiceSelect");
+    if(!el.speedSelect) missing.push("#speedSelect");
+    if(!el.btnPlay) missing.push("#btnPlay");
+    if(!el.btnPause) missing.push("#btnPause");
+    if(!el.btnStop) missing.push("#btnStop");
+    if(!el.btnPrev) missing.push("#btnPrev");
+    if(!el.btnNext) missing.push("#btnNext");
+    if(!el.btnMute) missing.push("#btnMute");
+    if(!el.btnSkipWord) missing.push("#btnSkipWord");
+    if(!el.btnAutoRead) missing.push("#btnAutoRead");
+    if(!el.btnLoop) missing.push("#btnLoop");
+    if(!el.btnSkipFile) missing.push("#btnSkipFile");
+    if(!el.statusTitle) missing.push("#statusTitle");
+    if(!el.statusLine) missing.push("#statusLine");
+    if(!el.pageMeta) missing.push("#pageMeta");
+    if(!el.canvas) missing.push("#pdfCanvas");
 
-          galleryGrid.innerHTML = "";
-          if(!imageList.length){
-            galleryGrid.innerHTML = `<div style="opacity:.8;font-size:13px;">No images available.</div>`;
-            return;
-          }
+    if(missing.length){
+      showMissingIds(missing);
+      return;
+    }
 
-          imageList.forEach((img, idx) => {
-            const caption = img.caption ? esc(img.caption) : "Released excerpt image (publicly available).";
-            const source = img.source ? esc(img.source) : "Publicly released records";
-            const alt = img.alt ? esc(img.alt) : "Released document image.";
-            const src = esc(img.src);
-
-            const fig = document.createElement("figure");
-            fig.className = "g-card ep-box";
-            fig.innerHTML = `
-              <img src="${src}" alt="${alt}" loading="lazy" decoding="async">
-              <figcaption class="g-cap">
-                <div>${caption}</div>
-                <div class="src"><strong>Source:</strong> ${source}</div>
-              </figcaption>
-            `;
-            fig.addEventListener("click", () => openImgModal(idx));
-            galleryGrid.appendChild(fig);
-          });
-
-        }catch(e){
-          galleryGrid.innerHTML =
-            `<div style="opacity:.85;font-size:13px;line-height:1.5;">
-              Images unavailable right now (could not load <strong>./images.json</strong> — check filename + case).
-            </div>`;
+    el.btnPlay.addEventListener("click", async () => {
+      if(!state.pdfDoc && !state.loadingPdf){
+        const url = el.pdfSelect.value || "";
+        const label = el.pdfSelect.options[el.pdfSelect.selectedIndex]?.textContent || "";
+        if(url){
+          await loadPdf(url, label);
         }
       }
 
-      document.addEventListener("DOMContentLoaded", initGallery);
-    })();
-  </script>
-</body>
-</html>
+      if(state.loadingPdf){
+        setStatus("Loading PDF…", `(${VERSION}) Please wait…`);
+        return;
+      }
+
+      if(!state.pdfDoc){
+        setStatus("Ready.", `(${VERSION}) Select a PDF first.`);
+        return;
+      }
+
+      if(state.paused){
+        state.paused = false;
+        state.playing = true;
+        try{
+          window.speechSynthesis.resume();
+          setStatus("Playing…", `(${VERSION}) Reading page ${state.page}…`);
+        }catch(_){
+          restartReading();
+        }
+        return;
+      }
+
+      if(state.playing) return;
+
+      state.playing = true;
+      state.paused = false;
+
+      await renderPageQueued(state.page);
+      await startReadingFromWord(state.currentWordIndex || 0);
+    });
+
+    el.btnPause.addEventListener("click", () => {
+      if(!state.playing) return;
+      state.paused = true;
+      try{ window.speechSynthesis.pause(); }catch(_){}
+      setStatus("Paused.", `(${VERSION}) Press Play to resume.`);
+    });
+
+    el.btnStop.addEventListener("click", async () => {
+      stopAllAudio();
+      state.currentWordIndex = 0;
+      if(state.pdfDoc){
+        await gotoPage(1, { keepPlaying: false });
+        setStatus("Stopped.", `(${VERSION}) Press Play to start from page 1.`);
+      }else{
+        setStatus("Ready.", `(${VERSION}) Select a PDF to begin.`);
+      }
+    });
+
+    el.btnNext.addEventListener("click", async () => {
+      if(state.loadingPdf || !state.pdfDoc || state.navBusy) return;
+      const wasPlaying = state.playing && !state.paused;
+      await gotoPage(state.page + 1, { keepPlaying: wasPlaying });
+    });
+
+    el.btnPrev.addEventListener("click", async () => {
+      if(state.loadingPdf || !state.pdfDoc || state.navBusy) return;
+      const wasPlaying = state.playing && !state.paused;
+      await gotoPage(state.page - 1, { keepPlaying: wasPlaying });
+    });
+
+    el.btnMute.addEventListener("click", () => {
+      state.muted = !state.muted;
+      el.btnMute.textContent = state.muted ? "🔊 Unmute" : "🔇 Mute";
+      if(state.playing && !state.paused){
+        restartReading();
+      }
+    });
+
+    // Skip word: restart speech at next word index
+    el.btnSkipWord.addEventListener("click", async () => {
+      if(!state.pdfDoc) return;
+
+      const pageText = await getPageText(state.page);
+      const wordMap = getWordMapForPage(state.page, pageText);
+      if(!wordMap.length) return;
+
+      const next = clamp((state.currentWordIndex|0) + 1, 0, wordMap.length - 1);
+      state.currentWordIndex = next;
+
+      if(state.playing && !state.paused){
+        cancelSpeech();
+        clearPlaybackBuffers();
+        await startReadingFromWord(next);
+      }else{
+        updateReadingMarker(wordMap[next]?.word || "");
+        setStatus("Ready.", `(${VERSION}) Positioned at word: “${wordMap[next]?.word || ""}”`);
+      }
+    });
+
+    el.btnAutoRead.addEventListener("click", () => {
+      state.autoRead = !state.autoRead;
+      saveTogglePrefs();
+      syncToggleButtons();
+    });
+
+    el.btnLoop.addEventListener("click", () => {
+      state.loopOn = !state.loopOn;
+      saveTogglePrefs();
+      syncToggleButtons();
+    });
+
+    el.btnSkipFile.addEventListener("click", async () => {
+      stopAllAudio();
+      state.currentWordIndex = 0;
+
+      const ok = await advanceToNextPdf(true);
+      if(!ok){
+        setStatus("Ready.", `(${VERSION}) No next PDF to skip to.`);
+        return;
+      }
+
+      setTimeout(() => { try{ el.btnPlay && el.btnPlay.click(); }catch(_){} }, 800);
+    });
+
+    el.pdfSelect.addEventListener("change", async () => {
+      const url = el.pdfSelect.value || "";
+      const label = el.pdfSelect.options[el.pdfSelect.selectedIndex]?.textContent || "";
+
+      if(!url){
+        stopAllAudio();
+        await destroyCurrentPdf();
+        state.totalPages = 0;
+        state.page = 1;
+        state.loadingPdf = false;
+        cancelRenderTask();
+
+        if(el.pageMeta) el.pageMeta.textContent = "No PDF loaded.";
+        setStatus("Ready.", `(${VERSION}) Select a PDF to begin.`);
+        return;
+      }
+
+      await loadPdf(url, label);
+    });
+  }
+
+  function collectEls(){
+    el.gate = $("#ageGate");
+    el.gateCheck = $("#gateCheck");
+    el.gateEnter = $("#gateEnter");
+    el.gateLeave = $("#gateLeave");
+
+    el.pdfSelect = $("#pdfSelect");
+    el.voiceSelect = $("#voiceSelect");
+    el.speedSelect = $("#speedSelect");
+
+    el.btnPlay = $("#btnPlay");
+    el.btnPause = $("#btnPause");
+    el.btnStop = $("#btnStop");
+    el.btnPrev = $("#btnPrev");
+    el.btnNext = $("#btnNext");
+    el.btnMute = $("#btnMute");
+    el.btnSkipWord = $("#btnSkipWord");
+
+    el.btnAutoRead = $("#btnAutoRead");
+    el.btnLoop = $("#btnLoop");
+    el.btnSkipFile = $("#btnSkipFile");
+
+    el.statusTitle = $("#statusTitle");
+    el.statusLine = $("#statusLine");
+    el.pageMeta = $("#pageMeta");
+
+    el.canvas = $("#pdfCanvas");
+
+    el.btnPopViewer = $("#btnPopViewer");
+    el.viewerModal = $("#viewerModal");
+    el.btnViewerClose = $("#btnViewerClose");
+    el.viewerModalMeta = $("#viewerModalMeta");
+    el.canvasBig = $("#pdfCanvasBig");
+  }
+
+  async function boot(){
+    try{
+      wireStopOnLeave();
+      wireVoices();
+      loadTogglePrefs();
+      wireControls();
+      wirePopout();
+      await loadIndex();
+      setStatus("Ready.", `(${VERSION}) Select a PDF, then press Play.`);
+    }catch(err){
+      console.error(err);
+      setStatus("Error", err?.message ? err.message : String(err));
+    }
+  }
+
+  function init(){
+    collectEls();
+
+    if(!el.pdfSelect || !el.btnPlay){
+      const missing = [];
+      if(!el.pdfSelect) missing.push("#pdfSelect");
+      if(!el.btnPlay) missing.push("#btnPlay");
+      showMissingIds(missing);
+    }
+
+    setStatus("Ready.", `(${VERSION}) JS loaded. Select a PDF, then press Play.`);
+    wireGate(boot);
+  }
+
+  document.addEventListener("DOMContentLoaded", init);
+})();
