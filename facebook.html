@@ -4,175 +4,141 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <meta name="color-scheme" content="dark"/>
+  <title>Facebook Support Posts • Anti-MAGA + Pro-Democracy Discussion | Civic Threat</title>
 
-  <title>Facebook • Support | Civic Threat</title>
-
-  <meta name="description" content="Browse approved Facebook posts from creators and pages you want to support. Search by title, URL, or submitter, and submit new posts for review."/>
+  <meta name="description" content="Browse approved Facebook Support posts curated by Civic Threat. Track Trump/MAGA narratives, highlight pro-democracy voices, and archive links for public discussion. Submit posts for review."/>
   <meta name="robots" content="index,follow"/>
 
-  <!-- Canonical -->
-  <link rel="canonical" href="https://civicthreat.us/facebook"/>
-
-  <!-- Open Graph -->
   <meta property="og:title" content="Facebook • Support | Civic Threat"/>
-  <meta property="og:description" content="Browse approved Facebook posts from creators and pages you want to support. Search by title, URL, or submitter, and submit new posts for review."/>
+  <meta property="og:description" content="Browse approved Support posts and submit links for review and archiving. Public-interest discussion around Trump, MAGA, and pro-democracy topics."/>
   <meta property="og:type" content="website"/>
   <meta property="og:url" content="https://civicthreat.us/facebook"/>
   <meta property="og:image" content="https://civicthreat.us/assets/civicthreat-social-1200x630.jpg"/>
-  <meta property="og:site_name" content="Civic Threat"/>
 
-  <!-- Twitter Card -->
-  <meta name="twitter:card" content="summary_large_image"/>
-  <meta name="twitter:title" content="Facebook • Support | Civic Threat"/>
-  <meta name="twitter:description" content="Browse approved Facebook posts from creators and pages you want to support. Search by title, URL, or submitter, and submit new posts for review."/>
-  <meta name="twitter:image" content="https://civicthreat.us/assets/civicthreat-social-1200x630.jpg"/>
-
-  <!-- Fav + global styles -->
   <link rel="icon" href="/assets/logo.png"/>
   <link rel="stylesheet" href="/styles.css?v=7"/>
 
-  <!-- Page-only UI polish (search bar + top row layout) -->
+  <!-- Page-only styles (search bar + layout helpers) -->
   <style>
-    /* keep the top spacing consistent with your site */
-    main { padding-top: 14px; }
-
+    /* Keep the page clean and readable */
     .feed-top{
       display:flex;
-      align-items:flex-end;
+      gap:12px;
       justify-content:space-between;
-      gap:14px;
+      align-items:flex-end;
       flex-wrap:wrap;
-      margin: 10px 0 14px;
+      margin: 8px 0 14px;
     }
 
-    /* Search: nice pill-ish bar but still square theme-friendly */
+    /* Search wrapper (avoid clashing with .search input class in styles.css) */
     .searchwrap{
-      flex: 1 1 520px;
+      flex: 1 1 420px;
       min-width: 260px;
-      position: relative;
     }
-
-    .searchwrap .searchlabel{
-      font-size: 12px;
-      font-weight: 900;
-      letter-spacing: .08em;
-      opacity: .75;
+    .searchlabel{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
       margin: 0 0 8px;
+      font-size: 12px;
+      font-weight: 1000;
+      letter-spacing: .04em;
+      opacity: .9;
       text-transform: uppercase;
     }
 
-    .searchbar{
+    .searchfield{
       position: relative;
       border: 1px solid rgba(255,255,255,.14);
       background: rgba(0,0,0,.22);
-      box-shadow: 0 10px 24px rgba(0,0,0,.35);
-      border-radius: 0; /* keep your square look */
-      overflow: hidden;
+      box-shadow: 0 10px 22px rgba(0,0,0,.35);
     }
-
-    /* icon */
-    .searchbar svg{
+    .searchfield svg{
       position:absolute;
-      left: 12px;
+      left: 10px;
       top: 50%;
       transform: translateY(-50%);
       width: 18px;
       height: 18px;
-      opacity: .7;
-      pointer-events: none;
+      opacity: .85;
+      pointer-events:none;
     }
-
-    /* input */
-    #search{
+    input.search{
       width: 100%;
-      padding: 12px 46px 12px 42px; /* left for icon, right for clear btn */
+      padding: 12px 12px 12px 40px;
       border: 0;
-      background: transparent;
-      color: var(--text, #e9eef8);
       outline: none;
-      font-size: 14px;
-      font-weight: 800;
+      background: transparent;
+      color: var(--text);
+      font-weight: 900;
       letter-spacing: .01em;
-    }
-    #search::placeholder{
-      color: rgba(233,238,248,.55);
-      font-weight: 700;
-    }
-
-    /* focus glow */
-    .searchbar:focus-within{
-      border-color: rgba(43,108,255,.55);
-      box-shadow: 0 0 0 3px rgba(43,108,255,.22), 0 14px 30px rgba(0,0,0,.45);
-    }
-
-    /* Clear button */
-    .clearbtn{
-      position:absolute;
-      right: 8px;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 34px;
-      height: 34px;
-      display:none;
-      align-items:center;
-      justify-content:center;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      color: rgba(233,238,248,.9);
-      cursor:pointer;
       border-radius: 0;
-      font-weight: 1000;
-      line-height: 1;
     }
-    .clearbtn:hover{ background: rgba(255,255,255,.10); }
-    .clearbtn:active{ transform: translateY(-50%) scale(.98); }
+    input.search::placeholder{
+      color: rgba(233,238,248,.55);
+      font-weight: 900;
+    }
+    .searchhint{
+      margin-top: 8px;
+      font-size: 12px;
+      opacity: .78;
+      line-height: 1.45;
+    }
 
-    /* Counter badges */
+    /* Counters */
     .counter{
       display:flex;
       gap:10px;
       flex-wrap:wrap;
-      align-items:flex-end;
       justify-content:flex-end;
+      align-items:flex-end;
     }
     .badge{
-      display:inline-flex;
-      align-items:baseline;
-      gap:8px;
-      padding: 10px 12px;
+      padding: 10px 10px;
       border: 1px solid rgba(255,255,255,.14);
       background: rgba(0,0,0,.22);
       font-weight: 1000;
+      letter-spacing: .02em;
       border-radius: 0;
-      white-space: nowrap;
-      box-shadow: 0 10px 24px rgba(0,0,0,.30);
+      min-width: 140px;
+      text-align:center;
     }
     .badge small{
       font-size: 14px;
       opacity: .95;
+      margin-left: 6px;
+      font-weight: 1000;
     }
 
-    /* Tiny helper line */
-    .helper{
-      margin-top: 10px;
-      font-size: 12px;
-      opacity: .78;
-      line-height: 1.5;
-      max-width: 90ch;
+    /* Make "Loading posts…" very obvious */
+    .feed-loading{
+      grid-column: 1 / -1;
+      padding: 14px 12px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.22);
+      font-weight: 1000;
+      letter-spacing: .02em;
+      opacity: .9;
     }
+
+    /* Helpful SEO text blocks */
+    .seo-block{
+      margin-top: 12px;
+      padding: 12px 12px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      font-size: 13px;
+      line-height: 1.6;
+      opacity: .92;
+    }
+    .seo-block strong{ font-weight: 1000; }
+    .seo-list{
+      margin: 10px 0 0;
+      padding-left: 18px;
+    }
+    .seo-list li{ margin: 4px 0; }
   </style>
-
-  <!-- Schema -->
-  <script type="application/ld+json">
-  {
-    "@context":"https://schema.org",
-    "@type":"WebPage",
-    "name":"Facebook • Support | Civic Threat",
-    "url":"https://civicthreat.us/facebook",
-    "isPartOf":{"@type":"WebSite","name":"Civic Threat","url":"https://civicthreat.us/"},
-    "description":"Browse approved Facebook posts from creators and pages you want to support. Search by title, URL, or submitter, and submit new posts for review."
-  }
-  </script>
 
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-Z03YK1FYXW"></script>
@@ -191,68 +157,80 @@
     <section class="hero" style="padding-bottom:8px">
       <div class="wrap">
         <h1 style="margin:0 0 6px">Facebook • Support</h1>
-        <p>Browse approved Facebook-friendly posts. Do you have a favorite influencer? If so, submit one of their posts.</p>
-        <div class="helper">
-          Tip: Use the search box to filter by creator name, keywords, or a piece of the URL.
+        <p style="margin:0;opacity:.9;line-height:1.6;max-width:85ch">
+          Browse approved posts from creators and pages you want to support — and archive important links for public-interest discussion.
+          We focus on verifiable sources and civil debate around Trump, MAGA narratives, elections, democracy, and accountability.
+        </p>
+
+        <!-- Extra on-screen SEO text (not “developer notes”) -->
+        <div class="seo-block">
+          <strong>What this page is:</strong> A curated feed of approved Facebook posts submitted by the community.
+          Use the search box to find posts by creator name, keywords, or URL. If you want a post preserved here, use the Submit page.
+          <ul class="seo-list">
+            <li><strong>Keywords:</strong> Trump, MAGA, pro-democracy, accountability, political debate, civic discussion.</li>
+            <li><strong>Sources:</strong> Links open to the original post so you can verify context.</li>
+            <li><strong>Submission:</strong> Posts appear after review to reduce spam and duplicates.</li>
+          </ul>
         </div>
       </div>
     </section>
 
     <section class="section" style="padding-top:6px">
       <div class="wrap">
-        <div class="feed-top">
 
-          <!-- Better Search UI (still uses id="search" for app.js) -->
+        <div class="feed-top">
           <div class="searchwrap">
-            <div class="searchlabel">Search</div>
-            <div class="searchbar">
+            <div class="searchlabel">
+              <span>Search the Support feed</span>
+              <a class="btn" href="/submit" style="padding:8px 10px">Submit a Post</a>
+            </div>
+
+            <div class="searchfield">
               <!-- magnifier icon -->
               <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M10 2a8 8 0 105.3 14l4.4 4.4a1 1 0 001.4-1.4l-4.4-4.4A8 8 0 0010 2zm0 2a6 6 0 110 12 6 6 0 010-12z"/>
+                <path d="M10 2a8 8 0 105.3 14l4.4 4.4 1.4-1.4-4.4-4.4A8 8 0 0010 2zm0 2a6 6 0 110 12 6 6 0 010-12z"/>
               </svg>
+              <input
+                id="search"
+                class="search"
+                type="text"
+                placeholder="Search by title, URL, or submitter name…"
+                autocomplete="off"
+                spellcheck="false"
+              />
+            </div>
 
-              <input id="search" type="text" placeholder="Search title, URL, or submitter…" autocomplete="off" />
-
-              <button class="clearbtn" id="clearSearch" type="button" aria-label="Clear search">✕</button>
+            <div class="searchhint">
+              Tip: paste part of a Facebook URL, a creator name, or a keyword like <strong>Trump</strong>, <strong>MAGA</strong>, <strong>election</strong>, <strong>ICE</strong>, etc.
             </div>
           </div>
 
-          <div class="counter">
-            <div class="badge">Approved: <small id="countApproved">0</small></div>
-            <div class="badge">Pending: <small id="countPending">0</small></div>
+          <div class="counter" aria-label="Feed counters">
+            <div class="badge">Approved:<small id="countApproved">0</small></div>
+            <div class="badge">Pending:<small id="countPending">0</small></div>
           </div>
         </div>
 
-        <div id="feedGrid" class="feed-grid"></div>
+        <!-- KEEP LOADING TEXT VERY APPARENT -->
+        <div id="feedGrid" class="feed-grid">
+          <div class="feed-loading">Loading posts…</div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Extra on-screen text (SEO + clarity) -->
+    <section class="section" style="padding-top:0">
+      <div class="wrap">
+        <div class="seo-block">
+          <strong>Note:</strong> Civic Threat is a public-interest archive and discussion hub. Posts are shown as embeds or links to the original source.
+          If an embed fails to load, click “Go to Post” on a card to open the original Facebook URL.
+        </div>
       </div>
     </section>
   </main>
 
   <div id="siteFooter"></div>
-
-  <!-- Clear button logic (does not touch app.js, just updates the input) -->
-  <script>
-    (function(){
-      const inp = document.getElementById("search");
-      const btn = document.getElementById("clearSearch");
-      if(!inp || !btn) return;
-
-      function sync(){
-        const has = (inp.value || "").trim().length > 0;
-        btn.style.display = has ? "inline-flex" : "none";
-      }
-
-      inp.addEventListener("input", sync, { passive:true });
-      btn.addEventListener("click", function(){
-        inp.value = "";
-        inp.dispatchEvent(new Event("input", { bubbles:true })); // triggers your app.js filter
-        inp.focus();
-        sync();
-      });
-
-      sync();
-    })();
-  </script>
 
   <script src="/config.js?v=12"></script>
   <script src="/data-api.js?v=12"></script>
