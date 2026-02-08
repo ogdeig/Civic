@@ -6,13 +6,19 @@
 (function(){
   "use strict";
 
-  const VERSION = "v16";
+  const VERSION = "v17";
   const INDEX_URL = "/released/epstein/index.json";
   const CONSENT_KEY = "ct_epstein_21_gate_v1";
 
   // Ignore repeated PDF header/footer regions for TTS (does not affect viewer)
   const TTS_IGNORE_TOP_PCT = 0.08;     // top 8% of page
   const TTS_IGNORE_BOTTOM_PCT = 0.06;  // bottom 6% of page
+
+  // Skip ahead size (replaces skip-word)
+  const SKIP_AHEAD_WORDS = 5;
+
+  // Throttle captions updates
+  const CAPTION_THROTTLE_MS = 220;
 
   const $ = (sel, root=document) => root.querySelector(sel);
 
@@ -32,7 +38,7 @@
     playing: false,
     paused: false,
 
-    // text + word map for skip-word
+    // page text caches
     pageTextCache: new Map(), // pageNum -> text
     wordMapCache: new Map(),  // pageNum -> [{start,end,word}]
     currentWordIndex: 0,
@@ -41,7 +47,6 @@
     chunks: [],
     chunkStarts: [],
     chunkIndex: 0,
-    currentChunkStart: 0,
 
     loadSeq: 0,
     loadingPdf: false,
@@ -62,8 +67,11 @@
     autoRead: false,
     loopOn: false,
 
-    // throttle status updates
-    lastWordUiAt: 0,
+    // caption throttling
+    lastCaptionAt: 0,
+
+    // ✅ used to guarantee skip-file actually starts the NEW file
+    pendingAutoplay: false,
   };
 
   window.CT_EPSTEIN_TTS = { version: VERSION };
@@ -71,6 +79,15 @@
   function setStatus(title, line){
     if(el.statusTitle) el.statusTitle.textContent = title || "";
     if(el.statusLine) el.statusLine.textContent = line || "";
+  }
+
+  function setCaptionsLine(text){
+    // Only update when playing; keep it lightweight
+    if(!el.statusLine) return;
+    const now = Date.now();
+    if(now - state.lastCaptionAt < CAPTION_THROTTLE_MS) return;
+    state.lastCaptionAt = now;
+    el.statusLine.textContent = text || "";
   }
 
   function bust(){ return String(Date.now()); }
@@ -86,12 +103,10 @@
 
   // ✅ IMPORTANT: encode URLs (handles spaces in filenames reliably)
   function normalizePdfUrlFromIndexPath(path){
-    // index.json uses "released/epstein/pdfs/Some File.pdf"
-    // We want "/released/epstein/pdfs/Some%20File.pdf"
     let p = String(path || "").trim().replace(/^\/+/, "");
     if(!p) return "";
     const full = "/" + p;
-    // encode spaces + any unsafe chars, but keep slashes
+    // encode spaces + unsafe chars, keep slashes
     return encodeURI(full);
   }
 
@@ -104,7 +119,6 @@
     state.chunks = [];
     state.chunkStarts = [];
     state.chunkIndex = 0;
-    state.currentChunkStart = 0;
   }
 
   function stopAllAudio(){
@@ -367,7 +381,7 @@
       if(seq !== state.loadSeq) return;
 
       const baseOpts = {
-        url, // already encoded
+        url,
         withCredentials: false,
         disableRange: true,
         disableStream: true,
@@ -398,9 +412,20 @@
 
       await renderPageQueued(1);
 
+      // ✅ If a skip-file / auto-advance requested autoplay, start reading NOW (new file).
+      if(state.pendingAutoplay){
+        state.pendingAutoplay = false;
+        state.playing = true;
+        state.paused = false;
+        setStatus("Playing…", `(${VERSION}) Reading page 1…`);
+        await startReadingFromWord(0);
+        return;
+      }
+
       setStatus("Ready.", `(${VERSION}) PDF loaded. Press Play to read page 1.`);
     }catch(err){
       console.error(err);
+      state.pendingAutoplay = false;
       setStatus("Error", `(${VERSION}) Failed to load/parse PDF. Check Network tab for ${url}`);
       if(el.pageMeta) el.pageMeta.textContent = "Failed to load PDF.";
       await destroyCurrentPdf();
@@ -462,32 +487,27 @@
       if(state.renderTask === task) state.renderTask = null;
     }
 
-    // If popout open, mirror the canvas fast (no re-render).
-    if(el.viewerModal && el.viewerModal.classList.contains("open")){
-      mirrorToBigCanvas();
-    }
+    // Mirror to big canvas if popout open (fast drawImage).
+    mirrorToBigCanvas();
   }
 
   function mirrorToBigCanvas(){
+    if(!el.viewerModal || !el.viewerModal.classList.contains("open")) return;
     if(!el.canvas || !el.canvasBig) return;
+
     const src = el.canvas;
     const dst = el.canvasBig;
     const ctx = dst.getContext ? dst.getContext("2d") : null;
     if(!ctx) return;
 
     try{
-      const w = src.width || 1;
-      const h = src.height || 1;
-
-      dst.width = w;
-      dst.height = h;
-
+      dst.width = src.width || 1;
+      dst.height = src.height || 1;
       ctx.clearRect(0,0,dst.width,dst.height);
       ctx.drawImage(src, 0, 0);
     }catch(_){}
   }
 
-  // ✅ filters out repeated header/footer text by position
   async function getPageText(n){
     if(state.pageTextCache.has(n)) return state.pageTextCache.get(n);
 
@@ -532,8 +552,7 @@
     const re = /\S+/g;
     let m;
     while((m = re.exec(s))){
-      const w = m[0];
-      out.push({ start: m.index, end: m.index + w.length, word: w });
+      out.push({ start: m.index, end: m.index + m[0].length, word: m[0] });
       if(out.length > 20000) break; // safety
     }
     return out;
@@ -558,6 +577,7 @@
       return { chunks: ["(No readable text on this page.)"], starts: [0] };
     }
 
+    // move to word boundary if inside word
     while(i > 0 && i < clean.length && !/\s/.test(clean[i-1]) && !/\s/.test(clean[i])) i--;
 
     while(i < clean.length){
@@ -566,14 +586,8 @@
 
       for(let j=end; j>i+300; j--){
         const ch = clean[j-1];
-        if(ch === "." || ch === "!" || ch === "?" || ch === "\n"){
-          cut = j;
-          break;
-        }
-        if(/\s/.test(ch)){
-          cut = j;
-          break;
-        }
+        if(ch === "." || ch === "!" || ch === "?" || ch === "\n"){ cut = j; break; }
+        if(/\s/.test(ch)){ cut = j; break; }
       }
 
       const part = clean.slice(i, cut).trim();
@@ -592,18 +606,6 @@
     return { chunks, starts };
   }
 
-  function updateReadingMarker(word){
-    const now = Date.now();
-    if(now - state.lastWordUiAt < 180) return;
-    state.lastWordUiAt = now;
-
-    if(!el.statusLine) return;
-    const safe = String(word || "").slice(0, 40);
-    if(safe){
-      el.statusLine.textContent = `Reading… (word: “${safe}”)`;
-    }
-  }
-
   function getWordIndexByChar(wordMap, charPos){
     let lo = 0, hi = wordMap.length - 1, hit = -1;
     while(lo <= hi){
@@ -614,6 +616,24 @@
       else { hit = mid; break; }
     }
     return hit;
+  }
+
+  function makeCaptionWindow(wordMap, i){
+    if(!wordMap.length) return "";
+    const idx = clamp(i|0, 0, wordMap.length - 1);
+
+    // show 4 words: prev1 + current + next2 (balanced, feels like captions)
+    const a = clamp(idx - 1, 0, wordMap.length - 1);
+    const b = idx;
+    const c = clamp(idx + 1, 0, wordMap.length - 1);
+    const d = clamp(idx + 2, 0, wordMap.length - 1);
+
+    const words = [wordMap[a]?.word, wordMap[b]?.word, wordMap[c]?.word, wordMap[d]?.word]
+      .filter(Boolean)
+      .join(" ");
+
+    // keep it neat
+    return words.length > 120 ? words.slice(0, 120) + "…" : words;
   }
 
   function speakNextChunk(localSpeechSeq, pageText, wordMap){
@@ -632,17 +652,18 @@
     u.volume = state.muted ? 0 : 1;
 
     const thisChunkStart = state.chunkStarts[state.chunkIndex] || 0;
-    state.currentChunkStart = thisChunkStart;
 
     u.onboundary = (ev) => {
       if(localSpeechSeq !== state.speechSeq) return;
       if(!ev) return;
-      const globalChar = thisChunkStart + (ev.charIndex || 0);
 
+      const globalChar = thisChunkStart + (ev.charIndex || 0);
       const wi = getWordIndexByChar(wordMap, globalChar);
       if(wi !== -1){
         state.currentWordIndex = wi;
-        updateReadingMarker(wordMap[wi]?.word || "");
+
+        // ✅ lightweight captions (no underline, no DOM-heavy highlight)
+        setCaptionsLine(makeCaptionWindow(wordMap, wi));
       }
     };
 
@@ -652,6 +673,7 @@
       state.chunkIndex += 1;
       speakNextChunk(localSpeechSeq, pageText, wordMap);
     };
+
     u.onerror = () => {
       if(localSpeechSeq !== state.speechSeq) return;
       if(!state.playing || state.paused) return;
@@ -682,6 +704,7 @@
 
     if(!wordMap.length){
       setStatus("Playing…", `(${VERSION}) No readable text on page ${pageNum}.`);
+      clearPlaybackBuffers();
       state.chunks = ["(No readable text on this page.)"];
       state.chunkStarts = [0];
       state.chunkIndex = 0;
@@ -700,7 +723,9 @@
     state.chunkStarts = starts;
     state.chunkIndex = 0;
 
-    updateReadingMarker(wordMap[wi]?.word || "");
+    // prime captions immediately
+    setCaptionsLine(makeCaptionWindow(wordMap, wi));
+
     speakNextChunk(localSeq, pageText, wordMap);
   }
 
@@ -758,6 +783,8 @@
     }
 
     el.pdfSelect.value = opts[nextIdx].value;
+
+    // Use the same change handler (loads PDF)
     el.pdfSelect.dispatchEvent(new Event("change", { bubbles: true }));
     return true;
   }
@@ -769,13 +796,13 @@
     if(state.page >= (state.totalPages || 1)){
       if(state.autoRead){
         setStatus("Working…", `(${VERSION}) Next PDF…`);
+        state.pendingAutoplay = true;
         advanceToNextPdf(state.loopOn).then((ok) => {
           if(!ok){
+            state.pendingAutoplay = false;
             setStatus("Done.", `(${VERSION}) Reached the last PDF.`);
             state.playing = false;
             state.paused = false;
-          }else{
-            setTimeout(() => { try{ el.btnPlay && el.btnPlay.click(); }catch(_){} }, 700);
           }
         });
       }else if(state.loopOn){
@@ -833,6 +860,7 @@
       });
     }
 
+    // small refresh while open so it always matches current page
     setInterval(() => {
       if(el.viewerModal && el.viewerModal.classList.contains("open")){
         if(el.viewerModalMeta && el.pageMeta) el.viewerModalMeta.textContent = el.pageMeta.textContent || "";
@@ -865,6 +893,9 @@
       showMissingIds(missing);
       return;
     }
+
+    // Update the label so you see it changed without editing HTML
+    el.btnSkipWord.textContent = `⏩ Skip +${SKIP_AHEAD_WORDS}`;
 
     el.btnPlay.addEventListener("click", async () => {
       if(!state.pdfDoc && !state.loadingPdf){
@@ -916,6 +947,8 @@
     el.btnStop.addEventListener("click", async () => {
       stopAllAudio();
       state.currentWordIndex = 0;
+      state.pendingAutoplay = false;
+
       if(state.pdfDoc){
         await gotoPage(1, { keepPlaying: false });
         setStatus("Stopped.", `(${VERSION}) Press Play to start from page 1.`);
@@ -926,12 +959,14 @@
 
     el.btnNext.addEventListener("click", async () => {
       if(state.loadingPdf || !state.pdfDoc || state.navBusy) return;
+      state.pendingAutoplay = false;
       const wasPlaying = state.playing && !state.paused;
       await gotoPage(state.page + 1, { keepPlaying: wasPlaying });
     });
 
     el.btnPrev.addEventListener("click", async () => {
       if(state.loadingPdf || !state.pdfDoc || state.navBusy) return;
+      state.pendingAutoplay = false;
       const wasPlaying = state.playing && !state.paused;
       await gotoPage(state.page - 1, { keepPlaying: wasPlaying });
     });
@@ -944,24 +979,27 @@
       }
     });
 
-    // Skip word: restart speech at next word index
+    // ✅ Skip Ahead (+5 words). If playing, restarts speech cleanly at that word.
     el.btnSkipWord.addEventListener("click", async () => {
       if(!state.pdfDoc) return;
 
+      // make sure caches exist
       const pageText = await getPageText(state.page);
       const wordMap = getWordMapForPage(state.page, pageText);
       if(!wordMap.length) return;
 
-      const next = clamp((state.currentWordIndex|0) + 1, 0, wordMap.length - 1);
+      const next = clamp((state.currentWordIndex|0) + SKIP_AHEAD_WORDS, 0, wordMap.length - 1);
       state.currentWordIndex = next;
 
+      // If playing, jump immediately
       if(state.playing && !state.paused){
         cancelSpeech();
         clearPlaybackBuffers();
         await startReadingFromWord(next);
       }else{
-        updateReadingMarker(wordMap[next]?.word || "");
-        setStatus("Ready.", `(${VERSION}) Positioned at word: “${wordMap[next]?.word || ""}”`);
+        // If not playing, just update captions preview
+        setCaptionsLine(makeCaptionWindow(wordMap, next));
+        setStatus("Ready.", `(${VERSION}) Press Play to read from here.`);
       }
     });
 
@@ -977,25 +1015,36 @@
       syncToggleButtons();
     });
 
+    // ✅ Skip File: guaranteed to load the next PDF and autoplay the NEW file.
     el.btnSkipFile.addEventListener("click", async () => {
+      if(state.loadingPdf) return;
+
       stopAllAudio();
       state.currentWordIndex = 0;
 
+      // ensure the next PDF actually starts reading once loaded
+      state.pendingAutoplay = true;
+
       const ok = await advanceToNextPdf(true);
       if(!ok){
+        state.pendingAutoplay = false;
         setStatus("Ready.", `(${VERSION}) No next PDF to skip to.`);
         return;
       }
 
-      setTimeout(() => { try{ el.btnPlay && el.btnPlay.click(); }catch(_){} }, 800);
+      // No manual play click here—loadPdf() will autoplay once the new doc is ready.
+      setStatus("Loading PDF…", `(${VERSION}) Skipping to next file…`);
     });
 
     el.pdfSelect.addEventListener("change", async () => {
       const url = el.pdfSelect.value || "";
       const label = el.pdfSelect.options[el.pdfSelect.selectedIndex]?.textContent || "";
 
+      stopAllAudio();
+      state.currentWordIndex = 0;
+
       if(!url){
-        stopAllAudio();
+        state.pendingAutoplay = false;
         await destroyCurrentPdf();
         state.totalPages = 0;
         state.page = 1;
