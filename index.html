@@ -66,7 +66,6 @@
 
   <style>
     main{ padding-top: 14px; }
-
     .hero-block{ padding: 18px 0 6px; }
     .hero-block + .hero-block{ padding-top: 10px; }
 
@@ -281,7 +280,6 @@
             </p>
 
             <div class="actions">
-              <!-- NO .html -->
               <a class="btn epstein-red" href="/released/epstein/epstein-reader">Open Epstein Files Player</a>
               <a class="btn submit-blue" href="/submit">Submit a Post</a>
             </div>
@@ -324,7 +322,6 @@
               Use “View all” to browse the full archive, then share what matters.
             </p>
           </div>
-          <!-- NO .html -->
           <a class="btn" href="/facebook">View all</a>
         </div>
         <div id="homeSupport" class="feed-grid"></div>
@@ -343,7 +340,6 @@
               Search it, share it, and if something needs to be tracked, submit it.
             </p>
           </div>
-          <!-- NO .html -->
           <a class="btn" href="/facebook-maga">View all</a>
         </div>
         <div id="homeMaga" class="feed-grid"></div>
@@ -354,7 +350,7 @@
 
   <div id="siteFooter"></div>
 
-  <!-- Epstein scroller: loads from /released/epstein/images/images.json -->
+  <!-- Epstein scroller: tries the REAL path first (/released/epstein/images.json) then fallbacks -->
   <script>
     (function(){
       const track = document.getElementById("epTrack");
@@ -379,16 +375,16 @@
         if(!src) return "";
         const s = String(src).trim();
 
-        // Already absolute
         if(/^https?:\/\//i.test(s)) return s;
-
-        // Already correct site path
         if(s.startsWith("/released/epstein/images/")) return s;
 
-        // Root path (but not in images folder)
+        // common case: images.json contains "images/filename.jpg"
+        if(s.startsWith("images/")) return "/released/epstein/" + s;
+
+        // root path
         if(s.startsWith("/")) return s;
 
-        // Relative file name -> images folder
+        // filename only
         return "/released/epstein/images/" + s.replace(/^\.?\//,"");
       }
 
@@ -420,14 +416,13 @@
 
           const dot = document.createElement("button");
           dot.type = "button";
-          dot.className = "dot" + (i===0 ? " on" : "");
-          dot.setAttribute("aria-label", "Go to image " + (i+1));
-          dot.addEventListener("click", () => setIndex(i));
+          dot.className = "dot" + (slides.length===1 ? " on" : "");
+          dot.setAttribute("aria-label", "Go to image " + (slides.length));
+          dot.addEventListener("click", () => setIndex(slides.length - 1));
           dotsWrap.appendChild(dot);
           dots.push(dot);
         });
 
-        // If JSON had junk and produced 0 slides, keep fallback
         if(!slides.length){
           track.innerHTML = '<div class="slide"><img src="/assets/epstein/epstein-hero.jpg" alt="Released document preview image"></div>';
           dotsWrap.innerHTML = "";
@@ -451,12 +446,6 @@
         startX = e.clientX;
         carousel.setPointerCapture && carousel.setPointerCapture(e.pointerId);
       });
-      carousel.addEventListener("pointermove", (e)=>{
-        if(!dragging) return;
-        const dx = e.clientX - startX;
-        // only prevent on meaningful horizontal drag
-        if(Math.abs(dx) > 10) e.preventDefault();
-      }, { passive: false });
       carousel.addEventListener("pointerup", (e)=>{
         if(!dragging) return;
         dragging = false;
@@ -466,19 +455,33 @@
         }
       });
 
-      // Load images.json (supports {"images":[...]} OR [...])
-      fetch("/released/epstein/images/images.json?v=" + Date.now(), { cache: "no-store" })
-        .then(r => {
-          if(!r.ok) throw new Error("HTTP " + r.status);
-          return r.json();
-        })
-        .then(data => {
-          const list = Array.isArray(data) ? data : (Array.isArray(data.images) ? data.images : []);
-          buildFromList(list);
-        })
-        .catch(() => {
-          // Leave the single fallback image
-        });
+      async function tryFetchJson(url){
+        const r = await fetch(url, { cache: "no-store" });
+        if(!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      }
+
+      (async function loadImages(){
+        // IMPORTANT: This is the path your reader page uses (./images.json -> /released/epstein/images.json)
+        const candidates = [
+          "/released/epstein/images.json",
+          "/released/epstein/images/index.json",
+          "/released/epstein/images/images.json"
+        ];
+
+        for(const base of candidates){
+          const url = base + (base.includes("?") ? "" : ("?v=" + Date.now()));
+          try{
+            const data = await tryFetchJson(url);
+            const list = Array.isArray(data) ? data : (Array.isArray(data.images) ? data.images : []);
+            if(list && list.length){
+              buildFromList(list);
+              return;
+            }
+          }catch(e){ /* try next */ }
+        }
+        // If all failed, keep fallback image silently (no console spam from us)
+      })();
     })();
   </script>
 
