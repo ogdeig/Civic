@@ -87,63 +87,6 @@
       line-height: 1.5;
     }
 
-    /* FULL-WIDTH GALLERY SECTION */
-    .gallery-section{
-      margin-top: 18px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.25);
-    }
-    .gallery-section .pad{ padding: 14px; }
-    .gallery-section h2{
-      margin: 0 0 6px;
-      font-size: 16px;
-      letter-spacing: .02em;
-      font-weight: 1000;
-    }
-    .gallery-sub{
-      margin: 0 0 12px;
-      font-size: 12px;
-      opacity: .82;
-      line-height: 1.5;
-      max-width: 92ch;
-    }
-    .gallery-grid{
-      display:grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 10px;
-    }
-    @media (max-width: 980px){
-      .gallery-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    }
-    @media (max-width: 700px){
-      .gallery-grid{ grid-template-columns: 1fr; }
-    }
-    .g-card{
-      margin: 0;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.25);
-      overflow: hidden;
-      cursor: pointer;
-    }
-    .g-card img{
-      width: 100%;
-      height: auto;
-      display:block;
-      background:#000;
-    }
-    .g-cap{
-      padding: 8px 10px;
-      font-size: 12px;
-      opacity: .85;
-      line-height: 1.35;
-      border-top: 1px solid rgba(255,255,255,.08);
-    }
-    .g-cap .src{
-      margin-top: 6px;
-      opacity: .75;
-      font-size: 11px;
-    }
-
     /* Viewer pop-out modal (PDF) */
     .viewer-modal{
       position: fixed;
@@ -179,53 +122,6 @@
     .viewer-modal .body{
       padding: 12px;
       overflow: auto;
-    }
-
-    /* Image Lightbox */
-    .img-modal{
-      position: fixed;
-      inset: 0;
-      z-index: 9997;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      background: rgba(0,0,0,.88);
-      padding: 16px;
-    }
-    .img-modal.open{ display:flex; }
-    .img-modal .card{
-      width: min(1100px, 96vw);
-      max-height: 92vh;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(10,10,10,.94);
-      border-radius: 0;
-      box-shadow: 0 20px 60px rgba(0,0,0,.65);
-      display:flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-    .img-modal .head{
-      padding: 10px 12px;
-      border-bottom: 1px solid rgba(255,255,255,.10);
-      display:flex;
-      align-items:center;
-      justify-content: space-between;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    .img-modal .body{
-      padding: 12px;
-      overflow: auto;
-      display:flex;
-      justify-content:center;
-      align-items:flex-start;
-    }
-    .img-modal img{
-      width: 100%;
-      height: auto;
-      max-width: 980px;
-      background:#000;
-      border: 1px solid rgba(255,255,255,.12);
     }
 
     /* 21+ gate */
@@ -359,24 +255,6 @@
         </div>
       </div>
     </section>
-
-    <!-- FULL-WIDTH IMAGES SECTION -->
-    <section class="gallery-section ep-box" aria-label="Released Epstein images">
-      <div class="pad">
-        <h2>Released Epstein Images</h2>
-        <p class="gallery-sub">
-          A quick-scroll gallery of publicly released Epstein document images and excerpts. Tap any image to open a larger viewer and flip through the set.
-        </p>
-
-        <div id="galleryGrid" class="gallery-grid">
-          <div style="opacity:.8;font-size:13px;">Loading images…</div>
-        </div>
-
-        <div class="legal" style="margin-top:12px">
-          <strong>Image note:</strong> Images are shown for reference alongside the released PDFs. For context, use the PDF reader above and consult the complete file.
-        </div>
-      </div>
-    </section>
   </main>
 
   <!-- Footer injected by app.js -->
@@ -398,26 +276,6 @@
         <div class="viewer-shell ep-box" id="viewerShellBig">
           <canvas id="pdfCanvasBig" class="viewer-canvas" width="1600" height="2200"></canvas>
         </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Image lightbox -->
-  <div class="img-modal" id="imgModal" role="dialog" aria-modal="true" aria-label="Image viewer">
-    <div class="card ep-box">
-      <div class="head">
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-          <strong id="imgTitle">Released Epstein Images</strong>
-          <span id="imgMeta" style="opacity:.85;font-size:12px"></span>
-        </div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap">
-          <button class="btn" id="imgPrev" type="button">← Prev</button>
-          <button class="btn" id="imgNext" type="button">Next →</button>
-          <button class="btn" id="imgClose" type="button">✕ Close</button>
-        </div>
-      </div>
-      <div class="body">
-        <img id="imgBig" alt="Released image" />
       </div>
     </div>
   </div>
@@ -456,123 +314,6 @@
   <script src="/app.js?v=12"></script>
 
   <!-- Epstein Reader logic -->
-  <script src="./epstein-tts.js?v=15"></script>
-
-  <!-- Images Gallery (./images.json) -->
-  <script>
-    (function(){
-      "use strict";
-
-      const IMAGE_MANIFEST_URL = "./images.json";
-      const galleryGrid = document.getElementById("galleryGrid");
-
-      const imgModal = document.getElementById("imgModal");
-      const imgBig = document.getElementById("imgBig");
-      const imgMeta = document.getElementById("imgMeta");
-      const imgPrev = document.getElementById("imgPrev");
-      const imgNext = document.getElementById("imgNext");
-      const imgClose = document.getElementById("imgClose");
-
-      let imageList = [];
-      let imageIdx = 0;
-
-      function esc(s){
-        return String(s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-      }
-      function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
-
-      async function fetchJsonStrict(url){
-        const r = await fetch(url, { cache: "no-store" });
-        if (!r.ok) throw new Error(`HTTP ${r.status} for ${url}`);
-        return r.json();
-      }
-
-      function openImgModal(i){
-        if (!imgModal || !imgBig) return;
-        imageIdx = clamp(i|0, 0, Math.max(0, imageList.length-1));
-        const it = imageList[imageIdx];
-        if (!it) return;
-
-        imgBig.src = it.src;
-        imgBig.alt = it.alt || "Released image";
-
-        if (imgMeta) imgMeta.textContent = `Image ${imageIdx+1} of ${imageList.length}`;
-        imgModal.classList.add("open");
-      }
-
-      function closeImgModal(){
-        if (!imgModal) return;
-        imgModal.classList.remove("open");
-        if (imgBig) imgBig.src = "";
-      }
-
-      function stepImg(dir){
-        if (!imageList.length) return;
-        const next = (imageIdx + dir + imageList.length) % imageList.length;
-        openImgModal(next);
-      }
-
-      if (imgPrev) imgPrev.addEventListener("click", () => stepImg(-1));
-      if (imgNext) imgNext.addEventListener("click", () => stepImg( 1));
-      if (imgClose) imgClose.addEventListener("click", closeImgModal);
-      if (imgModal){
-        imgModal.addEventListener("click", (e) => { if (e.target === imgModal) closeImgModal(); });
-      }
-
-      document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape"){
-          if (imgModal && imgModal.classList.contains("open")) closeImgModal();
-        }
-      });
-
-      async function initGallery(){
-        if (!galleryGrid) return;
-
-        try{
-          const data = await fetchJsonStrict(IMAGE_MANIFEST_URL);
-          const list = Array.isArray(data?.images) ? data.images : (Array.isArray(data) ? data : []);
-          imageList = list.filter(x => x && x.src).map(x => ({
-            src: String(x.src),
-            caption: x.caption || "",
-            source: x.source || "",
-            alt: x.alt || ""
-          }));
-
-          galleryGrid.innerHTML = "";
-          if(!imageList.length){
-            galleryGrid.innerHTML = `<div style="opacity:.8;font-size:13px;">No images available.</div>`;
-            return;
-          }
-
-          imageList.forEach((img, idx) => {
-            const caption = img.caption ? esc(img.caption) : "Released excerpt image (publicly available).";
-            const source = img.source ? esc(img.source) : "Publicly released records";
-            const alt = img.alt ? esc(img.alt) : "Released document image.";
-            const src = esc(img.src);
-
-            const fig = document.createElement("figure");
-            fig.className = "g-card ep-box";
-            fig.innerHTML = `
-              <img src="${src}" alt="${alt}" loading="lazy" decoding="async">
-              <figcaption class="g-cap">
-                <div>${caption}</div>
-                <div class="src"><strong>Source:</strong> ${source}</div>
-              </figcaption>
-            `;
-            fig.addEventListener("click", () => openImgModal(idx));
-            galleryGrid.appendChild(fig);
-          });
-
-        }catch(e){
-          galleryGrid.innerHTML =
-            `<div style="opacity:.85;font-size:13px;line-height:1.5;">
-              Images unavailable right now (could not load <strong>./images.json</strong> — check filename + case).
-            </div>`;
-        }
-      }
-
-      document.addEventListener("DOMContentLoaded", initGallery);
-    })();
-  </script>
+  <script src="./epstein-tts.js?v=16"></script>
 </body>
 </html>
