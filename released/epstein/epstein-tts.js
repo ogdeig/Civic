@@ -2,11 +2,16 @@
    Structure:
    - /released/epstein/index.json
    - /released/epstein/pdfs/<file>.pdf
+
+   v18: Fix iOS/Facebook in-app "no voices" by:
+   - Always providing "Default (device)" option
+   - Priming voices on first user gesture + Play
+   - Retrying getVoices() multiple times + onvoiceschanged
 */
 (function(){
   "use strict";
 
-  const VERSION = "v17";
+  const VERSION = "v18";
   const INDEX_URL = "/released/epstein/index.json";
   const CONSENT_KEY = "ct_epstein_21_gate_v1";
 
@@ -32,7 +37,7 @@
     totalPages: 0,
 
     voices: [],
-    selectedVoiceURI: "",
+    selectedVoiceURI: "__default__", // ✅ default voice always available
     selectedRate: 1.0,
     muted: false,
     playing: false,
@@ -72,6 +77,10 @@
 
     // ✅ used to guarantee skip-file actually starts the NEW file
     pendingAutoplay: false,
+
+    // ✅ voice readiness / priming
+    voicesPrimed: false,
+    voiceInitStarted: false
   };
 
   window.CT_EPSTEIN_TTS = { version: VERSION };
@@ -167,6 +176,29 @@
     el.gate.style.display = "none";
     document.body.style.overflow = "";
   }
+
+  // ✅ Prime voices on iOS/Facebook in-app browsers (must be after user gesture)
+  async function primeVoices(){
+    if(state.voicesPrimed) return;
+    state.voicesPrimed = true;
+
+    if(!("speechSynthesis" in window) || typeof SpeechSynthesisUtterance !== "function") return;
+
+    try{
+      // Silent micro-utterance. Some iOS in-app browsers load voices only after speak().
+      const u = new SpeechSynthesisUtterance(" ");
+      u.volume = 0;
+      u.rate = 1;
+      u.pitch = 1;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(u);
+      // Give it a moment then cancel so we don't actually "play"
+      setTimeout(() => {
+        try{ window.speechSynthesis.cancel(); }catch(_){}
+      }, 80);
+    }catch(_){}
+  }
+
   function wireGate(onEnter){
     if(!el.gate || !el.gateCheck || !el.gateEnter || !el.gateLeave) return onEnter();
 
@@ -183,6 +215,13 @@
       if(!el.gateCheck.checked) return;
       setConsent();
       hideGate();
+
+      // ✅ user gesture: prime voices & refresh
+      primeVoices().then(() => {
+        refreshVoices("gate-enter");
+        scheduleVoiceRetries();
+      });
+
       onEnter();
     });
 
@@ -201,33 +240,19 @@
   }
 
   // ---- Voices ----
-  function listVoices(){
-    state.voices = window.speechSynthesis?.getVoices?.() || [];
-    if(!el.voiceSelect) return;
+  function voiceSortKey(v){
+    const name = (v.name || "").toLowerCase();
+    const lang = (v.lang || "").toLowerCase();
+    const isEn = lang.startsWith("en") ? 0 : 1;
+    const isGb = lang === "en-gb" ? 0 : 1;
+    const isGoogle = /google/.test(name) ? 0 : 1;
+    return `${isEn}${isGb}${isGoogle}-${lang}-${name}`;
+  }
 
-    el.voiceSelect.innerHTML = "";
+  function choosePreferredVoiceURI(voices){
+    if(!voices.length) return "__default__";
 
-    if(!state.voices.length){
-      const o = document.createElement("option");
-      o.value = "";
-      o.textContent = "No voices found (try again)";
-      el.voiceSelect.appendChild(o);
-      return;
-    }
-
-    const sorted = [...state.voices].sort((a,b) => {
-      const ae = (a.lang||"").toLowerCase().startsWith("en") ? 0 : 1;
-      const be = (b.lang||"").toLowerCase().startsWith("en") ? 0 : 1;
-      if(ae !== be) return ae - be;
-      return (a.name||"").localeCompare(b.name||"");
-    });
-
-    for(const v of sorted){
-      const o = document.createElement("option");
-      o.value = v.voiceURI;
-      o.textContent = `${v.name} (${v.lang})`;
-      el.voiceSelect.appendChild(o);
-    }
+    const sorted = [...voices].sort((a,b) => voiceSortKey(a).localeCompare(voiceSortKey(b)));
 
     const prefer =
       sorted.find(v => /google/i.test(v.name) && (v.lang||"").toLowerCase()==="en-gb") ||
@@ -235,25 +260,85 @@
       sorted.find(v => (v.lang||"").toLowerCase().startsWith("en-")) ||
       sorted[0];
 
-    state.selectedVoiceURI = prefer?.voiceURI || "";
-    el.voiceSelect.value = state.selectedVoiceURI;
+    return prefer?.voiceURI || "__default__";
   }
 
-  function getVoice(){
-    return state.voices.find(v => v.voiceURI === state.selectedVoiceURI) || null;
+  function rebuildVoiceDropdown(){
+    if(!el.voiceSelect) return;
+
+    const prev = el.voiceSelect.value || state.selectedVoiceURI || "__default__";
+    el.voiceSelect.innerHTML = "";
+
+    // ✅ Always include default device voice option
+    {
+      const o = document.createElement("option");
+      o.value = "__default__";
+      o.textContent = "Default (device)";
+      el.voiceSelect.appendChild(o);
+    }
+
+    if(!state.voices.length){
+      // Still allow reading via default voice even if list is empty.
+      el.voiceSelect.value = "__default__";
+      state.selectedVoiceURI = "__default__";
+      return;
+    }
+
+    const sorted = [...state.voices].sort((a,b) => voiceSortKey(a).localeCompare(voiceSortKey(b)));
+    for(const v of sorted){
+      const o = document.createElement("option");
+      o.value = v.voiceURI;
+      o.textContent = `${v.name} (${v.lang})`;
+      el.voiceSelect.appendChild(o);
+    }
+
+    // restore previous if still exists, else pick preferred
+    const exists = [...el.voiceSelect.options].some(o => o.value === prev);
+    const pick = exists ? prev : choosePreferredVoiceURI(sorted);
+
+    el.voiceSelect.value = pick;
+    state.selectedVoiceURI = pick;
+  }
+
+  function refreshVoices(reason){
+    try{
+      const arr = window.speechSynthesis?.getVoices?.() || [];
+      // Some browsers return a new array only after voiceschanged; accept it if non-empty OR if we never had anything.
+      if(arr.length || !state.voices.length){
+        state.voices = arr;
+      }
+    }catch(_){
+      state.voices = [];
+    }
+    rebuildVoiceDropdown();
+    // If we're in a "no voices" environment, keep status light and don't show scary errors.
+    if(reason && !state.voices.length){
+      // quiet
+    }
+  }
+
+  function scheduleVoiceRetries(){
+    // ✅ iOS in-app browsers often populate late
+    setTimeout(() => refreshVoices("retry-300"), 300);
+    setTimeout(() => refreshVoices("retry-1000"), 1000);
+    setTimeout(() => refreshVoices("retry-2200"), 2200);
+    setTimeout(() => refreshVoices("retry-4000"), 4000);
   }
 
   function wireVoices(){
-    listVoices();
+    refreshVoices("init");
+    scheduleVoiceRetries();
+
     if(window.speechSynthesis){
-      window.speechSynthesis.onvoiceschanged = listVoices;
-      setTimeout(listVoices, 300);
-      setTimeout(listVoices, 1000);
+      // ✅ When voices become available, rebuild dropdown
+      window.speechSynthesis.onvoiceschanged = () => {
+        refreshVoices("voiceschanged");
+      };
     }
 
     if(el.voiceSelect){
       el.voiceSelect.addEventListener("change", () => {
-        state.selectedVoiceURI = el.voiceSelect.value || "";
+        state.selectedVoiceURI = el.voiceSelect.value || "__default__";
         if(state.playing && !state.paused) restartReading();
       });
     }
@@ -265,6 +350,25 @@
         if(state.playing && !state.paused) restartReading();
       });
     }
+
+    // ✅ Prime voices on first user gesture anywhere on the page
+    if(!state.voiceInitStarted){
+      state.voiceInitStarted = true;
+      const once = async () => {
+        try{
+          await primeVoices();
+          refreshVoices("gesture");
+          scheduleVoiceRetries();
+        }catch(_){}
+      };
+      document.addEventListener("touchstart", once, { once: true, passive: true });
+      document.addEventListener("click", once, { once: true, passive: true });
+    }
+  }
+
+  function getVoice(){
+    if(state.selectedVoiceURI === "__default__") return null;
+    return state.voices.find(v => v.voiceURI === state.selectedVoiceURI) || null;
   }
 
   // ---- Toggles ----
@@ -632,7 +736,6 @@
       .filter(Boolean)
       .join(" ");
 
-    // keep it neat
     return words.length > 120 ? words.slice(0, 120) + "…" : words;
   }
 
@@ -647,7 +750,7 @@
     const voice = getVoice();
     const u = new SpeechSynthesisUtterance(state.chunks[state.chunkIndex]);
     u.rate = state.selectedRate || 1;
-    u.voice = voice || null;
+    u.voice = voice || null;     // ✅ null = device default voice
     u.lang = voice?.lang || "en-US";
     u.volume = state.muted ? 0 : 1;
 
@@ -661,8 +764,6 @@
       const wi = getWordIndexByChar(wordMap, globalChar);
       if(wi !== -1){
         state.currentWordIndex = wi;
-
-        // ✅ lightweight captions (no underline, no DOM-heavy highlight)
         setCaptionsLine(makeCaptionWindow(wordMap, wi));
       }
     };
@@ -723,9 +824,7 @@
     state.chunkStarts = starts;
     state.chunkIndex = 0;
 
-    // prime captions immediately
     setCaptionsLine(makeCaptionWindow(wordMap, wi));
-
     speakNextChunk(localSeq, pageText, wordMap);
   }
 
@@ -783,8 +882,6 @@
     }
 
     el.pdfSelect.value = opts[nextIdx].value;
-
-    // Use the same change handler (loads PDF)
     el.pdfSelect.dispatchEvent(new Event("change", { bubbles: true }));
     return true;
   }
@@ -860,7 +957,6 @@
       });
     }
 
-    // small refresh while open so it always matches current page
     setInterval(() => {
       if(el.viewerModal && el.viewerModal.classList.contains("open")){
         if(el.viewerModalMeta && el.pageMeta) el.viewerModalMeta.textContent = el.pageMeta.textContent || "";
@@ -898,6 +994,11 @@
     el.btnSkipWord.textContent = `⏩ Skip +${SKIP_AHEAD_WORDS}`;
 
     el.btnPlay.addEventListener("click", async () => {
+      // ✅ on Play gesture: prime voices, refresh + retries (fixes iOS in-app)
+      await primeVoices();
+      refreshVoices("play");
+      scheduleVoiceRetries();
+
       if(!state.pdfDoc && !state.loadingPdf){
         const url = el.pdfSelect.value || "";
         const label = el.pdfSelect.options[el.pdfSelect.selectedIndex]?.textContent || "";
@@ -983,7 +1084,6 @@
     el.btnSkipWord.addEventListener("click", async () => {
       if(!state.pdfDoc) return;
 
-      // make sure caches exist
       const pageText = await getPageText(state.page);
       const wordMap = getWordMapForPage(state.page, pageText);
       if(!wordMap.length) return;
@@ -991,13 +1091,11 @@
       const next = clamp((state.currentWordIndex|0) + SKIP_AHEAD_WORDS, 0, wordMap.length - 1);
       state.currentWordIndex = next;
 
-      // If playing, jump immediately
       if(state.playing && !state.paused){
         cancelSpeech();
         clearPlaybackBuffers();
         await startReadingFromWord(next);
       }else{
-        // If not playing, just update captions preview
         setCaptionsLine(makeCaptionWindow(wordMap, next));
         setStatus("Ready.", `(${VERSION}) Press Play to read from here.`);
       }
@@ -1022,7 +1120,6 @@
       stopAllAudio();
       state.currentWordIndex = 0;
 
-      // ensure the next PDF actually starts reading once loaded
       state.pendingAutoplay = true;
 
       const ok = await advanceToNextPdf(true);
@@ -1032,7 +1129,6 @@
         return;
       }
 
-      // No manual play click here—loadPdf() will autoplay once the new doc is ready.
       setStatus("Loading PDF…", `(${VERSION}) Skipping to next file…`);
     });
 
