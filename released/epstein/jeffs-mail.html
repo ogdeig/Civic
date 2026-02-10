@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Jeffs Mail • Epstein Files | Civic Threat</title>
 
-  <meta name="description" content="Jeffs Mail is a simulated inbox-style interface for navigating publicly released Epstein-related records. Browse, search, and open source documents. Adults 21+ only." />
+  <meta name="description" content="Jeffs Mail is a simulated email-style interface for navigating publicly released Epstein-related documents. Browse inbox-style entries and open attached source PDFs. Adults 21+ only." />
   <meta name="robots" content="index,follow" />
 
   <meta property="og:title" content="Jeffs Mail • Epstein Files | Civic Threat" />
-  <meta property="og:description" content="A simulated inbox-style interface for navigating publicly released Epstein-related records. Browse, search, and open source documents. Adults 21+ only." />
+  <meta property="og:description" content="A simulated email-style interface for navigating publicly released Epstein-related documents. Browse inbox-style entries and open attached source PDFs. Adults 21+ only." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://civicthreat.us/released/epstein/jeffs-mail" />
   <meta property="og:image" content="https://civicthreat.us/assets/civicthreat-social-1200x630.jpg" />
@@ -18,185 +18,387 @@
   <link rel="stylesheet" href="/styles.css" />
 
   <style>
-    .page-wrap{ max-width: 1120px; margin: 0 auto; padding: 22px 16px 42px; }
-    .hero{ padding: 18px 0 10px; }
-    .hero h1{ margin: 0 0 6px; font-size: clamp(26px, 4vw, 38px); letter-spacing:.02em; }
-    .hero p{ margin: 0; opacity: .9; line-height: 1.5; max-width: 92ch; }
-
-    /* Square containers (match rest of site) */
+    /* Keep your site vibe, but emulate an email client layout */
+    .page-wrap{ max-width: 1240px; margin: 0 auto; padding: 16px 12px 42px; }
     .ep-box{ border-radius: 0 !important; }
     .panel{ border: 1px solid rgba(255,255,255,.12); background: rgba(0,0,0,.25); }
-    .pad{ padding: 14px; }
 
-    .notice{
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(0,0,0,.35);
-      padding: 12px;
-      margin-top: 12px;
-      line-height: 1.5;
-    }
-    .notice strong{ display:block; font-size: 13px; letter-spacing:.02em; }
-    .notice .small{ font-size: 12px; opacity: .85; }
-
-    /* Inbox layout */
-    .mail-grid{
-      display:grid;
-      grid-template-columns: 420px 1fr;
-      gap: 16px;
-      margin-top: 16px;
-      align-items: start;
-    }
-    @media (max-width: 980px){
-      .mail-grid{ grid-template-columns: 1fr; }
+    /* App shell */
+    .mail-shell{
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.20);
+      overflow: hidden;
     }
 
-    .toolbar{
+    .mail-topbar{
       display:flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      align-items: center;
+      align-items:center;
       justify-content: space-between;
-      margin-bottom: 10px;
-    }
-    .toolbar .left{
-      display:flex;
       gap: 10px;
-      flex-wrap: wrap;
-      align-items: center;
-      width: 100%;
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.35);
     }
 
-    .input, select{
-      width: 100%;
-      padding: 10px 12px;
+    .brand-mini{
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      min-width: 220px;
+    }
+    .brand-mini .dot{
+      width: 10px; height: 10px;
+      background: var(--blue);
+      display:inline-block;
+      border-radius: 999px;
+      box-shadow: 0 0 0 2px rgba(255,255,255,.08);
+    }
+    .brand-mini .title{
+      font-weight: 1000;
+      letter-spacing: .04em;
+      font-size: 13px;
+      line-height: 1.1;
+      text-transform: uppercase;
+    }
+    .brand-mini .sub{
+      font-size: 11px;
+      opacity: .82;
+      margin-top: 2px;
+      line-height: 1.2;
+      max-width: 360px;
+    }
+
+    .searchwrap{
+      flex: 1 1 auto;
+      display:flex;
+      justify-content: center;
+    }
+    .search{
+      width: min(760px, 100%);
+      display:flex;
+      gap: 8px;
+      align-items:center;
       border: 1px solid rgba(255,255,255,.12);
       background: rgba(0,0,0,.35);
-      color: #fff;
-      outline: none;
-      border-radius: 0;
+      padding: 8px 10px;
     }
-    .row2{
-      display:grid;
-      grid-template-columns: 1fr 180px;
-      gap: 10px;
+    .search input{
       width: 100%;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: #fff;
+      font-size: 13px;
     }
-    @media (max-width: 520px){
-      .row2{ grid-template-columns: 1fr; }
-    }
+    .search .hint{ font-size: 11px; opacity:.75; white-space:nowrap; }
 
-    .list{
-      border-top: 1px solid rgba(255,255,255,.10);
-      max-height: 68vh;
-      overflow: auto;
+    .top-actions{
+      display:flex;
+      gap: 8px;
+      align-items:center;
+      justify-content:flex-end;
+      min-width: 180px;
+      flex-wrap: wrap;
+    }
+    .pill{
+      font-size: 11px;
+      border: 1px solid rgba(255,255,255,.14);
+      padding: 5px 10px;
+      opacity: .92;
+      background: rgba(0,0,0,.25);
+      user-select:none;
+    }
+    .pill.good{ border-color: rgba(0,242,234,.35); }
+    .pill.warn{ border-color: rgba(255,0,80,.35); }
+    .pill a{ color:#fff; text-decoration: underline; }
+
+    /* Layout columns */
+    .mail-grid{
+      display:grid;
+      grid-template-columns: 240px 380px 1fr;
+      min-height: min(74vh, 860px);
+    }
+    @media (max-width: 1100px){
+      .mail-grid{ grid-template-columns: 220px 360px 1fr; }
     }
     @media (max-width: 980px){
-      .list{ max-height: 44vh; }
+      .mail-grid{ grid-template-columns: 220px 1fr; }
+      .reader{ display:none; }
+      .reader.open{ display:block; grid-column: 1 / -1; border-left: 0 !important; border-top: 1px solid rgba(255,255,255,.10); }
+      .listcol{ border-left: 1px solid rgba(255,255,255,.10); }
+    }
+    @media (max-width: 720px){
+      .mail-grid{ grid-template-columns: 1fr; }
+      .sidebar{ display:none; }
+      .listcol{ border-left: 0; }
+      .reader{ display:none; }
+      .reader.open{
+        display:block;
+        grid-column: 1 / -1;
+        position: fixed;
+        inset: 56px 10px 10px 10px;
+        z-index: 9997;
+        box-shadow: 0 20px 60px rgba(0,0,0,.6);
+      }
+      .reader.open .reader-top{ position: sticky; top: 0; z-index: 2; }
     }
 
-    .item{
+    /* Sidebar */
+    .sidebar{
+      border-right: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      padding: 10px;
+    }
+    .compose{
+      width:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap: 8px;
       padding: 10px 12px;
-      border-bottom: 1px solid rgba(255,255,255,.08);
-      cursor: pointer;
+      font-weight: 900;
+      letter-spacing:.02em;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.25);
+      color:#fff;
+      cursor: default;
+      user-select:none;
+    }
+    .compose .lock{ opacity:.9; }
+
+    .navlist{ margin-top: 10px; display:flex; flex-direction:column; gap: 6px; }
+    .navbtn{
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 8px 10px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      cursor:pointer;
+      user-select:none;
+    }
+    .navbtn:hover{ background: rgba(0,0,0,.28); }
+    .navbtn.active{ outline: 1px solid rgba(0,242,234,.35); outline-offset: -1px; background: rgba(255,255,255,.05); }
+    .navbtn .left{ display:flex; align-items:center; gap: 8px; min-width:0; }
+    .navbtn .ico{ width: 18px; height: 18px; opacity:.9; flex:0 0 auto; }
+    .navbtn .label{
+      font-size: 12px; font-weight: 900; letter-spacing:.02em;
+      overflow:hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .navbtn .count{ font-size: 11px; opacity:.85; flex:0 0 auto; }
+
+    .side-note{
+      margin-top: 10px;
+      font-size: 11px;
+      opacity: .80;
+      line-height: 1.45;
+      border-top: 1px solid rgba(255,255,255,.10);
+      padding-top: 10px;
+    }
+
+    /* Message list */
+    .listcol{
+      border-right: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.14);
+      display:flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+    .list-top{
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      gap: 10px;
+      background: rgba(0,0,0,.22);
+    }
+    .list-top .title{
+      font-weight: 1000;
+      letter-spacing:.02em;
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+    .list-top .meta{
+      font-size: 11px;
+      opacity:.82;
+      white-space: nowrap;
+    }
+    .list{
+      overflow:auto;
+      height: 100%;
+    }
+    .row{
       display:flex;
       gap: 10px;
-      align-items: flex-start;
+      align-items:flex-start;
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      cursor:pointer;
+      min-width: 0;
       background: rgba(0,0,0,.10);
     }
-    .item:hover{ background: rgba(0,0,0,.22); }
-    .item.active{
+    .row:hover{ background: rgba(0,0,0,.22); }
+    .row.active{
       background: rgba(255,255,255,.06);
       outline: 1px solid rgba(255,255,255,.14);
       outline-offset: -1px;
     }
-
-    .badge{
-      flex: 0 0 auto;
-      font-size: 11px;
-      padding: 3px 8px;
-      border: 1px solid rgba(255,255,255,.14);
-      opacity: .95;
-      white-space: nowrap;
+    .star{
+      width: 18px; height: 18px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      opacity: .85;
+      flex:0 0 auto;
+      user-select:none;
     }
-    .meta{
-      flex: 1 1 auto;
-      min-width: 0;
-    }
-    .subject{
+    .row .mid{ flex: 1 1 auto; min-width: 0; }
+    .row .from{
+      font-size: 12px;
       font-weight: 900;
       letter-spacing:.01em;
-      line-height: 1.2;
+      margin: 0 0 3px;
+      overflow:hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .row .subj{
+      font-size: 12px;
       margin: 0 0 4px;
-      font-size: 13px;
-      overflow:hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      opacity: .95;
+      overflow:hidden; text-overflow: ellipsis; white-space: nowrap;
     }
-    .fromline{
-      font-size: 12px;
-      opacity: .85;
-      overflow:hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      margin: 0 0 6px;
-    }
-    .snippet{
-      font-size: 12px;
-      opacity: .80;
+    .row .snip{
+      font-size: 11px;
+      opacity: .78;
       line-height: 1.35;
       display:-webkit-box;
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
       overflow:hidden;
     }
+    .row .date{
+      font-size: 11px;
+      opacity:.78;
+      white-space: nowrap;
+      flex:0 0 auto;
+      margin-left: 8px;
+    }
 
-    /* Preview */
-    .preview-head{
+    /* Reader */
+    .reader{
+      background: rgba(0,0,0,.10);
+      min-width: 0;
       display:flex;
-      align-items: flex-start;
+      flex-direction: column;
+    }
+    .reader-top{
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.22);
+      display:flex;
+      align-items:center;
       justify-content: space-between;
       gap: 10px;
       flex-wrap: wrap;
-      padding-bottom: 10px;
-      border-bottom: 1px solid rgba(255,255,255,.10);
     }
-    .preview-title{
-      margin: 0;
-      font-size: 16px;
+    .reader-top .rt{
       font-weight: 1000;
       letter-spacing:.02em;
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+    .reader-top .btn{ border-radius: 0 !important; }
+    .reader-body{
+      padding: 12px 12px 16px;
+      overflow:auto;
+      min-width: 0;
+    }
+    .email-card{
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.20);
+      padding: 12px;
+    }
+    .email-card h2{
+      margin: 0 0 8px;
+      font-size: 16px;
+      font-weight: 1000;
+      letter-spacing:.01em;
       line-height: 1.25;
-      max-width: 68ch;
     }
-    .preview-sub{
-      margin: 6px 0 0;
+    .headers{
+      display:grid;
+      grid-template-columns: 70px 1fr;
+      gap: 6px 10px;
       font-size: 12px;
-      opacity: .85;
-      line-height: 1.45;
+      line-height: 1.35;
+      opacity: .92;
+      margin-bottom: 10px;
     }
-
-    .actions{
+    .headers .k{ opacity:.75; }
+    .chips{
+      margin: 6px 0 10px;
+      display:flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .chip{
+      font-size: 11px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.15);
+      padding: 3px 8px;
+      opacity: .9;
+    }
+    .body{
+      font-size: 13px;
+      line-height: 1.65;
+      opacity: .95;
+      border-top: 1px solid rgba(255,255,255,.10);
+      padding-top: 10px;
+      word-break: break-word;
+    }
+    .body a{ color:#fff; text-decoration: underline; }
+    .attachments{
+      margin-top: 12px;
+      border-top: 1px solid rgba(255,255,255,.10);
+      padding-top: 10px;
+    }
+    .attachments .ttl{
+      font-weight: 1000;
+      letter-spacing:.02em;
+      font-size: 12px;
+      margin: 0 0 8px;
+      opacity: .95;
+    }
+    .att{
       display:flex;
       gap: 10px;
-      flex-wrap: wrap;
-      justify-content: flex-end;
+      align-items:center;
+      justify-content: space-between;
+      padding: 8px 10px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.16);
+      margin-bottom: 8px;
     }
-    .btn{ border-radius: 0 !important; }
-
-    .preview-body{
-      padding-top: 10px;
-      line-height: 1.6;
-      font-size: 13px;
-      opacity: .92;
+    .att .name{
+      font-size: 12px;
+      opacity:.95;
+      overflow:hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+      flex: 1 1 auto;
     }
-    .preview-body .k{
-      display:inline-block;
+    .att .open{
+      flex:0 0 auto;
       font-size: 11px;
-      padding: 2px 8px;
-      margin: 0 6px 6px 0;
-      border: 1px solid rgba(255,255,255,.12);
-      opacity: .9;
-      background: rgba(0,0,0,.15);
+      border: 1px solid rgba(255,255,255,.14);
+      padding: 6px 10px;
+      text-decoration: none;
+      color:#fff;
+      background: rgba(0,0,0,.20);
+      border-radius: 0 !important;
+      white-space: nowrap;
     }
 
     .legal{
@@ -204,63 +406,6 @@
       font-size: 12px;
       opacity: .82;
       line-height: 1.55;
-    }
-
-    /* Modal */
-    .viewer-modal{
-      position: fixed;
-      inset: 0;
-      z-index: 9998;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      background: rgba(0,0,0,.82);
-      padding: 18px;
-    }
-    .viewer-modal.open{ display:flex; }
-    .viewer-modal .card{
-      width: min(1100px, 96vw);
-      max-height: 92vh;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(10,10,10,.94);
-      border-radius: 0;
-      box-shadow: 0 20px 60px rgba(0,0,0,.6);
-      display:flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-    .viewer-modal .head{
-      padding: 12px 12px 10px;
-      border-bottom: 1px solid rgba(255,255,255,.10);
-      display:flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    .viewer-modal .head strong{ letter-spacing:.02em; }
-    .viewer-modal .body{
-      padding: 0;
-      overflow: hidden;
-      flex: 1 1 auto;
-      display:flex;
-      flex-direction: column;
-    }
-    .pdfFrame{
-      width: 100%;
-      height: 70vh;
-      border: 0;
-      background: #000;
-    }
-    @media (max-width: 980px){
-      .pdfFrame{ height: 72vh; }
-    }
-    .viewer-note{
-      padding: 10px 12px;
-      border-top: 1px solid rgba(255,255,255,.10);
-      font-size: 12px;
-      opacity: .82;
-      line-height: 1.45;
     }
 
     /* 21+ gate */
@@ -309,127 +454,134 @@
   <div id="siteHeader"></div>
 
   <main class="page-wrap">
-    <header class="hero">
-      <h1>Jeffs Mail</h1>
-      <p>
-        A <strong>simulated inbox-style</strong> interface designed to help the public navigate and discuss
-        <em>publicly released records</em> related to the Epstein document releases.
-        This page does <strong>not</strong> claim to show real private email accounts. It’s an organizational UI for public records.
-      </p>
+    <div class="mail-shell ep-box">
+      <!-- App-like topbar -->
+      <div class="mail-topbar">
+        <div class="brand-mini">
+          <span class="dot" aria-hidden="true"></span>
+          <div>
+            <div class="title">Jeffs Mail</div>
+            <div class="sub">Simulated mailbox UI for navigating publicly released documents (21+).</div>
+          </div>
+        </div>
 
-      <div class="notice ep-box">
-        <strong>Important disclosure (read this):</strong>
-        <div class="small">
-          Jeffs Mail is a <strong>simulated interface</strong> for browsing <strong>publicly released documents</strong> (PDFs and related materials).
-          It does <strong>not</strong> represent an authentic inbox, private messages, or hacked content, and it does <strong>not</strong> claim that any person wrote or received any message shown here.
-          All items should be treated as <strong>navigation cards</strong> pointing to public sources.
+        <div class="searchwrap">
+          <div class="search ep-box" role="search" aria-label="Search mail">
+            <span style="opacity:.8">🔎</span>
+            <input id="q" type="search" placeholder="Search mail (subject, sender, keywords…)" autocomplete="off" />
+            <span class="hint" id="resultHint"></span>
+          </div>
+        </div>
+
+        <div class="top-actions">
+          <div class="pill good" id="sourcePill" title="Data source for this page">Source: index.json</div>
+          <div class="pill warn" id="inAppPill" style="display:none">
+            Open in <a href="#" id="openExternal">Chrome/Safari</a>
+          </div>
         </div>
       </div>
-    </header>
 
-    <section class="mail-grid">
-      <!-- LEFT: Inbox -->
-      <div class="panel ep-box">
-        <div class="pad">
-          <div class="toolbar">
-            <div class="left" style="width:100%">
-              <div class="row2">
-                <input id="q" class="input" type="search" placeholder="Search subjects, filenames, keywords…" autocomplete="off" aria-label="Search inbox" />
-                <select id="filter" aria-label="Filter">
-                  <option value="all">All</option>
-                  <option value="pdf">PDFs only</option>
-                </select>
+      <!-- 3-column email UI -->
+      <div class="mail-grid">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+          <div class="compose ep-box" title="Compose disabled (simulation)">
+            <span class="lock">🔒</span> Compose
+          </div>
+
+          <div class="navlist" role="navigation" aria-label="Mailboxes">
+            <div class="navbtn ep-box active" data-box="inbox" role="button" tabindex="0" aria-label="Inbox">
+              <div class="left">
+                <span class="ico" aria-hidden="true">📥</span>
+                <span class="label">Inbox</span>
+              </div>
+              <span class="count" id="cInbox">0</span>
+            </div>
+
+            <div class="navbtn ep-box" data-box="sent" role="button" tabindex="0" aria-label="Sent">
+              <div class="left">
+                <span class="ico" aria-hidden="true">📤</span>
+                <span class="label">Sent</span>
+              </div>
+              <span class="count" id="cSent">0</span>
+            </div>
+
+            <div class="navbtn ep-box" data-box="starred" role="button" tabindex="0" aria-label="Starred">
+              <div class="left">
+                <span class="ico" aria-hidden="true">⭐</span>
+                <span class="label">Starred</span>
+              </div>
+              <span class="count" id="cStarred">0</span>
+            </div>
+
+            <div class="navbtn ep-box" data-box="attachments" role="button" tabindex="0" aria-label="Attachments">
+              <div class="left">
+                <span class="ico" aria-hidden="true">📎</span>
+                <span class="label">Attachments</span>
+              </div>
+              <span class="count" id="cAttach">0</span>
+            </div>
+          </div>
+
+          <div class="side-note">
+            <strong>What you’re looking at:</strong> a browsing UI that <em>looks like</em> an email account, but is only an
+            <strong>organizational interface</strong> for public records. It does not claim to be a real private inbox or hacked content.
+          </div>
+        </aside>
+
+        <!-- List column -->
+        <section class="listcol" aria-label="Message list">
+          <div class="list-top">
+            <div class="title" id="listTitle">Inbox</div>
+            <div class="meta" id="listMeta">Loading…</div>
+          </div>
+          <div class="list" id="list">
+            <div style="padding:10px 12px;opacity:.85;font-size:13px;">Loading mail…</div>
+          </div>
+        </section>
+
+        <!-- Reader column -->
+        <section class="reader" id="reader" aria-label="Message reader" style="border-left: 1px solid rgba(255,255,255,.10);">
+          <div class="reader-top">
+            <div class="rt" id="readerTopTitle">Message</div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+              <button class="btn" id="btnBack" type="button" style="display:none">← Back</button>
+              <button class="btn" id="btnClose" type="button" style="display:none">✕ Close</button>
+            </div>
+          </div>
+
+          <div class="reader-body" id="readerBody">
+            <div class="email-card ep-box">
+              <h2>Select an email</h2>
+              <div class="legal">
+                Click a message on the left to open it here. Attachments appear inside the message and link to your source PDFs.
               </div>
             </div>
-          </div>
 
-          <div style="font-size:12px;opacity:.82;line-height:1.45;margin-bottom:10px">
-            Inbox items below are generated from the released file index. Tap an item to preview, then open the source PDF.
+            <div class="legal">
+              <strong>Disclosure:</strong> Jeffs Mail is a simulated email-style UI for navigating publicly released documents.
+              Entries may contain allegations or explicit descriptions. Civic Threat does not endorse wrongdoing and does not make claims about guilt or innocence.
+              Always consult the full source document and primary sources for context.
+            </div>
           </div>
-
-          <div id="list" class="list" aria-label="Inbox list">
-            <div style="padding:10px 12px;opacity:.85;font-size:13px;">Loading inbox…</div>
-          </div>
-
-          <div class="legal">
-            Tip: Use the search box to find specific names or terms. For deeper reading, use the dedicated PDF reader.
-          </div>
-        </div>
+        </section>
       </div>
+    </div>
 
-      <!-- RIGHT: Preview -->
-      <div class="panel ep-box">
-        <div class="pad">
-          <div class="preview-head">
-            <div>
-              <h2 class="preview-title" id="pTitle">Select an item</h2>
-              <div class="preview-sub" id="pMeta">Choose a record from the list to view details.</div>
-            </div>
-            <div class="actions">
-              <a class="btn" id="btnOpenPdf" href="#" target="_blank" rel="noopener" style="display:none">Open Source PDF</a>
-              <a class="btn primary" id="btnOpenReader" href="/released/epstein/epstein-reader" style="display:none">Open PDF Reader</a>
-              <button class="btn" id="btnPreview" type="button" style="display:none">Preview</button>
-            </div>
-          </div>
-
-          <div class="preview-body" id="pBody">
-            <div style="opacity:.9">
-              Jeffs Mail is built for <strong>public-interest navigation</strong>:
-              it helps visitors browse released files in a familiar “inbox” layout, then open the original sources.
-            </div>
-
-            <div style="margin-top:12px;opacity:.9">
-              <strong>What this is:</strong> a UI for organizing public recordsIA / court releases into “message-like” cards for browsing and search.<br>
-              <strong>What this isn’t:</strong> a claim of real private emails, hacked accounts, or private correspondence.
-            </div>
-
-            <div class="legal" style="margin-top:12px">
-              <strong>Legal & safety:</strong> This page is provided for accessibility, discussion, and review of released materials.
-              Content may include allegations or explicit descriptions. Civic Threat does not endorse wrongdoing and does not make claims about guilt or innocence.
-              Always consult the full source document for context.
-            </div>
-          </div>
-
-          <div class="legal">
-            <strong>Methodology:</strong> Items shown here are derived from a public file index and link directly to source PDFs.
-            If you see an error, it’s usually a filename/case mismatch or a missing file on the server.
-          </div>
-        </div>
-      </div>
-    </section>
+    <div class="legal" style="margin-top:12px">
+      <strong>SEO / discoverability:</strong> Jeffs Mail is part of the Civic Threat Epstein files hub. Browse Epstein documents, released PDFs,
+      and related materials in an inbox-style interface. Search names and keywords, open attachments, and review public records for discussion and analysis.
+    </div>
   </main>
 
   <!-- Footer injected by app.js -->
   <div id="siteFooter"></div>
 
-  <!-- Modal: PDF preview -->
-  <div class="viewer-modal" id="pdfModal" role="dialog" aria-modal="true" aria-label="PDF preview">
-    <div class="card ep-box">
-      <div class="head">
-        <div>
-          <strong id="mTitle">Preview</strong>
-          <span id="mMeta" style="margin-left:10px;opacity:.85;font-size:12px"></span>
-        </div>
-        <div style="display:flex; gap:10px; flex-wrap:wrap">
-          <a class="btn" id="mOpen" href="#" target="_blank" rel="noopener">Open PDF</a>
-          <button class="btn" id="mClose" type="button">✕ Close</button>
-        </div>
-      </div>
-      <div class="body">
-        <iframe id="pdfFrame" class="pdfFrame" title="PDF Preview" loading="lazy"></iframe>
-        <div class="viewer-note">
-          If the PDF does not render inside the preview (some mobile browsers block it), tap <strong>Open PDF</strong>.
-          For page-by-page reading with audio, use the <strong>PDF Reader</strong>.
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- 21+ gate -->
   <div class="gate" id="ageGate" role="dialog" aria-modal="true" aria-labelledby="gateTitle">
     <div class="card ep-box">
       <h2 id="gateTitle">Adults 21+ Only</h2>
-      <p>This section may contain sexually explicit descriptions. You must confirm you are twenty-one (21) or older to view and use this page.</p>
+      <p>This section may contain sexually explicit descriptions. You must confirm you are twenty-one (21) or older to view and use Jeffs Mail.</p>
       <div class="row">
         <label for="gateCheck">
           <input id="gateCheck" type="checkbox" />
@@ -454,42 +606,89 @@
     (function(){
       "use strict";
 
+      /* ------------------------------------------------------------------
+        Jeffs Mail
+        - Gmail-like UI (simulation) that loads messages from a separate index.json
+        - You control the content via JSON: mailboxes, subjects, bodies, attachments (PDFs)
+        - No PDF reader buttons—attachments are links inside the message like email attachments.
+
+        REQUIRED FILES YOU CREATE:
+        1) /released/epstein/jeffs-mail.html   (this file)
+        2) /released/epstein/jeffs-mail/index.json  (your new data source)
+        3) Put PDFs wherever you want; JSON should point to them via "path".
+
+        JSON SCHEMA (example):
+        {
+          "account": { "name":"Jeffs Mail", "address":"jeffsmail@civicthreat.us" },
+          "items":[
+            {
+              "id":"msg-0001",
+              "mailbox":"inbox",              // inbox | sent | starred | attachments
+              "starred": true,                // optional
+              "date":"2019-07-10",             // ISO date recommended
+              "from": { "name":"Public Record Release", "email":"source@public-records" },
+              "to":   { "name":"Jeff", "email":"jeff@jeffs-mail" },
+              "subject":"Example subject line",
+              "snippet":"Short preview text for the list row…",
+              "bodyText":"Full message text… (plain text)\nLine breaks ok.",
+              "bodyHtml":"<p>Optional HTML body</p>",   // optional; if present, used instead of bodyText
+              "tags":["Released","PDF"],        // optional
+              "attachments":[
+                { "name":"ANASTASIA DOE vs EPSTEIN (Filed 12-17-19).pdf", "path":"/released/epstein/jeffs-mail-pdfs/ANASTASIA%20DOE_vs_EPSTEIN_Filed%2012-17-19.pdf" }
+              ]
+            }
+          ]
+        }
+      ------------------------------------------------------------------ */
+
       const CONSENT_KEY = "ct_epstein_21_gate_v1";
-      const INDEX_URL = "/released/epstein/index.json";
+
+      // ✅ Separate index.json just for Jeffs Mail:
+      const INDEX_URL = "/released/epstein/jeffs-mail/index.json";
 
       const $ = (sel, root=document) => root.querySelector(sel);
       const esc = (s)=> String(s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
       const clamp = (n,a,b)=> Math.max(a, Math.min(b,n));
+      const toLower = (s)=> String(s||"").toLowerCase();
 
       const el = {
+        q: $("#q"),
+        hint: $("#resultHint"),
+
+        sourcePill: $("#sourcePill"),
+        inAppPill: $("#inAppPill"),
+        openExternal: $("#openExternal"),
+
+        navBtns: Array.from(document.querySelectorAll(".navbtn[data-box]")),
+        listTitle: $("#listTitle"),
+        listMeta: $("#listMeta"),
+        list: $("#list"),
+
+        reader: $("#reader"),
+        readerTopTitle: $("#readerTopTitle"),
+        readerBody: $("#readerBody"),
+        btnBack: $("#btnBack"),
+        btnClose: $("#btnClose"),
+
+        cInbox: $("#cInbox"),
+        cSent: $("#cSent"),
+        cStarred: $("#cStarred"),
+        cAttach: $("#cAttach"),
+
         gate: $("#ageGate"),
         gateCheck: $("#gateCheck"),
         gateEnter: $("#gateEnter"),
-        gateLeave: $("#gateLeave"),
-
-        q: $("#q"),
-        filter: $("#filter"),
-        list: $("#list"),
-
-        pTitle: $("#pTitle"),
-        pMeta: $("#pMeta"),
-        pBody: $("#pBody"),
-
-        btnOpenPdf: $("#btnOpenPdf"),
-        btnOpenReader: $("#btnOpenReader"),
-        btnPreview: $("#btnPreview"),
-
-        modal: $("#pdfModal"),
-        mTitle: $("#mTitle"),
-        mMeta: $("#mMeta"),
-        mOpen: $("#mOpen"),
-        mClose: $("#mClose"),
-        frame: $("#pdfFrame"),
+        gateLeave: $("#gateLeave")
       };
 
-      let items = [];
-      let filtered = [];
-      let activeIndex = -1;
+      const state = {
+        data: null,
+        items: [],
+        mailbox: "inbox",
+        query: "",
+        filtered: [],
+        activeId: "",
+      };
 
       function hasConsent(){
         try{ return localStorage.getItem(CONSENT_KEY) === "yes"; }catch(_){ return false; }
@@ -509,225 +708,6 @@
         el.gate.style.display = "none";
         document.body.style.overflow = "";
       }
-
-      function normalizePdfUrlFromIndexPath(path){
-        let p = String(path || "").trim().replace(/^\/+/, "");
-        if(!p) return "";
-        return encodeURI("/" + p); // keeps slashes, encodes spaces
-      }
-
-      async function fetchJsonStrict(url){
-        const u = url + (url.includes("?") ? "&" : "?") + "_=" + Date.now();
-        const r = await fetch(u, { cache: "no-store" });
-        if(!r.ok) throw new Error(`HTTP ${r.status} for ${url}`);
-        return r.json();
-      }
-
-      function buildDerivedItems(indexJson){
-        const src = Array.isArray(indexJson?.items) ? indexJson.items : [];
-        const out = [];
-
-        // Turn each PDF entry into an "inbox card"
-        // (Simulation UI: subject/from/snippet are navigational labels, not claims of real emails)
-        for(const it of src){
-          const url = normalizePdfUrlFromIndexPath(it.path);
-          if(!url) continue;
-
-          const label = (it.label || it.file || it.path || "Released record").trim();
-          const file = (it.file || it.path || "").split("/").pop() || "";
-          const subject = label;
-          const from = "Public record release • Source PDF";
-          const snippet = "Open the source file to review the full context. Use the PDF Reader for page-by-page viewing and audio playback.";
-
-          out.push({
-            kind: "pdf",
-            subject,
-            from,
-            snippet,
-            url,
-            file,
-            tags: ["Released", "PDF"]
-          });
-        }
-
-        return out;
-      }
-
-      function renderList(list){
-        if(!el.list) return;
-
-        if(!list.length){
-          el.list.innerHTML = `<div style="padding:10px 12px;opacity:.85;font-size:13px;">No items match your search.</div>`;
-          return;
-        }
-
-        el.list.innerHTML = "";
-        list.forEach((it, idx) => {
-          const div = document.createElement("div");
-          div.className = "item ep-box" + (idx === activeIndex ? " active" : "");
-          div.setAttribute("role", "button");
-          div.setAttribute("tabindex", "0");
-          div.setAttribute("aria-label", "Open item: " + (it.subject || "record"));
-
-          div.innerHTML = `
-            <div class="badge">${esc(it.kind.toUpperCase())}</div>
-            <div class="meta">
-              <div class="subject">${esc(it.subject)}</div>
-              <div class="fromline">${esc(it.from)} ${it.file ? "• " + esc(it.file) : ""}</div>
-              <div class="snippet">${esc(it.snippet)}</div>
-            </div>
-          `;
-
-          div.addEventListener("click", () => selectIndex(idx));
-          div.addEventListener("keydown", (e) => {
-            if(e.key === "Enter" || e.key === " "){
-              e.preventDefault();
-              selectIndex(idx);
-            }
-          });
-
-          el.list.appendChild(div);
-        });
-      }
-
-      function setActiveRow(){
-        const rows = el.list ? Array.from(el.list.querySelectorAll(".item")) : [];
-        rows.forEach((r, i) => {
-          if(i === activeIndex) r.classList.add("active");
-          else r.classList.remove("active");
-        });
-      }
-
-      function selectIndex(idx){
-        activeIndex = clamp(idx|0, 0, Math.max(0, filtered.length - 1));
-        setActiveRow();
-
-        const it = filtered[activeIndex];
-        if(!it) return;
-
-        if(el.pTitle) el.pTitle.textContent = it.subject || "Record";
-        if(el.pMeta) el.pMeta.textContent = it.from || "";
-
-        const tagsHtml = (it.tags || []).map(t => `<span class="k">${esc(t)}</span>`).join("");
-        if(el.pBody){
-          el.pBody.innerHTML = `
-            <div>${tagsHtml}</div>
-            <div style="margin-top:8px;">
-              <strong>Source:</strong> <span style="opacity:.92">${esc(it.file || it.url)}</span>
-            </div>
-            <div style="margin-top:10px;opacity:.92">
-              ${esc(it.snippet || "")}
-            </div>
-            <div class="legal" style="margin-top:12px">
-              <strong>Context reminder:</strong> This interface is a browsing tool for released files.
-              Any names mentioned within documents may be allegations or part of investigative/court records.
-              Always review the full source document and primary references.
-            </div>
-          `;
-        }
-
-        if(el.btnOpenPdf){
-          el.btnOpenPdf.href = it.url;
-          el.btnOpenPdf.style.display = "inline-flex";
-        }
-        if(el.btnOpenReader){
-          el.btnOpenReader.href = "/released/epstein/epstein-reader"; // clean route
-          el.btnOpenReader.style.display = "inline-flex";
-        }
-        if(el.btnPreview){
-          el.btnPreview.style.display = "inline-flex";
-        }
-      }
-
-      function applyFilter(){
-        const q = (el.q ? el.q.value : "").trim().toLowerCase();
-        const f = (el.filter ? el.filter.value : "all");
-
-        filtered = items.filter(it => {
-          if(f === "pdf" && it.kind !== "pdf") return false;
-          if(!q) return true;
-
-          const hay = `${it.subject||""} ${it.from||""} ${it.file||""} ${it.snippet||""}`.toLowerCase();
-          return hay.includes(q);
-        });
-
-        // reset selection if needed
-        activeIndex = filtered.length ? 0 : -1;
-        renderList(filtered);
-        if(activeIndex >= 0) selectIndex(activeIndex);
-        else {
-          if(el.pTitle) el.pTitle.textContent = "Select an item";
-          if(el.pMeta) el.pMeta.textContent = "Choose a record from the list to view details.";
-          if(el.btnOpenPdf) el.btnOpenPdf.style.display = "none";
-          if(el.btnOpenReader) el.btnOpenReader.style.display = "none";
-          if(el.btnPreview) el.btnPreview.style.display = "none";
-        }
-      }
-
-      function openModalForActive(){
-        const it = filtered[activeIndex];
-        if(!it || !el.modal) return;
-
-        if(el.mTitle) el.mTitle.textContent = it.subject || "Preview";
-        if(el.mMeta) el.mMeta.textContent = it.file ? it.file : "";
-        if(el.mOpen) el.mOpen.href = it.url;
-
-        // Some in-app browsers block PDF in iframes; we still try, and the note tells users to open PDF if it fails.
-        if(el.frame) el.frame.src = it.url;
-
-        el.modal.classList.add("open");
-        document.body.style.overflow = "hidden";
-      }
-
-      function closeModal(){
-        if(!el.modal) return;
-        el.modal.classList.remove("open");
-        document.body.style.overflow = "";
-        if(el.frame) el.frame.src = "";
-      }
-
-      function wireModal(){
-        if(el.btnPreview) el.btnPreview.addEventListener("click", openModalForActive);
-        if(el.mClose) el.mClose.addEventListener("click", closeModal);
-        if(el.modal){
-          el.modal.addEventListener("click", (e) => { if(e.target === el.modal) closeModal(); });
-        }
-        document.addEventListener("keydown", (e) => {
-          if(e.key === "Escape" && el.modal && el.modal.classList.contains("open")) closeModal();
-        });
-      }
-
-      async function boot(){
-        try{
-          if(el.list) el.list.innerHTML = `<div style="padding:10px 12px;opacity:.85;font-size:13px;">Loading inbox…</div>`;
-
-          const indexJson = await fetchJsonStrict(INDEX_URL);
-          items = buildDerivedItems(indexJson);
-
-          // If index is empty or missing
-          if(!items.length){
-            if(el.list) el.list.innerHTML = `<div style="padding:10px 12px;opacity:.85;font-size:13px;">No released files found. Check ${esc(INDEX_URL)}.</div>`;
-            return;
-          }
-
-          wireModal();
-
-          if(el.q) el.q.addEventListener("input", applyFilter);
-          if(el.filter) el.filter.addEventListener("change", applyFilter);
-
-          applyFilter();
-
-        }catch(err){
-          console.error(err);
-          if(el.list){
-            el.list.innerHTML = `<div style="padding:10px 12px;opacity:.9;font-size:13px;line-height:1.5;">
-              Inbox unavailable right now (could not load <strong>${esc(INDEX_URL)}</strong>).<br>
-              Check file path, case sensitivity, and that the JSON is publicly accessible.
-            </div>`;
-          }
-        }
-      }
-
       function wireGate(onEnter){
         if(!el.gate || !el.gateCheck || !el.gateEnter || !el.gateLeave) return onEnter();
 
@@ -751,6 +731,409 @@
           onEnter();
         }else{
           showGate();
+        }
+      }
+
+      async function fetchJsonStrict(url){
+        const u = url + (url.includes("?") ? "&" : "?") + "_=" + Date.now();
+        const r = await fetch(u, { cache: "no-store" });
+        if(!r.ok) throw new Error(`Failed to load index.json (${r.status})`);
+        return r.json();
+      }
+
+      function isFacebookInApp(){
+        const ua = navigator.userAgent || "";
+        // common FB/IG in-app markers
+        return /FBAN|FBAV|Instagram|FB_IAB|FBSS|FBIOS|FB4A/i.test(ua);
+      }
+
+      function setupInAppWarning(){
+        if(!el.inAppPill || !el.openExternal) return;
+
+        if(isFacebookInApp()){
+          el.inAppPill.style.display = "inline-block";
+          el.openExternal.addEventListener("click", (e) => {
+            e.preventDefault();
+            // Best we can do: instruct + open same URL; many in-app browsers show "Open in browser" from menu
+            alert("Tip: Tap the ••• menu in the Facebook/Instagram browser and choose “Open in Chrome” / “Open in Safari” for best results.");
+            try { window.location.href = window.location.href; } catch(_) {}
+          });
+        }
+      }
+
+      function parseDateLabel(s){
+        const str = String(s||"").trim();
+        if(!str) return "";
+        // If ISO date, format nicely; otherwise show raw
+        const d = new Date(str);
+        if(String(d) !== "Invalid Date"){
+          return d.toLocaleDateString(undefined, { year:"numeric", month:"short", day:"2-digit" });
+        }
+        return str;
+      }
+
+      function mailboxLabel(box){
+        if(box === "sent") return "Sent";
+        if(box === "starred") return "Starred";
+        if(box === "attachments") return "Attachments";
+        return "Inbox";
+      }
+
+      function setNavActive(){
+        el.navBtns.forEach(b => {
+          const on = (b.getAttribute("data-box") || "") === state.mailbox;
+          b.classList.toggle("active", on);
+        });
+      }
+
+      function computeCounts(items){
+        const inbox = items.filter(x => (x.mailbox||"inbox") === "inbox").length;
+        const sent = items.filter(x => (x.mailbox||"") === "sent").length;
+        const starred = items.filter(x => x.starred === true || (x.mailbox||"") === "starred").length;
+        const attach = items.filter(x => Array.isArray(x.attachments) && x.attachments.length).length;
+
+        if(el.cInbox) el.cInbox.textContent = String(inbox);
+        if(el.cSent) el.cSent.textContent = String(sent);
+        if(el.cStarred) el.cStarred.textContent = String(starred);
+        if(el.cAttach) el.cAttach.textContent = String(attach);
+      }
+
+      function normalizeItems(data){
+        const raw = Array.isArray(data?.items) ? data.items : [];
+        const out = [];
+
+        for(const m of raw){
+          const id = String(m.id || m._id || m.subject || "").trim() || ("msg-" + Math.random().toString(16).slice(2));
+          const mailbox = String(m.mailbox || "inbox").toLowerCase();
+          const from = m.from && typeof m.from === "object" ? m.from : { name: m.fromName || "Unknown", email: m.fromEmail || "" };
+          const to = m.to && typeof m.to === "object" ? m.to : { name: m.toName || "Jeff", email: m.toEmail || "" };
+          const subject = String(m.subject || "Untitled").trim();
+          const snippet = String(m.snippet || "").trim();
+          const date = m.date || m.sentAt || m.receivedAt || "";
+          const starred = !!m.starred;
+          const tags = Array.isArray(m.tags) ? m.tags : [];
+          const bodyHtml = m.bodyHtml || "";
+          const bodyText = m.bodyText || "";
+
+          let attachments = [];
+          if(Array.isArray(m.attachments)){
+            attachments = m.attachments
+              .map(a => {
+                const name = String(a.name || a.label || a.file || "Attachment").trim();
+                const path = String(a.path || a.url || "").trim();
+                return (path ? { name, path } : null);
+              })
+              .filter(Boolean);
+          }
+
+          // If "attachments" mailbox view is selected, we still show messages; attachments are within messages.
+          out.push({ id, mailbox, from, to, subject, snippet, date, starred, tags, bodyHtml, bodyText, attachments });
+        }
+
+        // newest first (if dates parse)
+        out.sort((a,b) => {
+          const da = new Date(a.date || 0).getTime();
+          const db = new Date(b.date || 0).getTime();
+          if(isFinite(da) && isFinite(db) && da !== db) return db - da;
+          return String(b.id).localeCompare(String(a.id));
+        });
+
+        return out;
+      }
+
+      function applyFilter(){
+        const q = toLower(state.query || "").trim();
+        const box = state.mailbox;
+
+        let list = state.items;
+
+        if(box === "starred"){
+          list = list.filter(x => x.starred === true || x.mailbox === "starred");
+        }else if(box === "attachments"){
+          list = list.filter(x => Array.isArray(x.attachments) && x.attachments.length);
+        }else{
+          list = list.filter(x => (x.mailbox || "inbox") === box);
+        }
+
+        if(q){
+          list = list.filter(x => {
+            const hay = toLower([
+              x.subject, x.snippet,
+              x.from?.name, x.from?.email,
+              x.to?.name, x.to?.email,
+              (x.tags||[]).join(" "),
+              (x.bodyText||"")
+            ].join(" "));
+            return hay.includes(q);
+          });
+        }
+
+        state.filtered = list;
+
+        const total = list.length;
+        if(el.hint) el.hint.textContent = total ? `${total} found` : "";
+        if(el.listMeta) el.listMeta.textContent = total ? `${total} messages` : "No messages";
+        if(el.listTitle) el.listTitle.textContent = mailboxLabel(box);
+
+        renderList();
+        // keep selection if possible
+        if(state.activeId){
+          const still = state.filtered.find(x => x.id === state.activeId);
+          if(still) renderMessage(still);
+          else clearReader();
+        }else{
+          clearReader();
+        }
+      }
+
+      function renderList(){
+        if(!el.list) return;
+
+        if(!state.filtered.length){
+          el.list.innerHTML = `<div style="padding:10px 12px;opacity:.85;font-size:13px;line-height:1.5;">
+            No messages found for <strong>${esc(mailboxLabel(state.mailbox))}</strong>.
+            ${state.query ? `Try clearing your search.` : `Check your index.json content.`}
+          </div>`;
+          return;
+        }
+
+        el.list.innerHTML = "";
+        state.filtered.forEach(msg => {
+          const row = document.createElement("div");
+          row.className = "row ep-box" + (msg.id === state.activeId ? " active" : "");
+          row.setAttribute("role","button");
+          row.setAttribute("tabindex","0");
+          row.setAttribute("aria-label", "Open email: " + (msg.subject || "message"));
+
+          const star = msg.starred ? "⭐" : "☆";
+          const fromName = (msg.from && (msg.from.name || msg.from.email)) ? (msg.from.name || msg.from.email) : "Unknown";
+          const subj = msg.subject || "(No subject)";
+          const snip = msg.snippet || msg.bodyText || "";
+          const date = parseDateLabel(msg.date);
+
+          row.innerHTML = `
+            <div class="star" title="${msg.starred ? "Starred" : "Not starred"}">${star}</div>
+            <div class="mid">
+              <div class="from">${esc(fromName)}</div>
+              <div class="subj">${esc(subj)}</div>
+              <div class="snip">${esc(String(snip).slice(0, 220))}</div>
+            </div>
+            <div class="date">${esc(date)}</div>
+          `;
+
+          row.addEventListener("click", () => openMessage(msg.id));
+          row.addEventListener("keydown", (e) => {
+            if(e.key === "Enter" || e.key === " "){
+              e.preventDefault();
+              openMessage(msg.id);
+            }
+          });
+
+          el.list.appendChild(row);
+        });
+      }
+
+      function setListActive(){
+        if(!el.list) return;
+        el.list.querySelectorAll(".row").forEach(r => r.classList.remove("active"));
+        const idx = state.filtered.findIndex(x => x.id === state.activeId);
+        if(idx >= 0){
+          const row = el.list.children[idx];
+          if(row) row.classList.add("active");
+        }
+      }
+
+      function openMessage(id){
+        const msg = state.filtered.find(x => x.id === id);
+        if(!msg) return;
+        state.activeId = msg.id;
+        setListActive();
+        renderMessage(msg);
+
+        // Mobile: open reader overlay
+        if(el.reader){
+          if(window.matchMedia && window.matchMedia("(max-width: 980px)").matches){
+            el.reader.classList.add("open");
+            if(el.btnClose) el.btnClose.style.display = "inline-flex";
+            if(el.btnBack) el.btnBack.style.display = "none";
+          }
+          if(window.matchMedia && window.matchMedia("(max-width: 720px)").matches){
+            if(el.btnClose) el.btnClose.style.display = "inline-flex";
+          }
+        }
+      }
+
+      function clearReader(){
+        state.activeId = "";
+        if(el.readerTopTitle) el.readerTopTitle.textContent = "Message";
+        if(el.readerBody){
+          el.readerBody.innerHTML = `
+            <div class="email-card ep-box">
+              <h2>Select an email</h2>
+              <div class="legal">
+                Click a message in <strong>${esc(mailboxLabel(state.mailbox))}</strong> to open it here.
+              </div>
+            </div>
+
+            <div class="legal">
+              <strong>Disclosure:</strong> Jeffs Mail is a simulated email-style UI for navigating publicly released documents.
+              It does not claim to show a real private inbox, hacked data, or private correspondence.
+              Entries may contain allegations or explicit descriptions. Civic Threat does not endorse wrongdoing and does not make claims about guilt or innocence.
+            </div>
+          `;
+        }
+      }
+
+      function renderMessage(msg){
+        if(!msg || !el.readerBody) return;
+
+        const fromName = msg.from?.name || "Unknown";
+        const fromEmail = msg.from?.email || "";
+        const toName = msg.to?.name || "Jeff";
+        const toEmail = msg.to?.email || "";
+        const subject = msg.subject || "(No subject)";
+        const date = parseDateLabel(msg.date);
+
+        const tags = Array.isArray(msg.tags) ? msg.tags : [];
+        const tagHtml = tags.length ? `<div class="chips">${tags.map(t => `<span class="chip">${esc(t)}</span>`).join("")}</div>` : "";
+
+        const bodyHtml = String(msg.bodyHtml || "").trim();
+        const bodyText = String(msg.bodyText || "").trim();
+        const body = bodyHtml
+          ? bodyHtml
+          : (bodyText ? `<div>${esc(bodyText).replace(/\n/g, "<br>")}</div>` : `<div style="opacity:.85">(No message body provided.)</div>`);
+
+        const att = Array.isArray(msg.attachments) ? msg.attachments : [];
+        const attHtml = att.length ? `
+          <div class="attachments">
+            <div class="ttl">Attachments</div>
+            ${att.map(a => {
+              const href = String(a.path || "").trim();
+              const nm = String(a.name || "Attachment").trim();
+              return `
+                <div class="att ep-box">
+                  <div class="name">📎 ${esc(nm)}</div>
+                  <a class="open" href="${esc(href)}" target="_blank" rel="noopener">Open</a>
+                </div>
+              `;
+            }).join("")}
+            <div class="legal" style="margin-top:8px">
+              Attachments open the original source PDFs in a new tab. If you’re in a Facebook/Instagram in-app browser, use “Open in browser” for best results.
+            </div>
+          </div>
+        ` : "";
+
+        if(el.readerTopTitle) el.readerTopTitle.textContent = "Reading";
+
+        el.readerBody.innerHTML = `
+          <div class="email-card ep-box">
+            <h2>${esc(subject)}</h2>
+
+            ${tagHtml}
+
+            <div class="headers">
+              <div class="k">From</div>
+              <div>${esc(fromName)}${fromEmail ? ` &lt;${esc(fromEmail)}&gt;` : ""}</div>
+
+              <div class="k">To</div>
+              <div>${esc(toName)}${toEmail ? ` &lt;${esc(toEmail)}&gt;` : ""}</div>
+
+              <div class="k">Date</div>
+              <div>${esc(date || "—")}</div>
+
+              <div class="k">Mailbox</div>
+              <div>${esc(mailboxLabel(state.mailbox))}${msg.starred ? " • Starred" : ""}</div>
+            </div>
+
+            <div class="body">${body}</div>
+
+            ${attHtml}
+
+            <div class="legal">
+              <strong>Safety & context:</strong> This interface is an <em>organizational simulation</em>.
+              It does not claim the message is an authentic private email. Treat entries as navigation cards tied to public sources.
+              Allegations in documents should be read in context.
+            </div>
+          </div>
+        `;
+      }
+
+      function wireNav(){
+        el.navBtns.forEach(btn => {
+          btn.addEventListener("click", () => {
+            const box = btn.getAttribute("data-box") || "inbox";
+            state.mailbox = box;
+            setNavActive();
+            clearReader();
+            applyFilter();
+          });
+          btn.addEventListener("keydown", (e) => {
+            if(e.key === "Enter" || e.key === " "){
+              e.preventDefault();
+              btn.click();
+            }
+          });
+        });
+      }
+
+      function wireSearch(){
+        if(!el.q) return;
+        el.q.addEventListener("input", () => {
+          state.query = el.q.value || "";
+          applyFilter();
+        });
+      }
+
+      function wireReaderClose(){
+        if(!el.btnClose || !el.reader) return;
+
+        function close(){
+          el.reader.classList.remove("open");
+        }
+
+        el.btnClose.addEventListener("click", close);
+
+        // Close overlay when ESC on small screens
+        document.addEventListener("keydown", (e) => {
+          if(e.key === "Escape" && el.reader.classList.contains("open")){
+            close();
+          }
+        });
+      }
+
+      function renderSourcePill(){
+        if(!el.sourcePill) return;
+        el.sourcePill.textContent = "Source: jeffs-mail/index.json";
+        el.sourcePill.title = INDEX_URL;
+      }
+
+      async function boot(){
+        renderSourcePill();
+        setupInAppWarning();
+        wireNav();
+        wireSearch();
+        wireReaderClose();
+
+        // Load JSON
+        try{
+          if(el.listMeta) el.listMeta.textContent = "Loading…";
+          const data = await fetchJsonStrict(INDEX_URL);
+          state.data = data;
+          state.items = normalizeItems(data);
+          computeCounts(state.items);
+          setNavActive();
+          applyFilter();
+        }catch(err){
+          console.error(err);
+          if(el.listMeta) el.listMeta.textContent = "Offline";
+          if(el.list){
+            el.list.innerHTML = `<div style="padding:10px 12px;opacity:.9;font-size:13px;line-height:1.5;">
+              Could not load <strong>${esc(INDEX_URL)}</strong>.<br>
+              Make sure the file exists and is publicly accessible.<br>
+              <span style="opacity:.8">Error: ${esc(err && err.message ? err.message : String(err))}</span>
+            </div>`;
+          }
+          clearReader();
         }
       }
 
