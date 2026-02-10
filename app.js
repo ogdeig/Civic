@@ -20,7 +20,9 @@
     fbSupport: "/facebook",
     fbMaga: "/facebook-maga",
     submit: "/submit",
+
     epsteinPlayer: "/released/epstein/epstein-reader",
+    epsteinImages: "/released/epstein/epstein-images",
 
     // Root-level legal pages (NO /policy and NO .html)
     about: "/about",
@@ -128,6 +130,10 @@
                 <div class="dropdown-menu" role="menu" aria-label="Released files menu">
                   <a class="dd-item" href="${LINKS.epsteinPlayer}">
                     <span class="dd-main">Epstein Files • PDF reader + audio</span>
+                    <span class="dd-sub">Open</span>
+                  </a>
+                  <a class="dd-item" href="${LINKS.epsteinImages}">
+                    <span class="dd-main">Epstein Files • Images / excerpts</span>
                     <span class="dd-sub">Open</span>
                   </a>
                 </div>
