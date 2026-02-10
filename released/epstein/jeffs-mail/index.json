@@ -1,417 +1,826 @@
 {
-  "generatedAt": 1770746106,
+  "generatedAt": 1770747133,
   "source": "jeffs-mail/index.json",
   "backend": "pypdf",
   "counts": {
     "total": 27,
     "inbox": 25,
-    "sent": 2
+    "sent": 2,
+    "starred": 0
   },
-  "items": [
+  "contacts": [
     {
-      "id": "jerky-efta00405427-d70502f01d",
-      "mailbox": "inbox",
-      "subject": "Beef Jerky",
-      "to": "\"Lesley Groff\" <MINIII >",
-      "date": "2026-02-10T17:55:06+00:00",
-      "dateDisplay": "Feb 10, 2026",
-      "pdf": "released/epstein/jeffs-mail/pdfs/jerky EFTA00405427.pdf",
-      "snippet": "Attachments: COA DEFAULT_EMAIL.pdf Hi Lesley, Jeff had asked to have a sample of his beef jerky tested for nutritional value. Attached are the results I just received, please let me know if I can be of further assistanc…",
-      "body": "Attachments: COA DEFAULT_EMAIL.pdf\nHi Lesley,\nJeff had asked to have a sample of his beef jerky tested for nutritional value. Attached are\nthe results I just received, please let me know if I can be of further assistance.\nThanks,\nRachael Bova\nExecutive Assistant\nT:\nF:\nto Stephen Hanson, President\nB. R. GUEST HOSPITALITY\n594 Broadway\nSuite 803\nNew York, NY 10012\nFacebook, Twitter, Foursquare, Flickr and Youtube at:\nProud to be the first national multi-concept restaurant group to be certified Green by the\nGreen Restaurant Association",
-      "contactKey": "rachael-bova-mina",
-      "contactName": "\"Rachael Bova\" <MINa>",
-      "source": "Public Record Release",
-      "from": "\"Rachael Bova\" <MINa>"
+      "key": "unknown",
+      "name": "Unknown",
+      "count": 12
     },
     {
-      "id": "jerky-efta00535465-5cf9ec03d9",
-      "mailbox": "inbox",
-      "subject": "Re: FYI",
-      "to": "LSJ",
-      "date": "2026-02-10T17:55:06+00:00",
+      "key": "karyna-shuliak",
+      "name": "Karyna Shuliak",
+      "count": 4
+    },
+    {
+      "key": "francis-derby",
+      "name": "Francis Derby",
+      "count": 3
+    },
+    {
+      "key": "rachael-bova",
+      "name": "\"Rachael Bova\"",
+      "count": 1
+    },
+    {
+      "key": "a-eevacationpgmailtonl",
+      "name": "a eevacation/pgmailtonl",
+      "count": 1
+    },
+    {
+      "key": "date-november-21",
+      "name": "Date: November 21",
+      "count": 1
+    },
+    {
+      "key": "francis-derby-1",
+      "name": "francis derby <1",
+      "count": 1
+    },
+    {
+      "key": "francis-derby-al",
+      "name": "francis derby =al>",
+      "count": 1
+    },
+    {
+      "key": "fronds-derby",
+      "name": "fronds derby",
+      "count": 1
+    },
+    {
+      "key": "jeffrey-mailcom",
+      "name": "Jeffrey mail.com>",
+      "count": 1
+    },
+    {
+      "key": "jennie-enterprise",
+      "name": "Jennie Enterprise",
+      "count": 1
+    }
+  ],
+  "items": [
+    {
+      "id": "jerky-efta00405427-895e634fb4",
+      "folder": "inbox",
+      "starred": false,
+      "subject": "Beef Jerky",
+      "to": [
+        {
+          "name": "\"Lesley Groff\"",
+          "address": ""
+        }
+      ],
+      "date": "2026-02-10T18:12:13+00:00",
       "dateDisplay": "Feb 10, 2026",
-      "pdf": "released/epstein/jeffs-mail/pdfs/jerky EFTA00535465.pdf",
+      "pdf": "/released/epstein/jeffs-mail/pdfs/jerky EFTA00405427.pdf",
+      "snippet": "Attachments: COA DEFAULT_EMAIL.pdf Hi Lesley, Jeff had asked to have a sample of his beef jerky tested for nutritional value. Attached are the results I just received, please let me know if I can be of further assistanc…",
+      "body": "Attachments: COA DEFAULT_EMAIL.pdf\nHi Lesley,\nJeff had asked to have a sample of his beef jerky tested for nutritional value. Attached are\nthe results I just received, please let me know if I can be of further assistance.\nThanks,\nRachael Bova\nExecutive Assistant\nT:\nF:\nto Stephen Hanson, President\nB. R. GUEST HOSPITALITY\n594 Broadway\nSuite 803\nNew York, NY 10012\nFacebook, Twitter, Foursquare, Flickr and Youtube at:\nProud to be the first national multi-concept restaurant group to be certified Green by the\nGreen Restaurant Association",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
+      "contactKey": "rachael-bova",
+      "contactName": "\"Rachael Bova\"",
+      "source": "Public Record Release",
+      "from": {
+        "name": "\"Rachael Bova\"",
+        "address": ""
+      }
+    },
+    {
+      "id": "jerky-efta00535465-8b1aff752b",
+      "folder": "inbox",
+      "starred": false,
+      "subject": "Re: FYI",
+      "to": [
+        {
+          "name": "LSJ",
+          "address": ""
+        }
+      ],
+      "date": "2026-02-10T18:12:13+00:00",
+      "dateDisplay": "Feb 10, 2026",
+      "pdf": "/released/epstein/jeffs-mail/pdfs/jerky EFTA00535465.pdf",
       "snippet": "Thank you he is having some now:) Sent from my iPhone",
       "body": "Thank you he is having some now:)\n\nSent from my iPhone",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
       "contactKey": "karyna-shuliak",
       "contactName": "Karyna Shuliak",
       "source": "Public Record Release",
-      "from": "Karyna Shuliak"
+      "from": {
+        "name": "Karyna Shuliak",
+        "address": ""
+      }
     },
     {
-      "id": "jerky-efta01982675-17a2545dee",
-      "mailbox": "inbox",
+      "id": "jerky-efta01982675-acbd2f2b73",
+      "folder": "inbox",
+      "starred": false,
       "subject": "Re:",
-      "to": "jeeyacation©gmail.comUeeyacationellgmail.cont Jeffrey Epsteinbeeyacation©gmail.corn",
-      "date": "2026-02-10T17:55:06+00:00",
+      "to": [
+        {
+          "name": "jeeyacation©gmail.comUeeyacationellgmail.cont Jeffrey Epsteinbeeyacation©gmail.corn",
+          "address": ""
+        }
+      ],
+      "date": "2026-02-10T18:12:13+00:00",
       "dateDisplay": "Feb 10, 2026",
-      "pdf": "released/epstein/jeffs-mail/pdfs/jerky EFTA01982675.pdf",
+      "pdf": "/released/epstein/jeffs-mail/pdfs/jerky EFTA01982675.pdf",
       "snippet": "I have jerky ready to mail today but you said you'd be home tmrw. Sent from my iPhone",
       "body": "I have jerky ready to mail today but you said you'd be home tmrw.\nSent from my iPhone",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
       "contactKey": "francis-derby",
       "contactName": "Francis Derby",
       "source": "Public Record Release",
-      "from": "Francis Derby"
+      "from": {
+        "name": "Francis Derby",
+        "address": ""
+      }
     },
     {
-      "id": "jerky-efta02302560-88ceefa644",
-      "mailbox": "inbox",
+      "id": "jerky-efta02302560-7ae8ccb997",
+      "folder": "inbox",
+      "starred": false,
       "subject": "jerky EFTA02302560",
-      "to": "Unknown",
-      "date": "2026-02-10T17:55:06+00:00",
+      "to": [
+        {
+          "name": "Unknown",
+          "address": ""
+        }
+      ],
+      "date": "2026-02-10T18:12:13+00:00",
       "dateDisplay": "Feb 10, 2026",
-      "pdf": "released/epstein/jeffs-mail/pdfs/jerky EFTA02302560.pdf",
+      "pdf": "/released/epstein/jeffs-mail/pdfs/jerky EFTA02302560.pdf",
       "snippet": "Hi• Jeffrey said he would like to take beef jerky to the ranch, w=uld you please take care of that this week?:) --047d7b3395c9f965ec04e21c3467-- conversation-id 31593 date-last-viewed 0 date-received 1374510682 flags 85…",
       "body": "Hi•\nJeffrey said he would like to take beef jerky to the ranch, w=uld you please take care of that this week?:)\n--047d7b3395c9f965ec04e21c3467-- conversation-id 31593 date-last-viewed 0 date-received 1374510682 flags\n8590195713 remote-id 325\n1",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
       "contactKey": "karyna-shuliak",
       "contactName": "Karyna Shuliak",
       "source": "Public Record Release",
-      "from": "Karyna Shuliak"
+      "from": {
+        "name": "Karyna Shuliak",
+        "address": ""
+      }
     },
     {
-      "id": "jerky-efta02396657-1-6e84b22b43",
-      "mailbox": "inbox",
+      "id": "jerky-efta02396657-1-89f3e57c1a",
+      "folder": "inbox",
+      "starred": false,
       "subject": "Jerky",
-      "to": "Jeffrey Epstein",
-      "date": "2026-02-10T17:55:06+00:00",
+      "to": [
+        {
+          "name": "Jeffrey Epstein",
+          "address": ""
+        }
+      ],
+      "date": "2026-02-10T18:12:13+00:00",
       "dateDisplay": "Feb 10, 2026",
-      "pdf": "released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (1).pdf",
+      "pdf": "/released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (1).pdf",
       "snippet": "Francis has time to come tomorrow to show me how to make it!!! Jerky class a=yone? He will also bring you a taste of his new jerky recipe from the resta=rant. And sends a warm hello. He is working at a restaurant called…",
       "body": "Francis has time to come tomorrow to show me how to make it!!! Jerky class a=yone? He will also bring you a taste of\nhis new jerky recipe from the resta=rant. And sends a warm hello. He is working at a restaurant called Cannibal=and\ncooks... wait for it... Beef Jerky and Steak! He has time at 3pm tomorr=w if this is okay with you.\nSent from my iPhone=?xml version=.0\" encoding=TF-8\"?> <!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\"\n\"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=.0\">\n<dict>\n<key>date-last-viewed</key>\ncreal>0.0</real>\n<key>date-received</key>\n<real>1367628960</real>\n<key>flags</key>\n<integer>8590195713</integer>\n<key>original-mailbox</key>\n<string>imap://jeevacation@imap.gmail.com/%5BGmail%5D/All%20Mail</string>\n<key>remote-id</key>\n<string>297766</string>\n</dict>\n</plist>\n1",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
       "contactKey": "unknown",
       "contactName": "Unknown",
       "source": "Public Record Release",
-      "from": "Unknown"
+      "from": {
+        "name": "Unknown",
+        "address": ""
+      }
     },
     {
-      "id": "jerky-efta02396657-10-b1dec30ee7",
-      "mailbox": "inbox",
+      "id": "jerky-efta02396657-10-9819f8e60d",
+      "folder": "inbox",
+      "starred": false,
       "subject": "Re:",
-      "to": "LSJ",
-      "date": "2026-02-10T17:55:06+00:00",
+      "to": [
+        {
+          "name": "LSJ",
+          "address": ""
+        }
+      ],
+      "date": "2026-02-10T18:12:13+00:00",
       "dateDisplay": "Feb 10, 2026",
-      "pdf": "released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (10).pdf",
+      "pdf": "/released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (10).pdf",
       "snippet": "Uh oh! Pm sure someone over there will like some jerky then. ;-)",
       "body": "Uh oh! Pm sure someone over there will like some jerky then. ;-)",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
       "contactKey": "unknown",
       "contactName": "Unknown",
       "source": "Public Record Release",
-      "from": "Unknown"
+      "from": {
+        "name": "Unknown",
+        "address": ""
+      }
     },
     {
-      "id": "jerky-efta02396657-12-1b60fc7a1d",
-      "mailbox": "inbox",
+      "id": "jerky-efta02396657-12-de8b9f7f28",
+      "folder": "inbox",
+      "starred": false,
       "subject": "Jerky",
-      "to": "Jeffrey Epstein <jeevacation@gmail.com>",
-      "date": "2026-02-10T17:55:06+00:00",
+      "to": [
+        {
+          "name": "Jeffrey Epstein",
+          "address": "jeevacation@gmail.com"
+        }
+      ],
+      "date": "2026-02-10T18:12:13+00:00",
       "dateDisplay": "Feb 10, 2026",
-      "pdf": "released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (12).pdf",
+      "pdf": "/released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (12).pdf",
       "snippet": "Francis has time to come tomorrow to show me how to make it!!! Jerky class anyone? He will also bring you a taste of his new jerky recipe from the restaurant. And sends a warm hello. He is working at a restaurant called…",
       "body": "Francis has time to come tomorrow to show me how to make it!!! Jerky class anyone? He will also bring you a\ntaste of his new jerky recipe from the restaurant. And sends a warm hello. He is working at a restaurant called\nCannibal and cooks... wait for it... Beef Jerky and Steak! He has time at 3pm tomorrow if this is okay with you.\nSent from my iPhone",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
       "contactKey": "unknown",
       "contactName": "Unknown",
       "source": "Public Record Release",
-      "from": "Unknown"
+      "from": {
+        "name": "Unknown",
+        "address": ""
+      }
     },
     {
-      "id": "jerky-efta02396657-13-639e83a499",
-      "mailbox": "inbox",
+      "id": "jerky-efta02396657-13-cf2566e114",
+      "folder": "inbox",
+      "starred": false,
       "subject": "Date: Sat, 04 May 2013 01:45:44 +0000",
-      "to": "Unknown",
-      "date": "2026-02-10T17:55:06+00:00",
+      "to": [
+        {
+          "name": "Unknown",
+          "address": ""
+        }
+      ],
+      "date": "2026-02-10T18:12:13+00:00",
       "dateDisplay": "Feb 10, 2026",
-      "pdf": "released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (13).pdf",
+      "pdf": "/released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (13).pdf",
       "snippet": "yes Sent from my iPhone",
       "body": "yes\n\nSent from my iPhone",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
       "contactKey": "jeffrey-mailcom",
       "contactName": "Jeffrey mail.com>",
       "source": "Public Record Release",
-      "from": "Jeffrey mail.com>"
+      "from": {
+        "name": "Jeffrey mail.com>",
+        "address": ""
+      }
     },
     {
-      "id": "jerky-efta02396657-15-40780ecc98",
-      "mailbox": "inbox",
+      "id": "jerky-efta02396657-15-78b986ac4b",
+      "folder": "inbox",
+      "starred": false,
       "subject": "Should I have Francis Jerky fedex'd",
-      "to": "'nueevacation gmail.comj",
-      "date": "2026-02-10T17:55:06+00:00",
+      "to": [
+        {
+          "name": "'nueevacation gmail.comj",
+          "address": ""
+        }
+      ],
+      "date": "2026-02-10T18:12:13+00:00",
       "dateDisplay": "Feb 10, 2026",
-      "pdf": "released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (15).pdf",
+      "pdf": "/released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (15).pdf",
       "snippet": "Sent Fri 12/21/2012 12:09:04 PM Subject Should I have Francis Jerky fedex'd I heard you are not fond of the batch of Jerky from Steve. There is still some left from Francis in the freezer at 71st, can I organize to have…",
       "body": "Sent Fri 12/21/2012 12:09:04 PM\nSubject Should I have Francis Jerky fedex'd\nI heard you are not fond of the batch of Jerky from Steve. There is still some left from Francis in\nthe freezer at 71st, can I organize to have it fedexed down??\nis going to try to attempt to remake Francis's. I am liaising with about raw\ningredients and the original recipe.",
-      "contactKey": "nueevacation-gmailcomj",
-      "contactName": "'nueevacation gmail.comj",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
+      "contactKey": "unknown",
+      "contactName": "Unknown",
       "source": "Public Record Release",
-      "from": "Unknown"
+      "from": {
+        "name": "Unknown",
+        "address": ""
+      }
     },
     {
-      "id": "jerky-efta02396657-16-5387d60962",
-      "mailbox": "inbox",
+      "id": "jerky-efta02396657-16-0b0a3a47b7",
+      "folder": "inbox",
+      "starred": false,
       "subject": "Jerky",
-      "to": "Unknown",
-      "date": "2026-02-10T17:55:06+00:00",
+      "to": [
+        {
+          "name": "Unknown",
+          "address": ""
+        }
+      ],
+      "date": "2026-02-10T18:12:13+00:00",
       "dateDisplay": "Feb 10, 2026",
-      "pdf": "released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (16).pdf",
+      "pdf": "/released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (16).pdf",
       "snippet": "Should III be making more jerky? Sent from my iPhone",
       "body": "Should III be making more jerky?\nSent from my iPhone",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
       "contactKey": "a-eevacationpgmailtonl",
       "contactName": "a eevacation/pgmailtonl",
       "source": "Public Record Release",
-      "from": "a eevacation/pgmailtonl"
+      "from": {
+        "name": "a eevacation/pgmailtonl",
+        "address": ""
+      }
     },
     {
-      "id": "jerky-efta02396657-18-7ed4ff52d6",
-      "mailbox": "inbox",
+      "id": "jerky-efta02396657-18-4a060c8b89",
+      "folder": "inbox",
+      "starred": false,
       "subject": "Re: Jerky",
-      "to": "Unknown",
-      "date": "2026-02-10T17:55:06+00:00",
+      "to": [
+        {
+          "name": "Unknown",
+          "address": ""
+        }
+      ],
+      "date": "2026-02-10T18:12:13+00:00",
       "dateDisplay": "Feb 10, 2026",
-      "pdf": "released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (18).pdf",
+      "pdf": "/released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (18).pdf",
       "snippet": "I will come to teach a jerky class and we can also coven• chocolate cream pie if you can agree to pay me through this pay period. So I would then recieve my last full paycheck on the 29th of this month. Francis",
       "body": "I will come to teach a jerky class and we can also coven• chocolate cream pie if\nyou can agree to pay me through this pay period. So I would then recieve my last\nfull paycheck on the 29th of this month.\nFrancis",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
       "contactKey": "fronds-derby",
       "contactName": "fronds derby",
       "source": "Public Record Release",
-      "from": "fronds derby"
+      "from": {
+        "name": "fronds derby",
+        "address": ""
+      }
     },
     {
-      "id": "jerky-efta02396657-19-1dccd68892",
-      "mailbox": "sent",
+      "id": "jerky-efta02396657-19-d3888b91ec",
+      "folder": "sent",
+      "starred": false,
       "subject": "Re: Jerky",
-      "to": "Unknown",
-      "date": "2026-02-10T17:55:06+00:00",
+      "to": [
+        {
+          "name": "Unknown",
+          "address": ""
+        }
+      ],
+      "date": "2026-02-10T18:12:13+00:00",
       "dateDisplay": "Feb 10, 2026",
-      "pdf": "released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (19).pdf",
+      "pdf": "/released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (19).pdf",
       "snippet": "Sent Sat 5/4/2013 1:45:44 AM Subject Re: Jerky yes Sent from my iPhone",
       "body": "Sent Sat 5/4/2013 1:45:44 AM\nSubject Re: Jerky\nyes\n\nSent from my iPhone",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
       "contactKey": "unknown",
       "contactName": "Unknown",
       "source": "Public Record Release",
-      "from": "Jeffrey Epstein"
+      "from": {
+        "name": "Jeffrey Epstein",
+        "address": ""
+      }
     },
     {
-      "id": "jerky-efta02396657-20-89ef86cd00",
-      "mailbox": "inbox",
+      "id": "jerky-efta02396657-20-8adad5d7de",
+      "folder": "inbox",
+      "starred": false,
       "subject": "Jerky??",
-      "to": "Unknown",
-      "date": "2026-02-10T17:55:06+00:00",
+      "to": [
+        {
+          "name": "Unknown",
+          "address": ""
+        }
+      ],
+      "date": "2026-02-10T18:12:13+00:00",
       "dateDisplay": "Feb 10, 2026",
-      "pdf": "released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (20).pdf",
+      "pdf": "/released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (20).pdf",
       "snippet": "Sent Subject Jerky?? mail.conteeyacation©gmail.com]; Jeffrey Epsteinbeevacation©gmaii.com] Sat 9/15/2012 7:52:01 PM How is your Jerky situation, should I bring any more?",
       "body": "Sent\nSubject Jerky??\nmail.conteeyacation©gmail.com]; Jeffrey Epsteinbeevacation©gmaii.com]\nSat 9/15/2012 7:52:01 PM\nHow is your Jerky situation, should I bring any more?",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
       "contactKey": "unknown",
       "contactName": "Unknown",
       "source": "Public Record Release",
-      "from": "Unknown"
+      "from": {
+        "name": "Unknown",
+        "address": ""
+      }
     },
     {
-      "id": "jerky-efta02396657-21-725c191eac",
-      "mailbox": "inbox",
+      "id": "jerky-efta02396657-21-17de269dbf",
+      "folder": "inbox",
+      "starred": false,
       "subject": "Just",
-      "to": "Unknown",
-      "date": "2026-02-10T17:55:06+00:00",
+      "to": [
+        {
+          "name": "Unknown",
+          "address": ""
+        }
+      ],
+      "date": "2026-02-10T18:12:13+00:00",
       "dateDisplay": "Feb 10, 2026",
-      "pdf": "released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (21).pdf",
+      "pdf": "/released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (21).pdf",
       "snippet": "Just wanted to touch base about Jerky. JE said he was go=na start eating regular food again so he might be eating less jerky. That =aid he has 6 bags of it in the downstairs freezer for his next trip. I bel=eve it shoul…",
       "body": "Just wanted to touch base about Jerky.\nJE said he was go=na start eating regular food again so he might be eating less jerky. That =aid he has 6 bags of it in the\ndownstairs freezer for his next trip. I bel=eve it should be enough to get him through. Any other questions please let=me\nknow.\nThank you\nFrancis\nFrancis J. Derby\n1",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
       "contactKey": "francis-derby-al",
       "contactName": "francis derby =al>",
       "source": "Public Record Release",
-      "from": "francis derby =al>"
+      "from": {
+        "name": "francis derby =al>",
+        "address": ""
+      }
     },
     {
-      "id": "jerky-efta02396657-22-9e679c5219",
-      "mailbox": "inbox",
+      "id": "jerky-efta02396657-22-d93ccf1a8b",
+      "folder": "inbox",
+      "starred": false,
       "subject": "Recipe : 2 Ib of jer",
-      "to": "Cc:",
-      "date": "2026-02-10T17:55:06+00:00",
+      "to": [
+        {
+          "name": "Cc:",
+          "address": ""
+        }
+      ],
+      "date": "2026-02-10T18:12:13+00:00",
       "dateDisplay": "Feb 10, 2026",
-      "pdf": "released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (22).pdf",
+      "pdf": "/released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (22).pdf",
       "snippet": "Sent from my iPad",
       "body": "Sent from my iPad",
-      "contactKey": "date-november-21-2012-12747-am-est",
-      "contactName": "Date: November 21, 2012, 1:27:47 AM EST",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
+      "contactKey": "date-november-21",
+      "contactName": "Date: November 21",
       "source": "Public Record Release",
-      "from": "Date: November 21, 2012, 1:27:47 AM EST"
+      "from": {
+        "name": "Date: November 21",
+        "address": ""
+      }
     },
     {
-      "id": "jerky-efta02396657-6-91f801504e",
-      "mailbox": "inbox",
+      "id": "jerky-efta02396657-6-fc9b49ab92",
+      "folder": "inbox",
+      "starred": false,
       "subject": "Jerky",
-      "to": "Unknown",
-      "date": "2026-02-10T17:55:06+00:00",
+      "to": [
+        {
+          "name": "Unknown",
+          "address": ""
+        }
+      ],
+      "date": "2026-02-10T18:12:13+00:00",
       "dateDisplay": "Feb 10, 2026",
-      "pdf": "released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (6).pdf",
+      "pdf": "/released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (6).pdf",
       "snippet": "Just wanted to touch base about Jerky. JE said he was gonna start eating regular food again so he might be eating less jerky. That said he has 6 bags of it in the downstairs freezer for his next trip. I believe it shoul…",
       "body": "Just wanted to touch base about Jerky.\nJE said he was gonna start eating regular food again so he might be eating less jerky. That said he has 6 bags of it\nin the downstairs freezer for his next trip. I believe it should be enough to get him through. Any other questions\nplease let me know.\nThank you\nFrancis\nFrancis J. Derby",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
       "contactKey": "francis-derby-1",
       "contactName": "francis derby <1",
       "source": "Public Record Release",
-      "from": "francis derby <1"
+      "from": {
+        "name": "francis derby <1",
+        "address": ""
+      }
     },
     {
-      "id": "jerky-efta02396657-7-6e0c569e8f",
-      "mailbox": "inbox",
+      "id": "jerky-efta02396657-7-29a2babb16",
+      "folder": "inbox",
+      "starred": false,
       "subject": "Jerky",
-      "to": "francis derby <IMINI >",
-      "date": "2026-02-10T17:55:06+00:00",
+      "to": [
+        {
+          "name": "francis derby",
+          "address": ""
+        }
+      ],
+      "date": "2026-02-10T18:12:13+00:00",
       "dateDisplay": "Feb 10, 2026",
-      "pdf": "released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (7).pdf",
+      "pdf": "/released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (7).pdf",
       "snippet": "Hi Francis JE has asked me to email you and ask you whether you would be able to teach me to make the beef jerky. Thank you •",
       "body": "Hi Francis\nJE has asked me to email you and ask you whether you would be able to teach me to make the beef jerky.\nThank you\n•",
-      "contactKey": "francis-derby-imini",
-      "contactName": "francis derby <IMINI >",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
+      "contactKey": "unknown",
+      "contactName": "Unknown",
       "source": "Public Record Release",
-      "from": "Unknown"
+      "from": {
+        "name": "Unknown",
+        "address": ""
+      }
     },
     {
-      "id": "jerky-efta02396657-8-ef5afdc6c2",
-      "mailbox": "inbox",
+      "id": "jerky-efta02396657-8-2204744004",
+      "folder": "inbox",
+      "starred": false,
       "subject": "Re: Jerky",
-      "to": "Unknown",
-      "date": "2026-02-10T17:55:06+00:00",
+      "to": [
+        {
+          "name": "Unknown",
+          "address": ""
+        }
+      ],
+      "date": "2026-02-10T18:12:13+00:00",
       "dateDisplay": "Feb 10, 2026",
-      "pdf": "released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (8).pdf",
+      "pdf": "/released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (8).pdf",
       "snippet": "M, I will come to teach a jerky class and we can also coven- chocolate cream pie if you can agree to pay me through this pay period. So I would then recieve my last full paycheck on the 29th of this month. Francis",
       "body": "M,\nI will come to teach a jerky class and we can also coven- chocolate cream pie if you can agree to pay me through\nthis pay period. So I would then recieve my last full paycheck on the 29th of this month.\nFrancis",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
       "contactKey": "francis-derby",
       "contactName": "francis derby",
       "source": "Public Record Release",
-      "from": "francis derby"
+      "from": {
+        "name": "francis derby",
+        "address": ""
+      }
     },
     {
-      "id": "jerky-efta02396657-9-eb013fa949",
-      "mailbox": "inbox",
+      "id": "jerky-efta02396657-9-cc3497aa4f",
+      "folder": "inbox",
+      "starred": false,
       "subject": "Re: Jerky",
-      "to": "Unknown",
-      "date": "2026-02-10T17:55:06+00:00",
+      "to": [
+        {
+          "name": "Unknown",
+          "address": ""
+        }
+      ],
+      "date": "2026-02-10T18:12:13+00:00",
       "dateDisplay": "Feb 10, 2026",
-      "pdf": "released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (9).pdf",
+      "pdf": "/released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (9).pdf",
       "snippet": "Please read below from Francis Sent from my iPhone Begin forwarded message: From: francis derby < Date: November 20. 2012. 11:53:44 AM EST To: Cc: Subject: Re: Jerky I will come to teach a jerky class and we can also co…",
       "body": "Please read below from Francis\nSent from my iPhone\nBegin forwarded message:\nFrom: francis derby <\nDate: November 20. 2012. 11:53:44 AM EST\nTo:\nCc:\nSubject: Re: Jerky\nI will come to teach a jerky class and we can also coven- chocolate cream pie if you can agree to pay me\nthrough this pay period. So I would then redeye my last full paycheck on the 29th of this month.\nFrancis",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
       "contactKey": "francis-derby",
       "contactName": "francis derby <",
       "source": "Public Record Release",
-      "from": "francis derby <"
+      "from": {
+        "name": "francis derby <",
+        "address": ""
+      }
     },
     {
-      "id": "jerky-efta02573631-1c2b4a4bc1",
-      "mailbox": "sent",
+      "id": "jerky-efta02573631-23ea2e08ca",
+      "folder": "sent",
+      "starred": false,
       "subject": "Re:",
-      "to": "Jennie Enterprise",
+      "to": [
+        {
+          "name": "Jennie Enterprise",
+          "address": ""
+        }
+      ],
       "date": "2013-08-01T19:43:00+00:00",
       "dateDisplay": "Aug 01, 2013",
-      "pdf": "released/epstein/jeffs-mail/pdfs/jerky EFTA02573631.pdf",
+      "pdf": "/released/epstein/jeffs-mail/pdfs/jerky EFTA02573631.pdf",
       "snippet": "Just breakfast",
       "body": "Just breakfast",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
       "contactKey": "jennie-enterprise",
       "contactName": "Jennie Enterprise",
       "source": "Public Record Release",
-      "from": "Jeffrey Epstein <jeevacation@gmail.com>"
+      "from": {
+        "name": "Jeffrey Epstein",
+        "address": "jeevacation@gmail.com"
+      }
     },
     {
-      "id": "jerky-efta02396657-14-1ec473acb2",
-      "mailbox": "inbox",
+      "id": "jerky-efta02396657-14-99feb25adf",
+      "folder": "inbox",
+      "starred": false,
       "subject": "Jerky",
-      "to": "Jeffrey Epstein",
+      "to": [
+        {
+          "name": "Jeffrey Epstein",
+          "address": ""
+        }
+      ],
       "date": "2013-05-04T00:56:00+00:00",
       "dateDisplay": "May 04, 2013",
-      "pdf": "released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (14).pdf",
+      "pdf": "/released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (14).pdf",
       "snippet": "Francis has time to come tomorrow to show me how to make it!!! Jerky class a=yone? He will also bring you a taste of his new jerky recipe from the resta=rant. And sends a warm hello. He is working at a restaurant called…",
       "body": "Francis has time to come tomorrow to show me how to make it!!! Jerky class a=yone? He will also bring you a taste of\nhis new jerky recipe from the resta=rant. And sends a warm hello. He is working at a restaurant called Cannibal=and\ncooks... wait for it... Beef Jerky and Steak! He has time at 3pm tomorr=w if this is okay with you.\nSent from my iPhone=?xml version=.0\" encoding=TF-8\"?> <!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\"\n\"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=.0\">\n<dict>\n<key>date-last-viewed</key>\n<integer>0</integer>\n<key>date-received</key>\n<integer>1367628960</integer>\n<key>flags</key>\n<integer>8590195713</integer>\n<key>gmail-label-ids</key>\n<array>\n<integer>22</integer>\n<integer>2</integer>\n</array>\n<key>remote-id</key>\n<string>297766</string>\n</dict>\n</plist>",
-      "contactKey": "msg",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
+      "contactKey": "unknown",
       "contactName": "<",
       "source": "Public Record Release",
-      "from": "<"
+      "from": {
+        "name": "<",
+        "address": ""
+      }
     },
     {
-      "id": "jerky-efta02396657-2-4a77f0db5c",
-      "mailbox": "inbox",
+      "id": "jerky-efta02396657-2-a41e79b54f",
+      "folder": "inbox",
+      "starred": false,
       "subject": "Jerky",
-      "to": "Jeffrey Epstein",
+      "to": [
+        {
+          "name": "Jeffrey Epstein",
+          "address": ""
+        }
+      ],
       "date": "2013-05-04T00:56:00+00:00",
       "dateDisplay": "May 04, 2013",
-      "pdf": "released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (2).pdf",
+      "pdf": "/released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (2).pdf",
       "snippet": "Francis has time to come tomorrow to show me how to make it!!! Jerky class a=yone? He will also bring you a taste of his new jerky recipe from the resta=rant. And sends a warm hello. He is working at a restaurant called…",
       "body": "Francis has time to come tomorrow to show me how to make it!!! Jerky class a=yone? He will also bring you a taste of\nhis new jerky recipe from the resta=rant. And sends a warm hello. He is working at a restaurant called Cannibal=and\ncooks... wait for it... Beef Jerky and Steak! He has time at 3pm tomorr=w if this is okay with you.\nSent from my iPhone=?xml version=.0\" encoding=TF-8\"?> <!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\"\n\"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=.0\">\n<dict>\n<key>conversation-id</key>\n<integer>253338</integer>\n<key>date-last-viewed</key>\n<integer>0</integer>\n<key>date-received</key>\n<integer>1367628960</integer>\n<key>flags</key>\n<integer>8590195713</integer>\n<key>gmail-label-ids</key>\n<array>\n<integer>6</integer>\n<integer>2</integer>\n</array>\n<key>remote-id</key>\n<string>297766</string>\n</diet>\n</plist>\n1",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
       "contactKey": "unknown",
       "contactName": "Unknown",
       "source": "Public Record Release",
-      "from": "Unknown"
+      "from": {
+        "name": "Unknown",
+        "address": ""
+      }
     },
     {
-      "id": "jerky-efta02396657-3-0204f97efb",
-      "mailbox": "inbox",
+      "id": "jerky-efta02396657-3-e980eff3d5",
+      "folder": "inbox",
+      "starred": false,
       "subject": "Jerky",
-      "to": "Jeffrey Epstein",
+      "to": [
+        {
+          "name": "Jeffrey Epstein",
+          "address": ""
+        }
+      ],
       "date": "2013-05-04T00:56:00+00:00",
       "dateDisplay": "May 04, 2013",
-      "pdf": "released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (3).pdf",
+      "pdf": "/released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (3).pdf",
       "snippet": "Francis has time to come tomorrow to show me how to make it!!! Jerky class a=yone? He will also bring you a taste of his new jerky recipe from the resta=rant. And sends a warm hello. He is working at a restaurant called…",
       "body": "Francis has time to come tomorrow to show me how to make it!!! Jerky class a=yone? He will also bring you a taste of\nhis new jerky recipe from the resta=rant. And sends a warm hello. He is working at a restaurant called Cannibal=and\ncooks... wait for it... Beef Jerky and Steak! He has time at 3pm tomorr=w if this is okay with you.\nSent from my iPhone=?xml version=.0\" encoding=TF-8\"?> <!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\"\n\"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=.0\">\n<dict>\n<key>date-last-viewed</key>\n<integer>0</integer>\n<key>date-received</key>\n<integer>1367628960</integer>\n<key>flags</key>\n<integer>8590195713</integer>\n<key>gmail-label-ids</key>\n<array>\n<integer>27</integer>\n<integer>7</integer>\n</array>\n<key>remote-id</key>\n<string>297766</string>\n</dict>\n</plist>\n1",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
       "contactKey": "unknown",
       "contactName": "Unknown",
       "source": "Public Record Release",
-      "from": "Unknown"
+      "from": {
+        "name": "Unknown",
+        "address": ""
+      }
     },
     {
-      "id": "jerky-efta02396657-17-2d43b1a1d8",
-      "mailbox": "inbox",
+      "id": "jerky-efta02396657-17-f4ba7d2518",
+      "folder": "inbox",
+      "starred": false,
       "subject": "Jerky",
-      "to": "Jeffrey E stein 'eevacation©gmail.com",
+      "to": [
+        {
+          "name": "Jeffrey E stein 'eevacation©gmail.com",
+          "address": ""
+        }
+      ],
       "date": "2013-05-04T00:55:58+00:00",
       "dateDisplay": "May 04, 2013",
-      "pdf": "released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (17).pdf",
+      "pdf": "/released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (17).pdf",
       "snippet": "Francis has time to come tomorrow to show me how to make it!!! Jerky class anyone? He will also bring you a taste of his new jerky recipe from the restaurant. And sends a warm hello. He is working at a restaurant called…",
       "body": "Francis has time to come tomorrow to show me how to make it!!! Jerky class\nanyone? He will also bring you a taste of his new jerky recipe from the\nrestaurant. And sends a warm hello. He is working at a restaurant called Cannibal\nand cooks... wait for it... Beef Jerky and Steak! He has time at 3pm tomorrow if\nthis is okay with you.\nSent from my iPhone",
-      "contactKey": "jeffrey-e-stein-eevacationgmailcom",
-      "contactName": "Jeffrey E stein 'eevacation©gmail.com",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
+      "contactKey": "unknown",
+      "contactName": "Unknown",
       "source": "Public Record Release",
-      "from": "Unknown"
+      "from": {
+        "name": "Unknown",
+        "address": ""
+      }
     },
     {
-      "id": "jerky-efta02396657-11-e140ded8c7",
-      "mailbox": "inbox",
+      "id": "jerky-efta02396657-11-d8e5eacffd",
+      "folder": "inbox",
+      "starred": false,
       "subject": "Jerky Recipe",
-      "to": "Steve Hanson",
+      "to": [
+        {
+          "name": "Steve Hanson",
+          "address": ""
+        }
+      ],
       "date": "2012-12-21T04:44:28+00:00",
       "dateDisplay": "Dec 21, 2012",
-      "pdf": "released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (11).pdf",
+      "pdf": "/released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (11).pdf",
       "snippet": "Pls see below..it's possible JE might like the jerky being sent by Steve. Looks like he changed it up a bit from the batch you currently have Begin forwarded message: From: Date: December 21 2012 8:10:06 AM EST To: Stev…",
       "body": "Pls see below..it's possible JE might like the jerky being sent by Steve. Looks like he changed it up a bit from the\nbatch you currently have\nBegin forwarded message:\nFrom:\nDate: December 21 2012 8:10:06 AM EST\nTo: Steve Hanson\nCc:\nSubject: Re: Jerky Recipe\nThank you Steve but I have now been told it is the old way Francis was doing it that he likes best and not the\nlatest batch, so on LSJ is going to try and do it that way. I am in Europe but Jen is with him on the\nisland, if you need you can liaise with her about getting anything down\nThank you!!!",
-      "contactKey": "steve-hanson",
-      "contactName": "Steve Hanson",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
+      "contactKey": "unknown",
+      "contactName": "Unknown",
       "source": "Public Record Release",
-      "from": "Unknown"
+      "from": {
+        "name": "Unknown",
+        "address": ""
+      }
     },
     {
-      "id": "jerky-efta02396657-4-7d656b65d1",
-      "mailbox": "inbox",
+      "id": "jerky-efta02396657-4-b5f56f6698",
+      "folder": "inbox",
+      "starred": false,
       "subject": "Beef jerky",
-      "to": "Francis",
+      "to": [
+        {
+          "name": "Francis",
+          "address": ""
+        }
+      ],
       "date": "2012-08-29T08:38:00+00:00",
       "dateDisplay": "Aug 29, 2012",
-      "pdf": "released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (4).pdf",
+      "pdf": "/released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (4).pdf",
       "snippet": "Importance: Normal I'm flying on friday. I will bring jerky Original Message From: Karyna Shuliak To: Francis Subject: Beef jerky Sent: Aug 29, 2012 8:38 AM HI JE is asking to bring him more beef jerky on Fri. Are you a…",
       "body": "Importance: Normal\nI'm flying on friday. I will bring jerky\nOriginal Message\nFrom: Karyna Shuliak\nTo: Francis\nSubject: Beef jerky\nSent: Aug 29, 2012 8:38 AM\nHI\nJE is asking to bring him more beef jerky on Fri. Are you also flying on Fri? If not, I would like to collect it from\nyou and take with me on the plane. Please let me know, thanks, Karyna.\nSent from my Verizon Wireless BlackBerry",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
       "contactKey": "karyna-shuliak",
       "contactName": "Karyna Shuliak",
       "source": "Public Record Release",
-      "from": "Karyna Shuliak"
+      "from": {
+        "name": "Karyna Shuliak",
+        "address": ""
+      }
     },
     {
-      "id": "jerky-efta02396657-5-cc6e4c0434",
-      "mailbox": "inbox",
+      "id": "jerky-efta02396657-5-806663f9a0",
+      "folder": "inbox",
+      "starred": false,
       "subject": "Beef jerky",
-      "to": "Francis",
+      "to": [
+        {
+          "name": "Francis",
+          "address": ""
+        }
+      ],
       "date": "2012-08-29T08:38:00+00:00",
       "dateDisplay": "Aug 29, 2012",
-      "pdf": "released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (5).pdf",
+      "pdf": "/released/epstein/jeffs-mail/pdfs/jerky EFTA02396657 (5).pdf",
       "snippet": "Yes, MI is the building number. Thank you! On Aug 30, 2012 2:58 PM, <I 66th and 2nd right? Sent from my Verizon Wireless BlackBerry",
       "body": "Yes, MI is the building number. Thank you!\nOn Aug 30, 2012 2:58 PM, <I\n66th and 2nd right?\nSent from my Verizon Wireless BlackBerry",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
       "contactKey": "karyna-shuliak",
       "contactName": "Karyna Shuliak",
       "source": "Public Record Release",
-      "from": "Karyna Shuliak"
+      "from": {
+        "name": "Karyna Shuliak",
+        "address": ""
+      }
     }
   ]
 }
