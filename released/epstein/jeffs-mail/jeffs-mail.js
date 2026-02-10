@@ -291,6 +291,24 @@
     }
   }
 
+  function isNarrow(){
+    return window.matchMedia && window.matchMedia("(max-width: 980px)").matches;
+  }
+
+  function openReaderOverlay(){
+    if(!el.reader) return;
+    if(isNarrow()){
+      el.reader.classList.add("open");
+      document.body.classList.add("jm-lock");
+    }
+  }
+
+  function closeReaderOverlay(){
+    if(!el.reader) return;
+    el.reader.classList.remove("open");
+    document.body.classList.remove("jm-lock");
+  }
+
   function setActiveFolder(folder){
     state.folder = folder;
 
@@ -302,6 +320,7 @@
 
     if(btn) btn.classList.add("active");
     if(el.folderTitle) el.folderTitle.textContent = folder.toUpperCase();
+
     draw();
   }
 
@@ -362,24 +381,6 @@
     }
     updateCounts();
     draw();
-  }
-
-  function isNarrow(){
-    return window.matchMedia && window.matchMedia("(max-width: 980px)").matches;
-  }
-
-  function openReaderOverlay(){
-    if(!el.reader) return;
-    if(isNarrow()){
-      el.reader.classList.add("open");
-      document.body.classList.add("jm-lock");
-    }
-  }
-
-  function closeReaderOverlay(){
-    if(!el.reader) return;
-    el.reader.classList.remove("open");
-    document.body.classList.remove("jm-lock");
   }
 
   function setReading(m){
@@ -505,8 +506,9 @@
     [el.btnInbox, el.btnSent, el.btnStarred].forEach(btn => {
       if(!btn) return;
       btn.addEventListener("click", () => {
-        setActiveFolder(btn.getAttribute("data-folder") || "inbox");
+        // Important: close overlay first so it doesn't feel like it keeps reading old item
         closeReaderOverlay();
+        setActiveFolder(btn.getAttribute("data-folder") || "inbox");
       });
     });
 
