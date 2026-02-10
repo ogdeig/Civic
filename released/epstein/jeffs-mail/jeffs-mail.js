@@ -48,23 +48,19 @@
     activeId: "",
     contact: "all",
     starred: new Set(),
-    contacts: [],
+    contacts: [], // {key,name}
   };
 
   function esc(s){
     return String(s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   }
-
   function safeText(s){
     return String(s || "").replace(/\s+/g, " ").trim();
   }
-
   function isObj(v){
     return v && typeof v === "object" && !Array.isArray(v);
   }
-
   function pickName(v){
-    // Handles legacy index.json where from/to might be objects
     if(!v) return "";
     if(typeof v === "string") return v;
     if(isObj(v)){
@@ -72,7 +68,6 @@
     }
     return safeText(String(v));
   }
-
   function fmtDateShort(iso){
     if(!iso) return "";
     try{
@@ -81,7 +76,6 @@
       return d.toLocaleDateString(undefined, { year:"numeric", month:"short", day:"2-digit" });
     }catch(_){ return ""; }
   }
-
   function slugify(s){
     return safeText(s).toLowerCase()
       .replace(/[^\w\s\-]+/g, "")
@@ -89,7 +83,6 @@
       .replace(/\-+/g, "-")
       .replace(/^\-+|\-+$/g, "") || "unknown";
   }
-
   function looksDateish(s){
     const t = safeText(s).toLowerCase();
     if(!t) return false;
@@ -98,7 +91,6 @@
       /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/.test(t) ||
       /\b\d{4}-\d{2}-\d{2}\b/.test(t);
   }
-
   function cleanContact(s){
     let t = safeText(s);
     t = t.replace(/^(from|to|sent|subject)\s*:\s*/i, "").trim();
@@ -167,7 +159,6 @@
       state.starred = new Set();
     }
   }
-
   function saveStarred(){
     try{
       localStorage.setItem(STAR_KEY, JSON.stringify(Array.from(state.starred)));
@@ -182,7 +173,6 @@
       state.contact = "all";
     }
   }
-
   function saveContactFilter(){
     try{ localStorage.setItem(CONTACT_KEY, state.contact || "all"); }catch(_){}
   }
@@ -215,7 +205,10 @@
       const mailboxRaw = safeText(m.mailbox).toLowerCase();
       const mailbox = mailboxRaw === "sent" ? "sent" : "inbox";
 
-      const subject = safeText(m.subject) || "(No subject)";
+      // IMPORTANT: subject should never fall back to filename in UI
+      const subjectRaw = safeText(m.subject);
+      const subject = subjectRaw ? subjectRaw : "Unknown";
+
       const from = cleanContact(pickName(m.from));
       const to = cleanContact(pickName(m.to));
 
@@ -225,17 +218,20 @@
       const body = safeText(m.body || "");
       const snippet = safeText(m.snippet) || (body ? body.slice(0, 160) : "");
 
-      // contactKey/contactName (prefer builder; fallback to otherParty)
-      let contactName = cleanContact(pickName(m.contactName)) || otherParty(mailbox, from, to);
-      if(looksDateish(contactName)) contactName = otherParty(mailbox, from, to);
-      if(looksDateish(contactName)) contactName = "Unknown";
+      // Participant keys (for contact filtering)
+      const fromKey = slugify(from || "Unknown");
+      const toKey = slugify(to || "Unknown");
 
-      let contactKey = safeText(m.contactKey) || slugify(contactName);
-      if(contactKey === "unknown" && contactName !== "Unknown") contactKey = slugify(contactName);
+      // A “primary contact” is still useful for list display
+      let primaryName = otherParty(mailbox, from, to);
+      primaryName = cleanContact(primaryName);
+      if(looksDateish(primaryName)) primaryName = "Unknown";
+
+      const primaryKey = slugify(primaryName);
 
       const id = String(m.id);
 
-      // Dedup at UI level too
+      // Dedup
       const sig = [pdf, subject, from, to, date, mailbox].join("|");
       if(seen.has(sig)) continue;
       seen.add(sig);
@@ -246,13 +242,15 @@
         subject,
         from: from || "Unknown",
         to: to || "Unknown",
+        fromKey,
+        toKey,
+        primaryKey,
+        primaryName: primaryName || "Unknown",
         date,
         dateDisplay,
         snippet,
         body,
         pdf,
-        contactKey: contactKey || "unknown",
-        contactName: contactName || "Unknown",
         starred: state.starred.has(id),
       });
     }
@@ -268,12 +266,21 @@
   }
 
   function rebuildContacts(){
+    // Build contacts from BOTH from/to (not just “other party”)
     const map = new Map();
-    for(const m of state.all){
-      const k = safeText(m.contactKey) || "unknown";
-      const n = cleanContact(m.contactName) || "Unknown";
-      if(n === "Unknown") continue;
+
+    function add(name){
+      const n = cleanContact(name);
+      if(!n || n === "Unknown") return;
+      if(looksDateish(n)) return;
+      const k = slugify(n);
+      if(k === "unknown") return;
       if(!map.has(k)) map.set(k, n);
+    }
+
+    for(const m of state.all){
+      add(m.from);
+      add(m.to);
     }
 
     const list = Array.from(map.entries()).map(([key, name]) => ({ key, name }));
@@ -291,24 +298,6 @@
     }
   }
 
-  function isNarrow(){
-    return window.matchMedia && window.matchMedia("(max-width: 980px)").matches;
-  }
-
-  function openReaderOverlay(){
-    if(!el.reader) return;
-    if(isNarrow()){
-      el.reader.classList.add("open");
-      document.body.classList.add("jm-lock");
-    }
-  }
-
-  function closeReaderOverlay(){
-    if(!el.reader) return;
-    el.reader.classList.remove("open");
-    document.body.classList.remove("jm-lock");
-  }
-
   function setActiveFolder(folder){
     state.folder = folder;
 
@@ -320,14 +309,13 @@
 
     if(btn) btn.classList.add("active");
     if(el.folderTitle) el.folderTitle.textContent = folder.toUpperCase();
-
     draw();
   }
 
   function matchesQuery(m, q){
     if(!q) return true;
     const hay = [
-      m.subject, m.from, m.to, m.snippet, m.body, m.contactName
+      m.subject, m.from, m.to, m.snippet, m.body
     ].join(" ").toLowerCase();
     return hay.includes(q);
   }
@@ -335,7 +323,8 @@
   function matchesContact(m){
     const c = state.contact || "all";
     if(c === "all") return true;
-    return (m.contactKey || "") === c;
+    // match if selected contact is either sender or recipient
+    return (m.fromKey === c) || (m.toKey === c);
   }
 
   function getVisible(){
@@ -383,6 +372,23 @@
     draw();
   }
 
+  function isNarrow(){
+    return window.matchMedia && window.matchMedia("(max-width: 980px)").matches;
+  }
+
+  function openReaderOverlay(){
+    if(!el.reader) return;
+    if(isNarrow()){
+      el.reader.classList.add("open");
+      document.body.classList.add("jm-lock");
+    }
+  }
+  function closeReaderOverlay(){
+    if(!el.reader) return;
+    el.reader.classList.remove("open");
+    document.body.classList.remove("jm-lock");
+  }
+
   function setReading(m){
     state.activeId = m?.id || "";
     if(!el.readCard) return;
@@ -393,7 +399,7 @@
     const pdfHref = esc(m.pdf);
 
     el.readCard.innerHTML = `
-      <div class="jm-h1">${esc(m.subject)}</div>
+      <div class="jm-h1">${esc(m.subject || "Unknown")}</div>
 
       <div class="jm-badges">
         <span class="jm-badge">Released</span>
@@ -462,7 +468,7 @@
         </button>
         <div class="main">
           <div class="jm-from">${esc(fromLabel)}</div>
-          <div class="jm-subj">${esc(m.subject || "(No subject)")}</div>
+          <div class="jm-subj">${esc(m.subject || "Unknown")}</div>
           <div class="jm-snippet">${esc(m.snippet || "")}</div>
         </div>
         <div class="jm-date">${esc(dateShort)}</div>
@@ -490,8 +496,21 @@
     }
   }
 
+  function syncMobileTopInset(){
+    // Make overlay avoid your injected sticky header
+    try{
+      const headerMount = document.querySelector("#siteHeader");
+      const h = headerMount ? headerMount.offsetHeight : 56;
+      const inset = Math.max(56, h) + 10;
+      document.documentElement.style.setProperty("--jmTopInset", inset + "px");
+    }catch(_){}
+  }
+
   async function boot(){
     if(el.source) el.source.textContent = "jeffs-mail/index.json";
+
+    syncMobileTopInset();
+    window.addEventListener("resize", syncMobileTopInset);
 
     loadStarred();
     loadContactFilter();
@@ -506,9 +525,8 @@
     [el.btnInbox, el.btnSent, el.btnStarred].forEach(btn => {
       if(!btn) return;
       btn.addEventListener("click", () => {
-        // Important: close overlay first so it doesn't feel like it keeps reading old item
-        closeReaderOverlay();
         setActiveFolder(btn.getAttribute("data-folder") || "inbox");
+        closeReaderOverlay();
       });
     });
 
