@@ -9,9 +9,14 @@ Scans:
 Outputs:
   released/epstein/jeffs-mail/index.json
 
-Notes:
-- Works with either `pypdf` (preferred) OR `PyPDF2`
-- Uses python-dateutil if available, otherwise falls back safely
+Goals:
+- Extract real email fields: From / To / Sent / Subject
+- Extract ONLY the top email body (not the whole PDF, not long quoted chains)
+- Determine mailbox:
+    - If From is Jeff/aliases => "sent"
+    - Else if To is Jeff/aliases => "inbox"
+    - Else default => "inbox"
+- Provide contactKey/contactName for UI filtering later
 """
 
 from __future__ import annotations
@@ -23,7 +28,7 @@ import time
 import hashlib
 from dataclasses import dataclass, asdict
 from pathlib import Path
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 
 # --- Date parsing (optional but recommended) ---
 try:
@@ -57,7 +62,6 @@ if PdfReader is None:
     )
     raise ModuleNotFoundError("Missing pypdf/PyPDF2")
 
-
 ROOT = Path(__file__).resolve()
 REPO_ROOT = ROOT.parents[4]
 MAIL_ROOT = REPO_ROOT / "released" / "epstein" / "jeffs-mail"
@@ -66,38 +70,54 @@ OUT_JSON = MAIL_ROOT / "index.json"
 
 SOURCE_LABEL = "Public Record Release"
 
-JEFF_HINTS = [
+# --- Jeff / Epstein aliases (expandable) ---
+# We treat these as "Jeff identity" markers for mailbox classification.
+JEFF_ALIASES = [
     "jeffrey epstein",
+    "jeff epstein",
     "jeevacation",
-    "jeff",
-    "epstein",
     "jeevacation@gmail.com",
     "jeevacation@gma",
+    "jeevacationagmail",  # OCR variants
+    "jeevacation@gmail,com",  # OCR variants
+    "je",   # careful: use as token, not substring-only
+    "lsj",
 ]
 
-FOOTER_NOISE_RE = re.compile(
+# Some PDFs use "JE" and "LSJ" as just labels.
+JEFF_TOKEN_RE = re.compile(r"\b(JE|LSJ)\b", re.IGNORECASE)
+
+# --- Cleanup patterns ---
+FOOTER_EFTA_RE = re.compile(r"\bEFTA[_\- ]?[A-Z0-9_]{5,}\b", re.IGNORECASE)
+EFTA_R1_RE = re.compile(r"\bEFTA_R1_[A-Z0-9_]+\b", re.IGNORECASE)
+
+HTML_GARBAGE_RE = re.compile(r"<\/?div>|<br\s*\/?>|&nbsp;|style:.*?$|text-align:.*?$", re.IGNORECASE | re.MULTILINE)
+
+# Remove long confidentiality boilerplate (keep actual message above it)
+CONF_BLOCK_RE = re.compile(
     r"""
-    (?:\bEFTA[_\- ]R\d\b.*)|
-    (?:\bEFTA\d{5,}\b)|
-    (?:^\s*\d+\s*$)
+    (?:^|\n)\s*(Confidentiality\s+Notice:.*)$|
+    (?:^|\n)\s*(The\s+information\s+contained\s+in\s+this\s+communication\s+is.*)$
     """,
-    re.IGNORECASE | re.VERBOSE | re.MULTILINE,
+    re.IGNORECASE | re.VERBOSE | re.DOTALL
 )
 
-METADATA_START_RE = re.compile(
+# Cut the quoted chain once we hit "On ... wrote:" or classic forward markers
+QUOTE_CUT_RE = re.compile(
     r"""
-    (?:<\?xml\b)|
-    (?:<!DOCTYPE\b)|
-    (?:<plist\b)|
-    (?:<dict>\s*)|
-    (?:\bconversation-id\b)|
-    (?:\bgmail-label-ids\b)
+    (?:\n\s*On\s.+?\bwrote:\s*\n)|
+    (?:\n\s*-----Original Message-----\s*\n)|
+    (?:\n\s*Begin forwarded message:\s*\n)|
+    (?:\n\s*From:\s.+\n\s*Sent:\s.+\n\s*To:\s.+\n\s*Subject:\s.+\n)|
+    (?:\n\s*>+\s)  # quoted lines start
     """,
-    re.IGNORECASE | re.VERBOSE,
+    re.IGNORECASE | re.VERBOSE
 )
 
+SIGNATURE_KEEP_RE = re.compile(r"^\s*Sent from (my|an) (iPhone|iPad|Android).*$", re.IGNORECASE)
+
+# Header extraction
 HEADER_LINE_RE = re.compile(r"^\s*(From|Sent|To|Subject)\s*:\s*(.*)\s*$", re.IGNORECASE)
-
 INLINE_HEADER_RE = re.compile(
     r"""
     \bFrom:\s*(?P<from>.*?)
@@ -108,16 +128,6 @@ INLINE_HEADER_RE = re.compile(
     """,
     re.IGNORECASE | re.VERBOSE | re.DOTALL,
 )
-
-HARD_TRUNC_RE = re.compile(
-    r"""
-    ^\s*-----Original Message-----\s*$|
-    ^\s*Begin forwarded message:\s*$
-    """,
-    re.IGNORECASE | re.VERBOSE | re.MULTILINE,
-)
-
-SIGNATURE_KEEP_RE = re.compile(r"^\s*Sent from (my|an) (iPhone|iPad|Android).*$", re.IGNORECASE)
 
 
 def slugify(s: str) -> str:
@@ -175,7 +185,7 @@ def parse_date_to_iso(sent_value: str) -> Tuple[str, str, int]:
         disp = time.strftime("%b %d, %Y", time.gmtime(now))
         return iso, disp, now
 
-    # Force UTC timestamp safely (fixes naive/aware issues)
+    # Normalize to UTC timestamp safely
     try:
         if dt.tzinfo is None or dt.utcoffset() is None:
             ts = int(dt.replace(tzinfo=None).timestamp())
@@ -189,11 +199,21 @@ def parse_date_to_iso(sent_value: str) -> Tuple[str, str, int]:
     return iso, disp, ts
 
 
-def clean_noise(text: str) -> str:
-    t = (text or "")
-    t = FOOTER_NOISE_RE.sub("", t)
+def cleanup_text(t: str) -> str:
+    t = (t or "").replace("\r\n", "\n").replace("\r", "\n")
+
+    # fix soft-wrap artifacts "w=uld" style
     t = t.replace("=\n", "")
-    t = re.sub(r"\s+\n", "\n", t)
+
+    # remove obvious html garbage from OCR
+    t = HTML_GARBAGE_RE.sub("", t)
+
+    # remove EFTA footers and ids
+    t = FOOTER_EFTA_RE.sub("", t)
+    t = EFTA_R1_RE.sub("", t)
+
+    # normalize whitespace
+    t = re.sub(r"[ \t]+\n", "\n", t)
     t = re.sub(r"\n{3,}", "\n\n", t)
     return t.strip()
 
@@ -202,7 +222,7 @@ def extract_headers(text: str) -> Dict[str, str]:
     hdr = {"from": "", "to": "", "subject": "", "sent": ""}
 
     lines = [ln.strip() for ln in (text or "").splitlines()]
-    for ln in lines[:100]:
+    for ln in lines[:140]:
         m = HEADER_LINE_RE.match(ln)
         if not m:
             continue
@@ -228,62 +248,113 @@ def extract_headers(text: str) -> Dict[str, str]:
     for k in ["from", "to", "subject", "sent"]:
         hdr[k] = re.sub(r"^\s*(From|To|Subject|Sent)\s*:\s*", "", hdr[k], flags=re.I).strip()
 
+    # Some PDFs omit Subject: but include it inline like "Subject Re: Jerky"
     if not hdr["subject"]:
-        m3 = re.search(r"\bSubject:\s*(.+)", text or "", flags=re.I)
+        m3 = re.search(r"\bSubject\b[:\s]+(.+)", text or "", flags=re.I)
         if m3:
             hdr["subject"] = m3.group(1).strip()
 
     return hdr
 
 
-def extract_body(text: str) -> str:
-    t = (text or "").replace("\r\n", "\n").replace("\r", "\n")
+def looks_like_jeff(s: str) -> bool:
+    s0 = (s or "").lower()
+    if not s0:
+        return False
+
+    for a in JEFF_ALIASES:
+        if a in ["je", "lsj"]:
+            continue
+        if a in s0:
+            return True
+
+    # token-style JE / LSJ
+    if JEFF_TOKEN_RE.search(s or ""):
+        return True
+
+    return False
+
+
+def normalize_contact_name(s: str) -> str:
+    s = (s or "").strip()
+
+    # remove weird javascript: email wrappers seen in some PDFs
+    s = re.sub(r"javascript:.*?\)", "", s, flags=re.I)
+
+    # remove bracket garbage
+    s = s.replace("[", "").replace("]", "").replace("(", "").replace(")", "")
+
+    # collapse whitespace
+    s = re.sub(r"\s+", " ", s).strip()
+
+    # if it's empty or nonsense, return Unknown
+    if not s or s.lower() in {"unknown", "from", "to", "subject", "sent"}:
+        return "Unknown"
+    return s
+
+
+def choose_mailbox(from_field: str, to_field: str) -> str:
+    f = normalize_contact_name(from_field)
+    t = normalize_contact_name(to_field)
+
+    if looks_like_jeff(f):
+        return "sent"
+    if looks_like_jeff(t):
+        return "inbox"
+    return "inbox"
+
+
+def extract_body(text: str, hdr: Dict[str, str]) -> str:
+    t = cleanup_text(text)
+
     lines = t.splitlines()
 
-    body_start_idx = 0
-    seen_subject = False
-    for i, ln in enumerate(lines[:140]):
+    # start after the header block (prefer after Subject:)
+    start_idx = 0
+    last_hdr = -1
+    for i, ln in enumerate(lines[:180]):
+        if HEADER_LINE_RE.match(ln.strip()):
+            last_hdr = i
         if re.match(r"^\s*Subject\s*:", ln, flags=re.I):
-            seen_subject = True
-            body_start_idx = i + 1
+            start_idx = i + 1
+            last_hdr = i
             break
+    if start_idx == 0 and last_hdr >= 0:
+        start_idx = last_hdr + 1
 
-    if not seen_subject:
-        last_hdr = -1
-        for i, ln in enumerate(lines[:140]):
-            if HEADER_LINE_RE.match(ln.strip()):
-                last_hdr = i
-        if last_hdr >= 0:
-            body_start_idx = last_hdr + 1
+    body = "\n".join(lines[start_idx:]).strip()
+    body = cleanup_text(body)
 
-    body_lines = lines[body_start_idx:]
-
-    cut_idx = None
-    for i, ln in enumerate(body_lines):
-        if METADATA_START_RE.search(ln):
-            cut_idx = i
-            break
-    if cut_idx is not None:
-        body_lines = body_lines[:cut_idx]
-
-    body_text = "\n".join(body_lines).strip()
-    hard = HARD_TRUNC_RE.search(body_text)
-    if hard:
-        body_text = body_text[: hard.start()].strip()
-
-    kept_sig = ""
-    for ln in body_text.splitlines():
+    # KEEP a "Sent from my iPhone/iPad" line if it exists in the top message
+    keep_sig = ""
+    for ln in body.splitlines()[:120]:
         if SIGNATURE_KEEP_RE.match(ln.strip()):
-            kept_sig = ln.strip()
+            keep_sig = ln.strip()
             break
 
-    body_text = clean_noise(body_text)
+    # Cut off quoted chain / forwarded thread
+    mcut = QUOTE_CUT_RE.search("\n" + body + "\n")
+    if mcut:
+        body = body[: mcut.start()].strip()
 
-    if kept_sig and kept_sig.lower() not in body_text.lower():
-        body_text = (body_text + "\n\n" + kept_sig).strip()
+    # Remove long confidentiality blocks (keep the actual message above it)
+    mconf = CONF_BLOCK_RE.search("\n" + body + "\n")
+    if mconf:
+        body = body[: mconf.start()].strip()
 
-    body_text = re.sub(r"\n{3,}", "\n\n", body_text).strip()
-    return body_text
+    body = cleanup_text(body)
+
+    # If body is only a Date line, remove it (we already store date separately)
+    body_lines = [x.strip() for x in body.splitlines() if x.strip()]
+    if body_lines and re.match(r"^Date:\s", body_lines[0], flags=re.I):
+        body_lines = body_lines[1:]
+    body = "\n".join(body_lines).strip()
+
+    # Re-add signature line if it was present and got cut
+    if keep_sig and keep_sig.lower() not in body.lower():
+        body = (body + "\n\n" + keep_sig).strip()
+
+    return body
 
 
 def make_snippet(body: str, max_len: int = 220) -> str:
@@ -293,12 +364,28 @@ def make_snippet(body: str, max_len: int = 220) -> str:
     return s[: max_len - 1].rstrip() + "…"
 
 
-def guess_mailbox(from_field: str) -> str:
-    f = (from_field or "").strip().lower()
-    for h in JEFF_HINTS:
-        if h in f:
-            return "sent"
-    return "inbox"
+def compute_contact_key(from_name: str, to_name: str) -> Tuple[str, str]:
+    """
+    For filtering: we want a stable "other party" key.
+    If it's in inbox (to Jeff), other party is From.
+    If it's sent (from Jeff), other party is To.
+    """
+    f = normalize_contact_name(from_name)
+    t = normalize_contact_name(to_name)
+
+    # If "from" is Jeff, other is "to"
+    if looks_like_jeff(f) and not looks_like_jeff(t):
+        other = t
+    # If "to" is Jeff, other is "from"
+    elif looks_like_jeff(t) and not looks_like_jeff(f):
+        other = f
+    else:
+        # fallback: prefer from
+        other = f if f != "Unknown" else t
+
+    other = normalize_contact_name(other)
+    key = slugify(other)
+    return key, other
 
 
 @dataclass
@@ -314,6 +401,8 @@ class MailItem:
     pdf: str
     snippet: str
     body: str
+    contactKey: str
+    contactName: str
     source: str = SOURCE_LABEL
 
     def to_json(self) -> Dict[str, Any]:
@@ -325,32 +414,37 @@ class MailItem:
 
 def build_item(pdf_path: Path) -> MailItem:
     raw_text = read_pdf_text(pdf_path, max_pages=2)
-    raw_text = clean_noise(raw_text)
 
     hdr = extract_headers(raw_text)
-    body = extract_body(raw_text)
 
-    if not body:
-        body = "\n".join(raw_text.splitlines()[20:140]).strip()
-        body = clean_noise(body)
-
-    subj = (hdr["subject"] or pdf_path.stem).strip()
-    frm = (hdr["from"] or "Unknown").strip()
-    to = (hdr["to"] or "Unknown").strip()
-    sent_raw = (hdr["sent"] or "").strip()
+    # fallback header guesses if missing
+    subj = (hdr.get("subject") or pdf_path.stem).strip()
+    frm = normalize_contact_name(hdr.get("from") or "Unknown")
+    to = normalize_contact_name(hdr.get("to") or "Unknown")
+    sent_raw = (hdr.get("sent") or "").strip()
 
     iso, disp, ts = parse_date_to_iso(sent_raw)
-    mailbox = guess_mailbox(frm)
+
+    mailbox = choose_mailbox(frm, to)
+    contact_key, contact_name = compute_contact_key(frm, to)
+
+    body = extract_body(raw_text, hdr)
+    if not body:
+        # last-resort: use a safe slice of the pdf text, stripped
+        cleaned = cleanup_text(raw_text)
+        cleaned_lines = cleaned.splitlines()
+        body = "\n".join(cleaned_lines[20:80]).strip()
+        body = cleanup_text(body)
 
     rel_pdf = str(pdf_path.relative_to(REPO_ROOT)).replace("\\", "/")
 
-    base = f"{pdf_path.name}|{frm}|{to}|{subj}|{iso}"
+    base = f"{pdf_path.name}|{frm}|{to}|{subj}|{iso}|{mailbox}"
     mid = f"{slugify(pdf_path.stem)}-{sha1_short(base)}"
 
     return MailItem(
         id=mid,
         mailbox=mailbox,
-        subject=subj,
+        subject=subj or pdf_path.stem,
         from_=frm,
         to=to,
         date=iso,
@@ -359,6 +453,8 @@ def build_item(pdf_path: Path) -> MailItem:
         pdf=rel_pdf,
         snippet=make_snippet(body),
         body=body,
+        contactKey=contact_key or "unknown",
+        contactName=contact_name or "Unknown",
         source=SOURCE_LABEL,
     )
 
@@ -370,6 +466,7 @@ def main() -> None:
 
     pdfs = sorted([p for p in PDF_DIR.glob("*.pdf") if p.is_file()])
     items: List[MailItem] = []
+
     for p in pdfs:
         try:
             items.append(build_item(p))
