@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Released Images • Epstein Files | Civic Threat</title>
+
+  <meta name="description" content="Browse publicly released Epstein files images, document excerpts, and screenshots in a fast gallery viewer. Adults 21+ only. For context, consult the full PDFs." />
+  <meta name="robots" content="index,follow" />
+
+  <meta property="og:title" content="Released Images • Epstein Files | Civic Threat" />
+  <meta property="og:description" content="Browse publicly released Epstein document images and excerpts in a fast gallery viewer. Adults 21+ only." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://civicthreat.us/released/epstein/epstein-images" />
+  <meta property="og:image" content="https://civicthreat.us/assets/civicthreat-social-1200x630.jpg" />
+
+  <link rel="icon" href="/assets/logo.png" />
+  <link rel="stylesheet" href="/styles.css" />
+
+  <style>
+    .page-wrap{ max-width: 1120px; margin: 0 auto; padding: 22px 16px 42px; }
+    .hero{ padding: 18px 0 10px; }
+    .hero h1{ margin: 0 0 6px; font-size: clamp(26px, 4vw, 38px); letter-spacing:.02em; }
+    .hero p{ margin: 0; opacity: .9; line-height: 1.5; }
+
+    /* Square containers (match rest of site) */
+    .ep-box{ border-radius: 0 !important; }
+
+    .ep-panel{ border: 1px solid rgba(255,255,255,.12); background: rgba(0,0,0,.25); }
+    .ep-panel .pad{ padding: 14px; }
+
+    .legal{
+      margin-top: 12px;
+      font-size: 12px;
+      opacity: .82;
+      line-height: 1.5;
+    }
+
+    /* Gallery */
+    .gallery-grid{
+      display:grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+    @media (max-width: 980px){
+      .gallery-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 700px){
+      .gallery-grid{ grid-template-columns: 1fr; }
+    }
+
+    .g-card{
+      margin: 0;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.25);
+      overflow: hidden;
+      cursor: pointer;
+    }
+    .g-card img{
+      width: 100%;
+      height: auto;
+      display:block;
+      background:#000;
+    }
+    .g-cap{
+      padding: 8px 10px;
+      font-size: 12px;
+      opacity: .88;
+      line-height: 1.35;
+      border-top: 1px solid rgba(255,255,255,.08);
+    }
+    .g-cap .src{
+      margin-top: 6px;
+      opacity: .75;
+      font-size: 11px;
+    }
+
+    /* Lightbox */
+    .img-modal{
+      position: fixed;
+      inset: 0;
+      z-index: 9997;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,.88);
+      padding: 16px;
+    }
+    .img-modal.open{ display:flex; }
+    .img-modal .card{
+      width: min(1100px, 96vw);
+      max-height: 92vh;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(10,10,10,.94);
+      border-radius: 0;
+      box-shadow: 0 20px 60px rgba(0,0,0,.65);
+      display:flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .img-modal .head{
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .img-modal .body{
+      padding: 12px;
+      overflow: auto;
+      display:flex;
+      justify-content:center;
+      align-items:flex-start;
+    }
+    .img-modal img{
+      width: 100%;
+      height: auto;
+      max-width: 980px;
+      background:#000;
+      border: 1px solid rgba(255,255,255,.12);
+    }
+
+    /* 21+ gate */
+    .gate{
+      position: fixed; inset: 0; z-index: 9999;
+      background: rgba(0,0,0,.78);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+    }
+    .gate .card{
+      width: min(720px, 100%);
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(10,10,10,.92);
+      border-radius: 0;
+      padding: 18px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.6);
+    }
+    .gate h2{ margin: 0 0 10px; font-size: 22px; }
+    .gate p{ margin: 0 0 10px; opacity: .9; line-height: 1.55; }
+    .gate .row{ display:flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+    .gate label{ display:flex; gap:10px; align-items:center; cursor:pointer; }
+    .gate input[type="checkbox"]{ width: 18px; height: 18px; }
+    .gate .actions{ display:flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; margin-top: 14px; }
+    .gate .btn{ border-radius: 0 !important; }
+    .gate .legal{ margin-top: 10px; font-size: 12px; opacity: .8; line-height: 1.45; }
+
+    /* safety net: ensure footer matches header red */
+    .site-footer{ background: var(--red) !important; color:#fff; }
+    .site-footer a{ color:#fff; }
+  </style>
+
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-Z03YK1FYXW"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-Z03YK1FYXW');
+  </script>
+</head>
+
+<body>
+  <!-- Header injected by app.js -->
+  <div id="siteHeader"></div>
+
+  <main class="page-wrap">
+    <header class="hero">
+      <h1>Released Images • Epstein Files</h1>
+      <p>
+        Browse a curated gallery of <strong>publicly released Epstein files images</strong>—document excerpts, screenshots, and reference pages.
+        Tap any image to open the full-size viewer and flip through the set.
+      </p>
+    </header>
+
+    <section class="ep-panel ep-box">
+      <div class="pad">
+        <p style="margin:0;opacity:.92;line-height:1.6;max-width:92ch;">
+          This page is for people searching for <strong>Epstein files images</strong>, <strong>Epstein document pictures</strong>, and
+          <strong>released court record screenshots</strong> in one place. Images can help the public quickly identify names, dates,
+          and key excerpts, but images alone can remove context. For full context, use the complete PDF record set and primary sources.
+          If you’re looking for the page-by-page text-to-speech reader, use the Epstein PDF Reader under Released Files.
+        </p>
+
+        <div class="legal">
+          <strong>Disclosure:</strong> Images shown here are from publicly released records and may contain explicit, disturbing, or alleged content.
+          Civic Threat does not endorse wrongdoing and does not make claims about guilt or innocence. This gallery is provided for accessibility,
+          public-interest review, and discussion. For full context, consult the complete PDFs and primary sources.
+        </div>
+      </div>
+    </section>
+
+    <section class="ep-panel ep-box" style="margin-top:16px;">
+      <div class="pad">
+        <div style="display:flex;justify-content:space-between;align-items:end;gap:10px;flex-wrap:wrap">
+          <div>
+            <div style="font-size:12px;opacity:.82;margin-bottom:6px;">Gallery</div>
+            <div style="font-weight:900;letter-spacing:.02em;">Released Epstein Images &amp; Excerpts</div>
+          </div>
+          <div style="font-size:12px;opacity:.82" id="galleryMeta">Loading…</div>
+        </div>
+
+        <div id="galleryGrid" class="gallery-grid" aria-label="Released Epstein images gallery">
+          <div style="opacity:.8;font-size:13px;">Loading images…</div>
+        </div>
+
+        <div class="legal" style="margin-top:12px">
+          <strong>Tip:</strong> Tap an image to open the full viewer. Use Prev/Next to flip quickly.
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer injected by app.js -->
+  <div id="siteFooter"></div>
+
+  <!-- Image lightbox -->
+  <div class="img-modal" id="imgModal" role="dialog" aria-modal="true" aria-label="Image viewer">
+    <div class="card ep-box">
+      <div class="head">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <strong id="imgTitle">Released Epstein Images</strong>
+          <span id="imgMeta" style="opacity:.85;font-size:12px"></span>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn" id="imgPrev" type="button">← Prev</button>
+          <button class="btn" id="imgNext" type="button">Next →</button>
+          <button class="btn" id="imgClose" type="button">✕ Close</button>
+        </div>
+      </div>
+      <div class="body">
+        <img id="imgBig" alt="Released image" />
+      </div>
+    </div>
+  </div>
+
+  <!-- 21+ gate -->
+  <div class="gate" id="ageGate" role="dialog" aria-modal="true" aria-labelledby="gateTitle">
+    <div class="card ep-box">
+      <h2 id="gateTitle">Adults 21+ Only</h2>
+      <p>This section may contain sexually explicit descriptions. You must confirm you are twenty-one (21) or older to view the released images.</p>
+      <div class="row">
+        <label for="gateCheck">
+          <input id="gateCheck" type="checkbox" />
+          <span>I confirm that I am 21 or older.</span>
+        </label>
+      </div>
+      <div class="actions">
+        <button class="btn" id="gateLeave" type="button">Leave</button>
+        <button class="btn blue" id="gateEnter" type="button" disabled>Continue</button>
+      </div>
+      <div class="legal">
+        By continuing, you agree you are 21+ and understand the content may be explicit.
+      </div>
+    </div>
+  </div>
+
+  <!-- Site header/footer injection -->
+  <script src="/config.js?v=12"></script>
+  <script src="/app.js?v=12"></script>
+
+  <!-- Gallery logic (expects ./images.json in the same folder as this page) -->
+  <script>
+    (function(){
+      "use strict";
+
+      const CONSENT_KEY = "ct_epstein_21_gate_v1";
+      const IMAGE_MANIFEST_URL = "./images.json";
+
+      const gate = document.getElementById("ageGate");
+      const gateCheck = document.getElementById("gateCheck");
+      const gateEnter = document.getElementById("gateEnter");
+      const gateLeave = document.getElementById("gateLeave");
+
+      const galleryGrid = document.getElementById("galleryGrid");
+      const galleryMeta = document.getElementById("galleryMeta");
+
+      const imgModal = document.getElementById("imgModal");
+      const imgBig = document.getElementById("imgBig");
+      const imgMeta = document.getElementById("imgMeta");
+      const imgPrev = document.getElementById("imgPrev");
+      const imgNext = document.getElementById("imgNext");
+      const imgClose = document.getElementById("imgClose");
+
+      let imageList = [];
+      let imageIdx = 0;
+
+      function esc(s){
+        return String(s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+      }
+      function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
+      function bust(url){
+        const sep = url.includes("?") ? "&" : "?";
+        return url + sep + "_=" + Date.now();
+      }
+
+      function hasConsent(){
+        try{ return localStorage.getItem(CONSENT_KEY) === "yes"; }catch(_){ return false; }
+      }
+      function setConsent(){
+        try{ localStorage.setItem(CONSENT_KEY, "yes"); }catch(_){}
+      }
+      function showGate(){
+        if(!gate) return;
+        gate.style.display = "flex";
+        document.body.style.overflow = "hidden";
+        if(gateCheck) gateCheck.checked = false;
+        if(gateEnter) gateEnter.disabled = true;
+      }
+      function hideGate(){
+        if(!gate) return;
+        gate.style.display = "none";
+        document.body.style.overflow = "";
+      }
+
+      async function fetchJsonStrict(url){
+        const r = await fetch(bust(url), { cache: "no-store" });
+        if (!r.ok) throw new Error(`HTTP ${r.status} for ${url}`);
+        return r.json();
+      }
+
+      function openImgModal(i){
+        if (!imgModal || !imgBig) return;
+        imageIdx = clamp(i|0, 0, Math.max(0, imageList.length-1));
+        const it = imageList[imageIdx];
+        if (!it) return;
+
+        imgBig.src = it.src;
+        imgBig.alt = it.alt || "Released image";
+
+        if (imgMeta) imgMeta.textContent = `Image ${imageIdx+1} of ${imageList.length}`;
+        imgModal.classList.add("open");
+      }
+
+      function closeImgModal(){
+        if (!imgModal) return;
+        imgModal.classList.remove("open");
+        if (imgBig) imgBig.src = "";
+      }
+
+      function stepImg(dir){
+        if (!imageList.length) return;
+        const next = (imageIdx + dir + imageList.length) % imageList.length;
+        openImgModal(next);
+      }
+
+      async function initGallery(){
+        if (!galleryGrid) return;
+
+        try{
+          const data = await fetchJsonStrict(IMAGE_MANIFEST_URL);
+          const list = Array.isArray(data?.images) ? data.images : (Array.isArray(data) ? data : []);
+          imageList = list.filter(x => x && x.src).map(x => ({
+            src: String(x.src),
+            caption: x.caption || "",
+            source: x.source || "",
+            alt: x.alt || ""
+          }));
+
+          galleryGrid.innerHTML = "";
+
+          if (galleryMeta){
+            galleryMeta.textContent = imageList.length ? `${imageList.length} images` : "No images";
+          }
+
+          if(!imageList.length){
+            galleryGrid.innerHTML = `<div style="opacity:.8;font-size:13px;">No images available (missing or empty <strong>images.json</strong>).</div>`;
+            return;
+          }
+
+          imageList.forEach((img, idx) => {
+            const caption = img.caption ? esc(img.caption) : "Released excerpt image (publicly available).";
+            const source = img.source ? esc(img.source) : "Publicly released records";
+            const alt = img.alt ? esc(img.alt) : "Released document image.";
+            const src = esc(img.src);
+
+            const fig = document.createElement("figure");
+            fig.className = "g-card ep-box";
+            fig.innerHTML = `
+              <img src="${src}" alt="${alt}" loading="lazy" decoding="async">
+              <figcaption class="g-cap">
+                <div>${caption}</div>
+                <div class="src"><strong>Source:</strong> ${source}</div>
+              </figcaption>
+            `;
+            fig.addEventListener("click", () => openImgModal(idx));
+            galleryGrid.appendChild(fig);
+          });
+
+        }catch(e){
+          if (galleryMeta) galleryMeta.textContent = "Unavailable";
+          galleryGrid.innerHTML =
+            `<div style="opacity:.85;font-size:13px;line-height:1.5;">
+              Images unavailable right now (could not load <strong>./images.json</strong> — check filename + case).
+            </div>`;
+        }
+      }
+
+      function wireModal(){
+        if (imgPrev) imgPrev.addEventListener("click", () => stepImg(-1));
+        if (imgNext) imgNext.addEventListener("click", () => stepImg( 1));
+        if (imgClose) imgClose.addEventListener("click", closeImgModal);
+        if (imgModal){
+          imgModal.addEventListener("click", (e) => { if (e.target === imgModal) closeImgModal(); });
+        }
+        document.addEventListener("keydown", (e) => {
+          if (e.key === "Escape"){
+            if (imgModal && imgModal.classList.contains("open")) closeImgModal();
+          }
+          if (imgModal && imgModal.classList.contains("open")){
+            if (e.key === "ArrowLeft") stepImg(-1);
+            if (e.key === "ArrowRight") stepImg(1);
+          }
+        });
+      }
+
+      function boot(){
+        wireModal();
+        initGallery();
+      }
+
+      // Gate wiring
+      if (gateCheck && gateEnter){
+        gateCheck.addEventListener("change", () => {
+          gateEnter.disabled = !gateCheck.checked;
+        });
+      }
+      if (gateLeave){
+        gateLeave.addEventListener("click", () => {
+          location.href = "/";
+        });
+      }
+      if (gateEnter){
+        gateEnter.addEventListener("click", () => {
+          if(!gateCheck || !gateCheck.checked) return;
+          setConsent();
+          hideGate();
+          boot();
+        });
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        if(hasConsent()){
+          hideGate();
+          boot();
+        }else{
+          showGate();
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
