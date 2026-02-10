@@ -21,10 +21,32 @@
     .page-wrap{ max-width: 1240px; margin: 0 auto; padding: 16px 12px 42px; }
     .ep-box{ border-radius: 0 !important; }
 
+    /* Key: make the mail shell a fixed-height flex column so internal panes can scroll */
     .mail-shell{
       border: 1px solid rgba(255,255,255,.12);
       background: rgba(0,0,0,.20);
       overflow: hidden;
+
+      display:flex;
+      flex-direction: column;
+
+      /* desktop: stable internal scrolling without page fighting */
+      height: min(860px, calc(100vh - 170px));
+      min-height: 520px;
+    }
+
+    /* On small screens, let it breathe a bit more */
+    @media (max-width: 980px){
+      .mail-shell{
+        height: calc(100vh - 140px);
+        min-height: 520px;
+      }
+    }
+    @media (max-width: 720px){
+      .mail-shell{
+        height: calc(100vh - 120px);
+        min-height: 520px;
+      }
     }
 
     .mail-topbar{
@@ -36,6 +58,7 @@
       border-bottom: 1px solid rgba(255,255,255,.10);
       background: rgba(0,0,0,.35);
       flex-wrap: wrap;
+      flex: 0 0 auto;
     }
 
     .brand-mini{
@@ -136,10 +159,15 @@
     }
     .pill.good{ border-color: rgba(0,242,234,.35); }
 
+    /* Key: the grid must be allowed to shrink inside flex parent */
     .mail-grid{
       display:grid;
       grid-template-columns: 240px 380px 1fr;
-      min-height: min(74vh, 860px);
+
+      /* take the remaining height under topbar */
+      flex: 1 1 auto;
+      min-height: 0;      /* CRITICAL for nested scroll */
+      overflow: hidden;   /* keep scroll inside list/reader */
     }
     @media (max-width: 1100px){
       .mail-grid{ grid-template-columns: 220px 360px 1fr; }
@@ -170,6 +198,14 @@
 
     /* prevent body scroll when reader open */
     body.jm-lock{ overflow:hidden; }
+
+    /* Columns must allow inner children to scroll */
+    .sidebar,
+    .listcol,
+    .reader{
+      min-height: 0;  /* CRITICAL */
+      overflow: hidden;
+    }
 
     .sidebar{
       border-right: 1px solid rgba(255,255,255,.10);
@@ -239,6 +275,7 @@
       justify-content: space-between;
       gap: 10px;
       background: rgba(0,0,0,.22);
+      flex: 0 0 auto;
     }
     .list-top .title{
       font-weight: 1000;
@@ -251,7 +288,14 @@
       opacity:.82;
       white-space: nowrap;
     }
-    .list{ overflow:auto; height: 100%; }
+
+    /* Key: list is the scroll container */
+    .list{
+      overflow:auto;
+      flex: 1 1 auto;
+      min-height: 0;
+      -webkit-overflow-scrolling: touch;
+    }
 
     .jm-item{
       display:flex;
@@ -329,6 +373,7 @@
       align-items:center;
       justify-content: space-between;
       gap: 10px;
+      flex: 0 0 auto;
     }
     .reader-top .rt{
       font-weight: 1000;
@@ -336,10 +381,15 @@
       font-size: 13px;
       text-transform: uppercase;
     }
+
+    /* Key: reader-body is the scroll container */
     .reader-body{
       padding: 12px 12px 16px;
       overflow:auto;
       min-width: 0;
+      flex: 1 1 auto;
+      min-height: 0;
+      -webkit-overflow-scrolling: touch;
     }
 
     .jm-h1{
