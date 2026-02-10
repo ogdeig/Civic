@@ -96,12 +96,11 @@
       /\b(mon|tue|wed|thu|fri|sat|sun)\b/.test(t) ||
       /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/.test(t) ||
       /\b\d{4}-\d{2}-\d{2}\b/.test(t) ||
-      /\b\d{1,2}:\d{2}(:\d{2})?\s*(am|pm)\b/.test(t);
+      /\b\d{1,2}:\d{2}(:\d{2})?\b/.test(t);
   }
 
   function cleanContact(s){
     let t = safeText(s);
-    // strip any header-like prefixes (including Date:)
     t = t.replace(/^(from|to|sent|subject|date)\s*:\s*/i, "").trim();
     t = t.replace(/^\s*[:\-]\s*/, "").trim();
     t = t.replace(/[\[\]\(\)]/g, "").trim();
@@ -216,17 +215,17 @@
       const mailboxRaw = safeText(m.mailbox).toLowerCase();
       const mailbox = mailboxRaw === "sent" ? "sent" : "inbox";
 
-      const subject = safeText(m.subject) || "Unknown";
+      const subject = safeText(m.subject) || "(No subject)";
       const from = cleanContact(pickName(m.from));
       const to = cleanContact(pickName(m.to));
 
       const date = safeText(m.date);
       const dateDisplay = safeText(m.dateDisplay);
 
-      const body = (m.body || "");
-      const snippet = safeText(m.snippet) || safeText(body).slice(0, 160);
+      const body = safeText(m.body || "");
+      const snippet = safeText(m.snippet) || (body ? body.slice(0, 160) : "");
 
-      // contactKey/contactName: trust the generator, but still sanitize hard
+      // contactKey/contactName (prefer index output; fallback to otherParty)
       let contactName = cleanContact(pickName(m.contactName)) || otherParty(mailbox, from, to);
       if(looksDateish(contactName)) contactName = otherParty(mailbox, from, to);
       if(looksDateish(contactName)) contactName = "Unknown";
@@ -249,7 +248,7 @@
         date,
         dateDisplay,
         snippet,
-        body: String(body || ""),
+        body,
         pdf,
         contactKey: contactKey || "unknown",
         contactName: contactName || "Unknown",
@@ -269,11 +268,12 @@
 
   function rebuildContacts(){
     const map = new Map();
+
     for(const m of state.all){
       const k = safeText(m.contactKey) || "unknown";
       const n = cleanContact(m.contactName) || "Unknown";
-      if(n === "Unknown") continue;
-      if(looksDateish(n)) continue;
+      if(n === "Unknown") continue;              // never list Unknown
+      if(looksDateish(n)) continue;              // hard block dates
       if(!map.has(k)) map.set(k, n);
     }
 
@@ -308,7 +308,9 @@
 
   function matchesQuery(m, q){
     if(!q) return true;
-    const hay = [m.subject, m.from, m.to, m.snippet, m.body, m.contactName].join(" ").toLowerCase();
+    const hay = [
+      m.subject, m.from, m.to, m.snippet, m.body, m.contactName
+    ].join(" ").toLowerCase();
     return hay.includes(q);
   }
 
@@ -367,27 +369,12 @@
     return window.matchMedia && window.matchMedia("(max-width: 980px)").matches;
   }
 
-  function setReaderInsetForHeader(){
-    // Keep overlay below sticky site header if present
-    if(!el.reader || !isNarrow()) return;
-    const hdr = document.querySelector(".site-header, header, #siteHeader");
-    let top = 56;
-    if(hdr && hdr.getBoundingClientRect){
-      const h = hdr.getBoundingClientRect().height || 56;
-      top = Math.max(56, Math.round(h));
-    }
-    el.reader.style.top = (top + 8) + "px";
-    el.reader.style.left = "10px";
-    el.reader.style.right = "10px";
-    el.reader.style.bottom = "10px";
-  }
-
   function openReaderOverlay(){
     if(!el.reader) return;
     if(isNarrow()){
-      setReaderInsetForHeader();
       el.reader.classList.add("open");
       document.body.classList.add("jm-lock");
+      document.body.classList.add("jm-reader-open"); // NEW: hide list underneath on mobile
     }
   }
 
@@ -395,6 +382,7 @@
     if(!el.reader) return;
     el.reader.classList.remove("open");
     document.body.classList.remove("jm-lock");
+    document.body.classList.remove("jm-reader-open");
   }
 
   function setReading(m){
@@ -402,7 +390,7 @@
     if(!el.readCard) return;
 
     const mailbox = m.mailbox || "inbox";
-    const bodyText = String(m.body || "");
+    const bodyText = safeText(m.body || "");
     const snippet = safeText(m.snippet || "");
     const pdfHref = esc(m.pdf);
 
@@ -423,7 +411,7 @@
       </div>
 
       <div class="jm-bodytext">${
-        esc(safeText(bodyText) || snippet || "Open the source PDF below to view the original record.")
+        esc(bodyText || snippet || "Open the source PDF below to view the original record.")
       }</div>
 
       <div class="jm-attach">
@@ -476,7 +464,7 @@
         </button>
         <div class="main">
           <div class="jm-from">${esc(fromLabel)}</div>
-          <div class="jm-subj">${esc(m.subject || "Unknown")}</div>
+          <div class="jm-subj">${esc(m.subject || "(No subject)")}</div>
           <div class="jm-snippet">${esc(m.snippet || "")}</div>
         </div>
         <div class="jm-date">${esc(dateShort)}</div>
@@ -553,7 +541,6 @@
 
     window.addEventListener("resize", () => {
       if(!isNarrow()) closeReaderOverlay();
-      else setReaderInsetForHeader();
     });
 
     setActiveFolder("inbox");
