@@ -35,9 +35,9 @@ jobs:
 
       - name: Debug output
         run: |
-          echo "=== LIST jeffs-mail folder ==="
+          echo "=== LIST released/epstein/jeffs-mail ==="
           ls -la released/epstein/jeffs-mail || true
-          echo "=== LIST pdfs folder ==="
+          echo "=== LIST released/epstein/jeffs-mail/pdfs ==="
           ls -la released/epstein/jeffs-mail/pdfs || true
           echo "=== SHOW index.json presence ==="
           test -f released/epstein/jeffs-mail/index.json && echo "index.json EXISTS" || (echo "index.json MISSING" && exit 1)
