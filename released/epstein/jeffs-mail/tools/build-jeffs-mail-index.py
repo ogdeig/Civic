@@ -9,40 +9,56 @@ Scans:
 Outputs:
   released/epstein/jeffs-mail/index.json
 
-Goal:
-- Extract From / To / Subject / Sent date from the PDF text (usually page 1)
-- Extract a clean body that looks like an email (not the entire PDF dump)
-- Sort newest-first without naive/aware datetime crashes
+Notes:
+- Works with either `pypdf` (preferred) OR `PyPDF2`
+- Uses python-dateutil if available, otherwise falls back safely
 """
 
 from __future__ import annotations
 
 import json
-import os
 import re
 import sys
 import time
 import hashlib
 from dataclasses import dataclass, asdict
 from pathlib import Path
-from typing import Optional, Tuple, List, Dict, Any
+from typing import List, Dict, Any, Tuple
 
-# --- Optional dependency: dateutil is great if available ---
+# --- Date parsing (optional but recommended) ---
 try:
     from dateutil import parser as dateparser  # type: ignore
 except Exception:
     dateparser = None
 
-# --- PDF extraction: prefer PyPDF2 (common on GH runners) ---
+# --- PDF extraction: prefer pypdf, fallback to PyPDF2 ---
+PdfReader = None
+_pdf_backend = None
 try:
-    from PyPDF2 import PdfReader  # type: ignore
-except Exception as e:
-    print("ERROR: PyPDF2 not installed. Add it to your workflow deps or requirements.", file=sys.stderr)
-    raise
+    from pypdf import PdfReader as _PdfReader  # type: ignore
+    PdfReader = _PdfReader
+    _pdf_backend = "pypdf"
+except Exception:
+    try:
+        from PyPDF2 import PdfReader as _PdfReader  # type: ignore
+        PdfReader = _PdfReader
+        _pdf_backend = "PyPDF2"
+    except Exception:
+        PdfReader = None
+        _pdf_backend = None
+
+if PdfReader is None:
+    print(
+        "ERROR: No PDF reader library installed.\n"
+        "Install one of:\n"
+        "  pip install pypdf\n"
+        "  pip install PyPDF2\n",
+        file=sys.stderr
+    )
+    raise ModuleNotFoundError("Missing pypdf/PyPDF2")
 
 
 ROOT = Path(__file__).resolve()
-# tools/ -> jeffs-mail/ -> epstein/ -> released/ -> repo
 REPO_ROOT = ROOT.parents[4]
 MAIL_ROOT = REPO_ROOT / "released" / "epstein" / "jeffs-mail"
 PDF_DIR = MAIL_ROOT / "pdfs"
@@ -50,7 +66,6 @@ OUT_JSON = MAIL_ROOT / "index.json"
 
 SOURCE_LABEL = "Public Record Release"
 
-# Heuristic identifiers for "Jeffrey" mailbox detection (tune later if needed)
 JEFF_HINTS = [
     "jeffrey epstein",
     "jeevacation",
@@ -60,7 +75,6 @@ JEFF_HINTS = [
     "jeevacation@gma",
 ]
 
-# Remove obvious footer/page id noise
 FOOTER_NOISE_RE = re.compile(
     r"""
     (?:\bEFTA[_\- ]R\d\b.*)|
@@ -70,7 +84,6 @@ FOOTER_NOISE_RE = re.compile(
     re.IGNORECASE | re.VERBOSE | re.MULTILINE,
 )
 
-# Detect where the "real email" ends and the metadata dump begins
 METADATA_START_RE = re.compile(
     r"""
     (?:<\?xml\b)|
@@ -83,10 +96,8 @@ METADATA_START_RE = re.compile(
     re.IGNORECASE | re.VERBOSE,
 )
 
-# Common header labels (multiple formats appear in these PDFs)
 HEADER_LINE_RE = re.compile(r"^\s*(From|Sent|To|Subject)\s*:\s*(.*)\s*$", re.IGNORECASE)
 
-# Some PDFs have headers in a single run: "From: X Sent: Y To: Z Subject: W"
 INLINE_HEADER_RE = re.compile(
     r"""
     \bFrom:\s*(?P<from>.*?)
@@ -98,12 +109,9 @@ INLINE_HEADER_RE = re.compile(
     re.IGNORECASE | re.VERBOSE | re.DOTALL,
 )
 
-# When emails have quoted replies, we still want the visible conversation portion.
-# We'll stop before giant quoted chains sometimes, but keep short "On ... wrote:" sections.
 HARD_TRUNC_RE = re.compile(
     r"""
     ^\s*-----Original Message-----\s*$|
-    ^\s*From:\s+.+\s*$\n^\s*Sent:\s+.+\s*$\n^\s*To:\s+.+\s*$|
     ^\s*Begin forwarded message:\s*$
     """,
     re.IGNORECASE | re.VERBOSE | re.MULTILINE,
@@ -126,7 +134,7 @@ def sha1_short(s: str) -> str:
 
 def read_pdf_text(path: Path, max_pages: int = 2) -> str:
     reader = PdfReader(str(path))
-    pages = []
+    pages: List[str] = []
     for i in range(min(len(reader.pages), max_pages)):
         try:
             txt = reader.pages[i].extract_text() or ""
@@ -134,16 +142,11 @@ def read_pdf_text(path: Path, max_pages: int = 2) -> str:
             txt = ""
         pages.append(txt)
     text = "\n".join(pages)
-    # normalize whitespace a bit
     text = text.replace("\r\n", "\n").replace("\r", "\n")
     return text
 
 
 def parse_date_to_iso(sent_value: str) -> Tuple[str, str, int]:
-    """
-    Returns (iso8601_with_offset, display_date, unix_ts)
-    Always produces an offset-aware ISO string.
-    """
     sent_value = (sent_value or "").strip()
     if not sent_value:
         now = int(time.time())
@@ -151,7 +154,6 @@ def parse_date_to_iso(sent_value: str) -> Tuple[str, str, int]:
         disp = time.strftime("%b %d, %Y", time.gmtime(now))
         return iso, disp, now
 
-    # Try dateutil first (handles "Saturday, May 4, 2013 12:56 AM")
     dt = None
     if dateparser is not None:
         try:
@@ -159,9 +161,7 @@ def parse_date_to_iso(sent_value: str) -> Tuple[str, str, int]:
         except Exception:
             dt = None
 
-    # Fallback: very small manual attempts
     if dt is None:
-        # Try stripping day-of-week
         cleaned = re.sub(r"^[A-Za-z]+,\s*", "", sent_value)
         if dateparser is not None:
             try:
@@ -170,38 +170,28 @@ def parse_date_to_iso(sent_value: str) -> Tuple[str, str, int]:
                 dt = None
 
     if dt is None:
-        # last resort: now
         now = int(time.time())
         iso = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime(now))
         disp = time.strftime("%b %d, %Y", time.gmtime(now))
         return iso, disp, now
 
-    # Force UTC if naive (this fixes your crash)
+    # Force UTC timestamp safely (fixes naive/aware issues)
     try:
         if dt.tzinfo is None or dt.utcoffset() is None:
-            # treat as UTC
             ts = int(dt.replace(tzinfo=None).timestamp())
-            # rebuild as UTC-aware
-            iso = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime(ts))
-            disp = time.strftime("%b %d, %Y", time.gmtime(ts))
-            return iso, disp, ts
         else:
             ts = int(dt.timestamp())
-            iso = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime(ts))
-            disp = time.strftime("%b %d, %Y", time.gmtime(ts))
-            return iso, disp, ts
     except Exception:
-        now = int(time.time())
-        iso = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime(now))
-        disp = time.strftime("%b %d, %Y", time.gmtime(now))
-        return iso, disp, now
+        ts = int(time.time())
+
+    iso = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime(ts))
+    disp = time.strftime("%b %d, %Y", time.gmtime(ts))
+    return iso, disp, ts
 
 
 def clean_noise(text: str) -> str:
-    t = text or ""
-    # Remove common PDF junk
+    t = (text or "")
     t = FOOTER_NOISE_RE.sub("", t)
-    # Fix common equals sign line-break artifacts "a=yone"
     t = t.replace("=\n", "")
     t = re.sub(r"\s+\n", "\n", t)
     t = re.sub(r"\n{3,}", "\n\n", t)
@@ -209,14 +199,10 @@ def clean_noise(text: str) -> str:
 
 
 def extract_headers(text: str) -> Dict[str, str]:
-    """
-    Returns dict with keys: from, to, subject, sent (original text)
-    """
     hdr = {"from": "", "to": "", "subject": "", "sent": ""}
 
-    # First try line-by-line headers
     lines = [ln.strip() for ln in (text or "").splitlines()]
-    for ln in lines[:80]:  # headers are usually near top
+    for ln in lines[:100]:
         m = HEADER_LINE_RE.match(ln)
         if not m:
             continue
@@ -231,7 +217,6 @@ def extract_headers(text: str) -> Dict[str, str]:
         elif key == "sent":
             hdr["sent"] = val
 
-    # If still missing key fields, try inline header pattern
     if not (hdr["from"] and hdr["to"] and hdr["subject"] and hdr["sent"]):
         m2 = INLINE_HEADER_RE.search(text or "")
         if m2:
@@ -240,13 +225,10 @@ def extract_headers(text: str) -> Dict[str, str]:
             hdr["to"] = hdr["to"] or m2.group("to").strip()
             hdr["subject"] = hdr["subject"] or m2.group("subject").strip()
 
-    # Gentle cleanup: remove stray brackets or repeated labels
     for k in ["from", "to", "subject", "sent"]:
         hdr[k] = re.sub(r"^\s*(From|To|Subject|Sent)\s*:\s*", "", hdr[k], flags=re.I).strip()
 
-    # If subject missing, try filename-ish subject in body
     if not hdr["subject"]:
-        # often shows "Subject: X" somewhere later
         m3 = re.search(r"\bSubject:\s*(.+)", text or "", flags=re.I)
         if m3:
             hdr["subject"] = m3.group(1).strip()
@@ -255,29 +237,20 @@ def extract_headers(text: str) -> Dict[str, str]:
 
 
 def extract_body(text: str) -> str:
-    """
-    Extract "conversation" portion:
-    - Start after the header block (From/Sent/To/Subject lines)
-    - Stop when plist/metadata begins
-    - Remove heavy footer noise
-    - Keep short signatures like "Sent from my iPhone"
-    """
     t = (text or "").replace("\r\n", "\n").replace("\r", "\n")
     lines = t.splitlines()
 
-    # Find where body begins: first line after we've seen Subject
     body_start_idx = 0
     seen_subject = False
-    for i, ln in enumerate(lines[:120]):
+    for i, ln in enumerate(lines[:140]):
         if re.match(r"^\s*Subject\s*:", ln, flags=re.I):
             seen_subject = True
             body_start_idx = i + 1
             break
 
-    # If we didn't find a clean "Subject:" line, fallback after last header line found
     if not seen_subject:
         last_hdr = -1
-        for i, ln in enumerate(lines[:120]):
+        for i, ln in enumerate(lines[:140]):
             if HEADER_LINE_RE.match(ln.strip()):
                 last_hdr = i
         if last_hdr >= 0:
@@ -285,7 +258,6 @@ def extract_body(text: str) -> str:
 
     body_lines = lines[body_start_idx:]
 
-    # Stop at metadata dump
     cut_idx = None
     for i, ln in enumerate(body_lines):
         if METADATA_START_RE.search(ln):
@@ -294,29 +266,23 @@ def extract_body(text: str) -> str:
     if cut_idx is not None:
         body_lines = body_lines[:cut_idx]
 
-    # Also stop at hard trunc markers, but allow some replies
     body_text = "\n".join(body_lines).strip()
     hard = HARD_TRUNC_RE.search(body_text)
     if hard:
         body_text = body_text[: hard.start()].strip()
 
-    # Keep signature lines if present
-    kept_sigs: List[str] = []
+    kept_sig = ""
     for ln in body_text.splitlines():
         if SIGNATURE_KEEP_RE.match(ln.strip()):
-            kept_sigs.append(ln.strip())
+            kept_sig = ln.strip()
+            break
 
     body_text = clean_noise(body_text)
 
-    # Re-attach signature if it existed and isn't already in body
-    if kept_sigs:
-        sig = kept_sigs[0]
-        if sig and sig.lower() not in body_text.lower():
-            body_text = (body_text + "\n\n" + sig).strip()
+    if kept_sig and kept_sig.lower() not in body_text.lower():
+        body_text = (body_text + "\n\n" + kept_sig).strip()
 
-    # Collapse excessive blank lines
     body_text = re.sub(r"\n{3,}", "\n\n", body_text).strip()
-
     return body_text
 
 
@@ -329,7 +295,6 @@ def make_snippet(body: str, max_len: int = 220) -> str:
 
 def guess_mailbox(from_field: str) -> str:
     f = (from_field or "").strip().lower()
-    # If the FROM looks like Jeffrey/Epstein address/name => "sent"
     for h in JEFF_HINTS:
         if h in f:
             return "sent"
@@ -354,7 +319,7 @@ class MailItem:
     def to_json(self) -> Dict[str, Any]:
         d = asdict(self)
         d["from"] = d.pop("from_")
-        d.pop("ts", None)  # internal sort key
+        d.pop("ts", None)
         return d
 
 
@@ -365,34 +330,29 @@ def build_item(pdf_path: Path) -> MailItem:
     hdr = extract_headers(raw_text)
     body = extract_body(raw_text)
 
-    # If body is empty, fallback: take a little after headers
     if not body:
-        # last resort: whole text minus first ~20 lines
-        body = "\n".join((raw_text.splitlines()[20:120])).strip()
+        body = "\n".join(raw_text.splitlines()[20:140]).strip()
         body = clean_noise(body)
 
-    subj = hdr["subject"] or pdf_path.stem
-    frm = hdr["from"] or "Unknown"
-    to = hdr["to"] or "Unknown"
-    sent_raw = hdr["sent"] or ""
+    subj = (hdr["subject"] or pdf_path.stem).strip()
+    frm = (hdr["from"] or "Unknown").strip()
+    to = (hdr["to"] or "Unknown").strip()
+    sent_raw = (hdr["sent"] or "").strip()
 
     iso, disp, ts = parse_date_to_iso(sent_raw)
-
     mailbox = guess_mailbox(frm)
 
-    # Relative PDF path used by frontend (site-root relative)
     rel_pdf = str(pdf_path.relative_to(REPO_ROOT)).replace("\\", "/")
 
-    # Stable ID
     base = f"{pdf_path.name}|{frm}|{to}|{subj}|{iso}"
     mid = f"{slugify(pdf_path.stem)}-{sha1_short(base)}"
 
     return MailItem(
         id=mid,
         mailbox=mailbox,
-        subject=subj.strip(),
-        from_=frm.strip(),
-        to=to.strip(),
+        subject=subj,
+        from_=frm,
+        to=to,
         date=iso,
         dateDisplay=disp,
         ts=ts,
@@ -409,17 +369,6 @@ def main() -> None:
         sys.exit(1)
 
     pdfs = sorted([p for p in PDF_DIR.glob("*.pdf") if p.is_file()])
-    if not pdfs:
-        out = {
-            "generatedAt": int(time.time()),
-            "source": "jeffs-mail/index.json",
-            "counts": {"total": 0, "inbox": 0, "sent": 0},
-            "items": [],
-        }
-        OUT_JSON.write_text(json.dumps(out, indent=2), encoding="utf-8")
-        print("No PDFs found. Wrote empty index.json")
-        return
-
     items: List[MailItem] = []
     for p in pdfs:
         try:
@@ -427,7 +376,6 @@ def main() -> None:
         except Exception as e:
             print(f"WARNING: failed parsing {p.name}: {e}", file=sys.stderr)
 
-    # Sort newest first — uses numeric timestamp to avoid tz compare issues
     items.sort(key=lambda x: int(x.ts or 0), reverse=True)
 
     counts = {
@@ -439,12 +387,14 @@ def main() -> None:
     out = {
         "generatedAt": int(time.time()),
         "source": "jeffs-mail/index.json",
+        "backend": _pdf_backend,
         "counts": counts,
         "items": [x.to_json() for x in items],
     }
 
     OUT_JSON.write_text(json.dumps(out, indent=2, ensure_ascii=False), encoding="utf-8")
-    print(f"Wrote {OUT_JSON} ({counts['total']} items)")
+    print(f"Wrote {OUT_JSON} ({counts['total']} items) using {_pdf_backend}")
+
 
 if __name__ == "__main__":
     main()
