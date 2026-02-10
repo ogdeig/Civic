@@ -1,20 +1,10 @@
-/* jeffs-mail.js — CivicThreat.us
-   Simulated mailbox UI for browsing publicly released PDFs.
-
-   Data source:
-   - ./index.json
-
-   Supports index.json items where:
-   - from/to might be strings OR objects (from older/newer generators)
-   - items might include attachments arrays OR pdf path
-*/
 (function(){
   "use strict";
 
   const INDEX_URL = "./index.json";
   const CONSENT_KEY = "ct_jeffs_mail_21_gate_v1";
   const STAR_KEY = "ct_jeffs_mail_starred_v1";
-  const CONTACT_FILTER_KEY = "ct_jeffs_mail_contact_filter_v1";
+  const CONTACT_KEY = "ct_jeffs_mail_contact_filter_v1";
 
   const $ = (sel, root=document) => root.querySelector(sel);
 
@@ -41,6 +31,9 @@
     contactWrap: $("#jmContactsWrap"),
     contactSelect: $("#jmContacts"),
 
+    reader: $("#jmReader"),
+    btnReaderBack: $("#jmReaderBack"),
+
     gate: $("#ageGate"),
     gateCheck: $("#gateCheck"),
     gateEnter: $("#gateEnter"),
@@ -50,23 +43,34 @@
   const state = {
     data: null,
     all: [],
-    folder: "inbox",   // inbox | sent | starred
+    folder: "inbox",
     q: "",
     activeId: "",
     contact: "all",
     starred: new Set(),
-    contacts: [],      // { key, name }
+    contacts: [],
   };
 
-  // ---------------- util ----------------
   function esc(s){
-    return String(s||"").replace(/[&<>"']/g, m => ({
-      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
-    }[m]));
+    return String(s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   }
 
   function safeText(s){
     return String(s || "").replace(/\s+/g, " ").trim();
+  }
+
+  function isObj(v){
+    return v && typeof v === "object" && !Array.isArray(v);
+  }
+
+  function pickName(v){
+    // Handles legacy index.json where from/to might be objects
+    if(!v) return "";
+    if(typeof v === "string") return v;
+    if(isObj(v)){
+      return safeText(v.name || v.email || v.address || v.display || v.value || "");
+    }
+    return safeText(String(v));
   }
 
   function fmtDateShort(iso){
@@ -78,9 +82,36 @@
     }catch(_){ return ""; }
   }
 
-  function toLower(s){ return String(s||"").toLowerCase(); }
+  function slugify(s){
+    return safeText(s).toLowerCase()
+      .replace(/[^\w\s\-]+/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/\-+/g, "-")
+      .replace(/^\-+|\-+$/g, "") || "unknown";
+  }
 
-  // ---------------- age gate ----------------
+  function looksDateish(s){
+    const t = safeText(s).toLowerCase();
+    if(!t) return false;
+    return /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b/.test(t) ||
+      /\b(mon|tue|wed|thu|fri|sat|sun)\b/.test(t) ||
+      /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/.test(t) ||
+      /\b\d{4}-\d{2}-\d{2}\b/.test(t);
+  }
+
+  function cleanContact(s){
+    let t = safeText(s);
+    t = t.replace(/^(from|to|sent|subject)\s*:\s*/i, "").trim();
+    t = t.replace(/^\s*[:\-]\s*/, "").trim();
+    t = t.replace(/[\[\]\(\)]/g, "").trim();
+    t = t.replace(/\s+/g, " ").trim();
+    t = t.replace(/[,;|•]+$/g, "").trim();
+    if(!t) return "Unknown";
+    if(looksDateish(t)) return "Unknown";
+    if(t.length > 140) return "Unknown";
+    return t;
+  }
+
   function hasConsent(){
     try{ return localStorage.getItem(CONSENT_KEY) === "yes"; }catch(_){ return false; }
   }
@@ -125,31 +156,37 @@
     }
   }
 
-  // ---------------- storage ----------------
   function loadStarred(){
     try{
       const raw = localStorage.getItem(STAR_KEY);
       const arr = raw ? JSON.parse(raw) : [];
-      state.starred = new Set(Array.isArray(arr) ? arr.map(String) : []);
+      if(Array.isArray(arr)){
+        state.starred = new Set(arr.map(String));
+      }
     }catch(_){
       state.starred = new Set();
     }
   }
 
   function saveStarred(){
-    try{ localStorage.setItem(STAR_KEY, JSON.stringify(Array.from(state.starred))); }catch(_){}
+    try{
+      localStorage.setItem(STAR_KEY, JSON.stringify(Array.from(state.starred)));
+    }catch(_){}
   }
 
   function loadContactFilter(){
-    try{ state.contact = localStorage.getItem(CONTACT_FILTER_KEY) || "all"; }
-    catch(_){ state.contact = "all"; }
+    try{
+      const v = localStorage.getItem(CONTACT_KEY);
+      state.contact = v || "all";
+    }catch(_){
+      state.contact = "all";
+    }
   }
 
   function saveContactFilter(){
-    try{ localStorage.setItem(CONTACT_FILTER_KEY, state.contact || "all"); }catch(_){}
+    try{ localStorage.setItem(CONTACT_KEY, state.contact || "all"); }catch(_){}
   }
 
-  // ---------------- fetch ----------------
   async function fetchJsonStrict(url){
     const bust = Date.now();
     const u = url + (url.includes("?") ? "&" : "?") + "_=" + bust;
@@ -158,203 +195,57 @@
     return r.json();
   }
 
-  // ---------------- parsing helpers ----------------
-
-  // Robustly parse from/to which could be string OR object (older/newer schema)
-  function parsePerson(v){
-    if(!v) return { name:"Unknown", email:"" };
-
-    // string: "Name <email>" or "email"
-    if(typeof v === "string"){
-      const s = safeText(v);
-      if(!s) return { name:"Unknown", email:"" };
-
-      const m = s.match(/^(.*?)(?:\s*<\s*([^>]+)\s*>)?\s*$/);
-      let name = safeText(m ? (m[1] || "") : s);
-      let email = safeText(m ? (m[2] || "") : "");
-
-      // If only email provided
-      if(!email && name.includes("@") && !name.includes(" ")){
-        email = name;
-        name = "";
-      }
-
-      if(!name && email) name = email;
-
-      return { name: name || "Unknown", email: email || "" };
-    }
-
-    // object: {name,email} or {name,address} etc
-    if(typeof v === "object"){
-      const name =
-        safeText(v.name) ||
-        safeText(v.displayName) ||
-        safeText(v.fullName) ||
-        safeText(v.nickname) ||
-        "";
-      const email =
-        safeText(v.email) ||
-        safeText(v.address) ||
-        safeText(v.mail) ||
-        safeText(v.addr) ||
-        "";
-      const nm = name || (email || "");
-      return { name: nm ? nm : "Unknown", email: email || "" };
-    }
-
-    return { name:"Unknown", email:"" };
+  function otherParty(mailbox, from, to){
+    const f = cleanContact(from);
+    const t = cleanContact(to);
+    return mailbox === "sent" ? (t || "Unknown") : (f || "Unknown");
   }
 
-  function personDisplay(p){
-    const name = safeText(p?.name) || "Unknown";
-    const email = safeText(p?.email);
-    if(!email) return name || "Unknown";
-    if(name && name !== "Unknown" && toLower(name) !== toLower(email)){
-      return `${name} <${email}>`;
-    }
-    return email || name || "Unknown";
-  }
-
-  // Normalize label to reduce duplicate contacts
-  function normalizeContactLabel(s){
-    let t = safeText(s);
-
-    // strip wrapping quotes and stray punctuation
-    t = t.replace(/^[“”"']+|[“”"']+$/g, "");
-
-    // remove bracket noise
-    t = t.replace(/[\[\]\(\)]/g, " ");
-
-    // collapse spaces
-    t = t.replace(/\s+/g, " ").trim();
-
-    // if it looks like "Unknown <>" etc
-    if(!t || toLower(t) === "unknown" || t === "<>") return "Unknown";
-    return t;
-  }
-
-  // Prefer email-based stable keys when possible
-  function stableContactKey(name, email){
-    const e = safeText(email).toLowerCase();
-    if(e) return "e_" + e.replace(/[^\w@.+-]+/g, "");
-    const n = safeText(name).toLowerCase();
-    if(!n) return "unknown";
-    return "n_" + n
-      .replace(/["'`]/g, "")
-      .replace(/[<>]/g, " ")
-      .replace(/[^\w\s-]+/g, "")
-      .replace(/\s+/g, "-")
-      .replace(/-+/g, "-")
-      .replace(/^-+|-+$/g, "") || "unknown";
-  }
-
-  function otherParty(mailbox, fromP, toP){
-    // inbox => other is FROM; sent => other is TO
-    return mailbox === "sent" ? toP : fromP;
-  }
-
-  // Remove iPhone plist/xml spam from body if extraction goes too far
-  function cleanBodyForDisplay(body){
-    let t = String(body || "").trim();
-    if(!t) return "";
-
-    // If an embedded plist/xml starts, cut it off
-    const xmlIdx = t.search(/<\?xml|<!DOCTYPE\s+plist|<plist\b/i);
-    if(xmlIdx >= 0){
-      t = t.slice(0, xmlIdx).trim();
-    }
-
-    // Safety clamp for crazy long bodies
-    if(t.length > 7000){
-      t = t.slice(0, 7000).trim() + "\n\n…";
-    }
-
-    return t;
-  }
-
-  function resolvePdfPath(m){
-    // Newer schema might store attachments[]; older stores pdf
-    const direct = safeText(m.pdf);
-    if(direct) return direct;
-
-    const att = Array.isArray(m.attachments) ? m.attachments : [];
-    if(att.length){
-      const first = att.find(a => a && (a.path || a.url)) || att[0];
-      const p = safeText(first?.path || first?.url);
-      if(p) return p;
-    }
-    return "";
-  }
-
-  function resolveMailbox(m){
-    const mb = safeText(m.mailbox).toLowerCase();
-    if(mb === "sent" || mb === "inbox") return mb;
-
-    // If generator uses "starred" mailbox, treat as inbox but star separately
-    return "inbox";
-  }
-
-  // ---------------- normalize items ----------------
   function normalizeItems(data){
     const items = Array.isArray(data?.items) ? data.items : [];
     const cleaned = [];
+    const seen = new Set();
 
     for(const m of items){
-      if(!m) continue;
+      if(!m || !m.id) continue;
 
-      const id = safeText(m.id);
-      if(!id) continue;
-
-      const pdf = resolvePdfPath(m);
+      const pdf = safeText(m.pdf);
       if(!pdf) continue;
 
-      const mailbox = resolveMailbox(m);
+      const mailboxRaw = safeText(m.mailbox).toLowerCase();
+      const mailbox = mailboxRaw === "sent" ? "sent" : "inbox";
 
       const subject = safeText(m.subject) || "(No subject)";
-
-      const fromP = parsePerson(m.from);
-      const toP = parsePerson(m.to);
-
-      const fromDisp = normalizeContactLabel(personDisplay(fromP));
-      const toDisp = normalizeContactLabel(personDisplay(toP));
-
-      // If something is missing/redacted -> Unknown (you requested this)
-      const fromFinal = fromDisp && fromDisp !== "[object Object]" ? fromDisp : "Unknown";
-      const toFinal = toDisp && toDisp !== "[object Object]" ? toDisp : "Unknown";
+      const from = cleanContact(pickName(m.from));
+      const to = cleanContact(pickName(m.to));
 
       const date = safeText(m.date);
       const dateDisplay = safeText(m.dateDisplay);
 
-      const rawBody = String(m.body || m.bodyText || "");
-      const body = cleanBodyForDisplay(rawBody);
-      const snippet = safeText(m.snippet) || safeText(body).slice(0, 220);
+      const body = safeText(m.body || "");
+      const snippet = safeText(m.snippet) || (body ? body.slice(0, 160) : "");
 
-      // contactKey/contactName: use builder if provided, else compute from other party
-      let contactKey = safeText(m.contactKey);
-      let contactName = safeText(m.contactName);
+      // contactKey/contactName (prefer builder; fallback to otherParty)
+      let contactName = cleanContact(pickName(m.contactName)) || otherParty(mailbox, from, to);
+      if(looksDateish(contactName)) contactName = otherParty(mailbox, from, to);
+      if(looksDateish(contactName)) contactName = "Unknown";
 
-      if(!contactKey || !contactName){
-        const other = otherParty(mailbox, fromP, toP);
-        const otherName = normalizeContactLabel(safeText(other?.name) || safeText(other?.email) || "Unknown");
-        const otherEmail = safeText(other?.email);
-        contactName = contactName || otherName || "Unknown";
-        contactKey = contactKey || stableContactKey(otherName, otherEmail);
-      }
+      let contactKey = safeText(m.contactKey) || slugify(contactName);
+      if(contactKey === "unknown" && contactName !== "Unknown") contactKey = slugify(contactName);
 
-      // De-dupe "Unknown" variations
-      if(!contactName || contactName === "<>" || toLower(contactName) === "unknown"){
-        contactName = "Unknown";
-        contactKey = "unknown";
-      }
+      const id = String(m.id);
+
+      // Dedup at UI level too
+      const sig = [pdf, subject, from, to, date, mailbox].join("|");
+      if(seen.has(sig)) continue;
+      seen.add(sig);
 
       cleaned.push({
         id,
         mailbox,
         subject,
-        fromP,
-        toP,
-        from: fromFinal || "Unknown",
-        to: toFinal || "Unknown",
+        from: from || "Unknown",
+        to: to || "Unknown",
         date,
         dateDisplay,
         snippet,
@@ -362,7 +253,7 @@
         pdf,
         contactKey: contactKey || "unknown",
         contactName: contactName || "Unknown",
-        starred: state.starred.has(id) || m.starred === true || safeText(m.mailbox).toLowerCase() === "starred",
+        starred: state.starred.has(id),
       });
     }
 
@@ -377,46 +268,29 @@
   }
 
   function rebuildContacts(){
-    const map = new Map(); // key -> name
-
+    const map = new Map();
     for(const m of state.all){
       const k = safeText(m.contactKey) || "unknown";
-      const n = normalizeContactLabel(m.contactName) || "Unknown";
-
-      // prevent junk keys that cause doubles
-      const kk = (k === "n_unknown" || k === "e_" || !k) ? "unknown" : k;
-      const nn = (!n || n === "[object Object]") ? "Unknown" : n;
-
-      if(!map.has(kk)) map.set(kk, nn);
+      const n = cleanContact(m.contactName) || "Unknown";
+      if(n === "Unknown") continue;
+      if(!map.has(k)) map.set(k, n);
     }
 
     const list = Array.from(map.entries()).map(([key, name]) => ({ key, name }));
-    list.sort((a,b) => {
-      if(a.name === "Unknown") return 1;
-      if(b.name === "Unknown") return -1;
-      return a.name.localeCompare(b.name);
-    });
+    list.sort((a,b) => a.name.localeCompare(b.name));
 
     state.contacts = list;
 
     if(el.contactSelect){
       const cur = state.contact || "all";
-      el.contactSelect.innerHTML =
-        `<option value="all">All contacts</option>` +
-        list.map(c => `<option value="${esc(c.key)}">${esc(c.name)}</option>`).join("");
-
+      el.contactSelect.innerHTML = `
+        <option value="all">All contacts</option>
+        ${list.map(c => `<option value="${esc(c.key)}">${esc(c.name)}</option>`).join("")}
+      `;
       el.contactSelect.value = (cur === "all" || map.has(cur)) ? cur : "all";
-    }
-
-    // if stored filter no longer exists, reset
-    if(state.contact !== "all" && !map.has(state.contact)){
-      state.contact = "all";
-      saveContactFilter();
-      if(el.contactSelect) el.contactSelect.value = "all";
     }
   }
 
-  // ---------------- UI ----------------
   function setActiveFolder(folder){
     state.folder = folder;
 
@@ -462,8 +336,8 @@
 
   function updateCounts(){
     const all = state.all;
-    const inbox = all.filter(x => x.mailbox === "inbox").length;
-    const sent = all.filter(x => x.mailbox === "sent").length;
+    const inbox = all.filter(x => (x.mailbox || "inbox") === "inbox").length;
+    const sent = all.filter(x => (x.mailbox || "inbox") === "sent").length;
     const starred = all.filter(x => !!x.starred).length;
 
     if(el.countInbox) el.countInbox.textContent = String(inbox);
@@ -486,17 +360,35 @@
         break;
       }
     }
-
     updateCounts();
     draw();
   }
 
+  function isNarrow(){
+    return window.matchMedia && window.matchMedia("(max-width: 980px)").matches;
+  }
+
+  function openReaderOverlay(){
+    if(!el.reader) return;
+    if(isNarrow()){
+      el.reader.classList.add("open");
+      document.body.classList.add("jm-lock");
+    }
+  }
+
+  function closeReaderOverlay(){
+    if(!el.reader) return;
+    el.reader.classList.remove("open");
+    document.body.classList.remove("jm-lock");
+  }
+
   function setReading(m){
     state.activeId = m?.id || "";
-    if(!el.readCard || !m) return;
+    if(!el.readCard) return;
 
-    const mailbox = state.folder === "starred" ? (m.mailbox || "inbox") : state.folder;
-    const dateLine = m.date ? fmtDateShort(m.date) : (m.dateDisplay || "Unknown");
+    const mailbox = m.mailbox || "inbox";
+    const bodyText = safeText(m.body || "");
+    const snippet = safeText(m.snippet || "");
     const pdfHref = esc(m.pdf);
 
     el.readCard.innerHTML = `
@@ -511,11 +403,13 @@
       <div class="jm-meta">
         <b>From</b><div>${esc(m.from || "Unknown")}</div>
         <b>To</b><div>${esc(m.to || "Unknown")}</div>
-        <b>Date</b><div>${esc(dateLine)}</div>
-        <b>Mailbox</b><div>${esc(String(mailbox || "inbox"))}</div>
+        <b>Date</b><div>${esc(m.date ? fmtDateShort(m.date) : (m.dateDisplay || "Unknown"))}</div>
+        <b>Mailbox</b><div>${esc(String(mailbox))}</div>
       </div>
 
-      <div class="jm-bodytext">${esc(m.body || m.snippet || "Open the source PDF below to view the original record.")}</div>
+      <div class="jm-bodytext">${
+        esc(bodyText || snippet || "Open the source PDF below to view the original record.")
+      }</div>
 
       <div class="jm-attach">
         <strong>Source PDF</strong>
@@ -524,10 +418,6 @@
             📄 ${esc((m.pdf || "").split("/").pop() || "document.pdf")}
           </div>
           <a class="btn" href="${pdfHref}" target="_blank" rel="noopener">Open</a>
-        </div>
-
-        <div style="margin-top:10px;opacity:.85;line-height:1.5;">
-          <strong>Safety &amp; context:</strong> This interface is an organizational simulation for browsing public records. It does not claim the message is an authentic private email account. Allegations and references in documents should be read in context and verified with primary sources.
         </div>
       </div>
     `;
@@ -539,6 +429,8 @@
     document.querySelectorAll(".jm-item").forEach(row => row.classList.remove("active"));
     const active = document.querySelector(`.jm-item[data-id="${CSS.escape(m.id)}"]`);
     if(active) active.classList.add("active");
+
+    openReaderOverlay();
   }
 
   function draw(){
@@ -555,11 +447,9 @@
     }
 
     el.items.innerHTML = "";
-
     for(const m of list){
       const dateShort = m.date ? fmtDateShort(m.date) : (m.dateDisplay || "");
-      const other = otherParty(m.mailbox, m.fromP, m.toP);
-      const fromLabel = normalizeContactLabel(safeText(other?.name) || safeText(other?.email) || "Unknown");
+      const fromLabel = otherParty(m.mailbox, m.from, m.to) || "Unknown";
 
       const row = document.createElement("div");
       row.className = "jm-item";
@@ -594,7 +484,8 @@
       setReading(list[0]);
     }else{
       const still = list.find(x => x.id === state.activeId);
-      setReading(still || list[0]);
+      if(still) setReading(still);
+      else setReading(list[0]);
     }
   }
 
@@ -615,13 +506,7 @@
       if(!btn) return;
       btn.addEventListener("click", () => {
         setActiveFolder(btn.getAttribute("data-folder") || "inbox");
-      });
-      // keyboard
-      btn.addEventListener("keydown", (e) => {
-        if(e.key === "Enter" || e.key === " "){
-          e.preventDefault();
-          btn.click();
-        }
+        closeReaderOverlay();
       });
     });
 
@@ -640,9 +525,20 @@
         state.activeId = "";
         draw();
       });
-
       el.contactSelect.value = state.contact || "all";
     }
+
+    if(el.btnReaderBack){
+      el.btnReaderBack.addEventListener("click", closeReaderOverlay);
+    }
+
+    document.addEventListener("keydown", (e) => {
+      if(e.key === "Escape") closeReaderOverlay();
+    });
+
+    window.addEventListener("resize", () => {
+      if(!isNarrow()) closeReaderOverlay();
+    });
 
     setActiveFolder("inbox");
   }
@@ -651,13 +547,10 @@
     wireGate(() => {
       boot().catch(err => {
         console.error(err);
-        if(el.items){
-          el.items.innerHTML = `
-            <div style="padding:12px;opacity:.85;line-height:1.5;">
-              Failed to load <strong>index.json</strong>. Check path and case.<br><br>${esc(err.message || String(err))}
-            </div>
-          `;
-        }
+        if(el.items) el.items.innerHTML =
+          `<div style="padding:12px;opacity:.85;line-height:1.5;">
+            Failed to load <strong>index.json</strong>.<br><br>${esc(err.message || String(err))}
+           </div>`;
       });
     });
   }
