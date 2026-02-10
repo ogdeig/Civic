@@ -48,7 +48,7 @@
     activeId: "",
     contact: "all",
     starred: new Set(),
-    contacts: [], // {key,name}
+    contacts: [],
   };
 
   function esc(s){
@@ -68,6 +68,7 @@
     }
     return safeText(String(v));
   }
+
   function fmtDateShort(iso){
     if(!iso) return "";
     try{
@@ -76,21 +77,17 @@
       return d.toLocaleDateString(undefined, { year:"numeric", month:"short", day:"2-digit" });
     }catch(_){ return ""; }
   }
-  function slugify(s){
-    return safeText(s).toLowerCase()
-      .replace(/[^\w\s\-]+/g, "")
-      .replace(/\s+/g, "-")
-      .replace(/\-+/g, "-")
-      .replace(/^\-+|\-+$/g, "") || "unknown";
-  }
+
   function looksDateish(s){
     const t = safeText(s).toLowerCase();
     if(!t) return false;
     return /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b/.test(t) ||
       /\b(mon|tue|wed|thu|fri|sat|sun)\b/.test(t) ||
       /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/.test(t) ||
-      /\b\d{4}-\d{2}-\d{2}\b/.test(t);
+      /\b\d{4}-\d{2}-\d{2}\b/.test(t) ||
+      /\b\d{1,2}:\d{2}\b/.test(t);
   }
+
   function cleanContact(s){
     let t = safeText(s);
     t = t.replace(/^(from|to|sent|subject)\s*:\s*/i, "").trim();
@@ -152,17 +149,13 @@
     try{
       const raw = localStorage.getItem(STAR_KEY);
       const arr = raw ? JSON.parse(raw) : [];
-      if(Array.isArray(arr)){
-        state.starred = new Set(arr.map(String));
-      }
+      if(Array.isArray(arr)) state.starred = new Set(arr.map(String));
     }catch(_){
       state.starred = new Set();
     }
   }
   function saveStarred(){
-    try{
-      localStorage.setItem(STAR_KEY, JSON.stringify(Array.from(state.starred)));
-    }catch(_){}
+    try{ localStorage.setItem(STAR_KEY, JSON.stringify(Array.from(state.starred))); }catch(_){}
   }
 
   function loadContactFilter(){
@@ -205,33 +198,26 @@
       const mailboxRaw = safeText(m.mailbox).toLowerCase();
       const mailbox = mailboxRaw === "sent" ? "sent" : "inbox";
 
-      // IMPORTANT: subject should never fall back to filename in UI
-      const subjectRaw = safeText(m.subject);
-      const subject = subjectRaw ? subjectRaw : "Unknown";
-
+      const subject = safeText(m.subject) || "Unknown";
       const from = cleanContact(pickName(m.from));
       const to = cleanContact(pickName(m.to));
 
       const date = safeText(m.date);
       const dateDisplay = safeText(m.dateDisplay);
 
-      const body = safeText(m.body || "");
-      const snippet = safeText(m.snippet) || (body ? body.slice(0, 160) : "");
+      const body = String(m.body || "");
+      const snippet = safeText(m.snippet) || (safeText(body).slice(0, 160) || "");
 
-      // Participant keys (for contact filtering)
-      const fromKey = slugify(from || "Unknown");
-      const toKey = slugify(to || "Unknown");
+      // contactName/contactKey (prefer builder; fallback to otherParty)
+      let contactName = cleanContact(pickName(m.contactName)) || otherParty(mailbox, from, to);
+      if(looksDateish(contactName)) contactName = otherParty(mailbox, from, to);
+      if(looksDateish(contactName)) contactName = "Unknown";
 
-      // A “primary contact” is still useful for list display
-      let primaryName = otherParty(mailbox, from, to);
-      primaryName = cleanContact(primaryName);
-      if(looksDateish(primaryName)) primaryName = "Unknown";
-
-      const primaryKey = slugify(primaryName);
+      let contactKey = safeText(m.contactKey) || (contactName !== "Unknown" ? contactName.toLowerCase().replace(/[^\w]+/g, "-") : "unknown");
+      if(looksDateish(contactKey)) contactKey = "unknown";
 
       const id = String(m.id);
 
-      // Dedup
       const sig = [pdf, subject, from, to, date, mailbox].join("|");
       if(seen.has(sig)) continue;
       seen.add(sig);
@@ -242,15 +228,13 @@
         subject,
         from: from || "Unknown",
         to: to || "Unknown",
-        fromKey,
-        toKey,
-        primaryKey,
-        primaryName: primaryName || "Unknown",
         date,
         dateDisplay,
         snippet,
-        body,
+        body, // keep as-is (don’t safeText it; preserve newlines)
         pdf,
+        contactKey: contactKey || "unknown",
+        contactName: contactName || "Unknown",
         starred: state.starred.has(id),
       });
     }
@@ -266,26 +250,21 @@
   }
 
   function rebuildContacts(){
-    // Build contacts from BOTH from/to (not just “other party”)
     const map = new Map();
 
-    function add(name){
-      const n = cleanContact(name);
-      if(!n || n === "Unknown") return;
-      if(looksDateish(n)) return;
-      const k = slugify(n);
-      if(k === "unknown") return;
-      if(!map.has(k)) map.set(k, n);
-    }
-
     for(const m of state.all){
-      add(m.from);
-      add(m.to);
+      const k = safeText(m.contactKey) || "unknown";
+      const n = cleanContact(m.contactName) || "Unknown";
+
+      // HARD BLOCK: never allow date-like contacts in the dropdown
+      if(n === "Unknown") continue;
+      if(looksDateish(n)) continue;
+
+      if(!map.has(k)) map.set(k, n);
     }
 
     const list = Array.from(map.entries()).map(([key, name]) => ({ key, name }));
     list.sort((a,b) => a.name.localeCompare(b.name));
-
     state.contacts = list;
 
     if(el.contactSelect){
@@ -315,7 +294,7 @@
   function matchesQuery(m, q){
     if(!q) return true;
     const hay = [
-      m.subject, m.from, m.to, m.snippet, m.body
+      m.subject, m.from, m.to, m.snippet, m.body, m.contactName
     ].join(" ").toLowerCase();
     return hay.includes(q);
   }
@@ -323,8 +302,7 @@
   function matchesContact(m){
     const c = state.contact || "all";
     if(c === "all") return true;
-    // match if selected contact is either sender or recipient
-    return (m.fromKey === c) || (m.toKey === c);
+    return (m.contactKey || "") === c;
   }
 
   function getVisible(){
@@ -379,10 +357,14 @@
   function openReaderOverlay(){
     if(!el.reader) return;
     if(isNarrow()){
+      // force strong overlay styling (fix “transparent overlap”)
+      el.reader.style.background = "#050505";
+      el.reader.style.zIndex = "99999";
       el.reader.classList.add("open");
       document.body.classList.add("jm-lock");
     }
   }
+
   function closeReaderOverlay(){
     if(!el.reader) return;
     el.reader.classList.remove("open");
@@ -394,12 +376,12 @@
     if(!el.readCard) return;
 
     const mailbox = m.mailbox || "inbox";
-    const bodyText = safeText(m.body || "");
+    const bodyText = String(m.body || "").trim();
     const snippet = safeText(m.snippet || "");
     const pdfHref = esc(m.pdf);
 
     el.readCard.innerHTML = `
-      <div class="jm-h1">${esc(m.subject || "Unknown")}</div>
+      <div class="jm-h1">${esc(m.subject)}</div>
 
       <div class="jm-badges">
         <span class="jm-badge">Released</span>
@@ -496,21 +478,8 @@
     }
   }
 
-  function syncMobileTopInset(){
-    // Make overlay avoid your injected sticky header
-    try{
-      const headerMount = document.querySelector("#siteHeader");
-      const h = headerMount ? headerMount.offsetHeight : 56;
-      const inset = Math.max(56, h) + 10;
-      document.documentElement.style.setProperty("--jmTopInset", inset + "px");
-    }catch(_){}
-  }
-
   async function boot(){
     if(el.source) el.source.textContent = "jeffs-mail/index.json";
-
-    syncMobileTopInset();
-    window.addEventListener("resize", syncMobileTopInset);
 
     loadStarred();
     loadContactFilter();
