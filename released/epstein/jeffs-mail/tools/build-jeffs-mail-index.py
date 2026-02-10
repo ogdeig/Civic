@@ -40,8 +40,28 @@ if PdfReader is None:
     )
     raise ModuleNotFoundError("Missing pypdf/PyPDF2")
 
+
+def find_repo_root(start: Path) -> Path:
+    """
+    Walk upward until we find a folder that contains 'released/'.
+    This prevents REPO_ROOT from being wrong when folder depth changes.
+    """
+    cur = start.resolve()
+    for _ in range(12):
+        if (cur / "released").exists() and (cur / "released").is_dir():
+            return cur
+        if cur.parent == cur:
+            break
+        cur = cur.parent
+    # fallback: current working directory if it looks like repo root
+    cwd = Path.cwd().resolve()
+    if (cwd / "released").exists():
+        return cwd
+    raise RuntimeError("Could not locate repo root (missing released/ directory).")
+
+
 ROOT = Path(__file__).resolve()
-REPO_ROOT = ROOT.parents[4]
+REPO_ROOT = find_repo_root(ROOT)
 MAIL_ROOT = REPO_ROOT / "released" / "epstein" / "jeffs-mail"
 PDF_DIR = MAIL_ROOT / "pdfs"
 OUT_JSON = MAIL_ROOT / "index.json"
@@ -58,10 +78,8 @@ JEFF_ALIASES = [
     "jeevacation@gmail,com",
     "lsj",
 ]
-
 JEFF_TOKEN_RE = re.compile(r"\b(JE|LSJ)\b", re.IGNORECASE)
 
-HEADER_KEYS = ("From", "Sent", "To", "Subject")
 HEADER_RE = re.compile(r"^\s*(From|Sent|To|Subject)\s*:\s*(.*)\s*$", re.IGNORECASE)
 
 DATEISH_RE = re.compile(
@@ -81,12 +99,10 @@ EMAIL_RE = re.compile(r"[\w\.\-+%]+@[\w\.\-]+\.[A-Za-z]{2,}", re.IGNORECASE)
 
 FOOTER_EFTA_RE = re.compile(r"\bEFTA[_\- ]?[A-Z0-9_]{5,}\b", re.IGNORECASE)
 EFTA_R1_RE = re.compile(r"\bEFTA_R1_[A-Z0-9_]+\b", re.IGNORECASE)
-
 HTML_GARBAGE_RE = re.compile(
     r"<\/?div>|<br\s*\/?>|&nbsp;|style:.*?$|text-align:.*?$",
     re.IGNORECASE | re.MULTILINE,
 )
-
 PLIST_START_RE = re.compile(r"<!DOCTYPE\s+plist|<plist\b|<\?xml\b", re.IGNORECASE)
 
 CONF_BLOCK_RE = re.compile(
@@ -130,8 +146,7 @@ def read_pdf_text(path: Path, max_pages: int = 3) -> str:
         except Exception:
             txt = ""
         pages.append(txt)
-    text = "\n".join(pages)
-    return text.replace("\r\n", "\n").replace("\r", "\n")
+    return "\n".join(pages).replace("\r\n", "\n").replace("\r", "\n")
 
 
 def cleanup_text(t: str) -> str:
@@ -147,12 +162,13 @@ def cleanup_text(t: str) -> str:
 
 def parse_date_to_iso(sent_value: str) -> Tuple[str, str, int]:
     sent_value = (sent_value or "").strip()
-
     if not sent_value:
         now = int(time.time())
-        iso = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime(now))
-        disp = time.strftime("%b %d, %Y", time.gmtime(now))
-        return iso, disp, now
+        return (
+            time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime(now)),
+            time.strftime("%b %d, %Y", time.gmtime(now)),
+            now,
+        )
 
     dt = None
     if dateparser is not None:
@@ -171,21 +187,22 @@ def parse_date_to_iso(sent_value: str) -> Tuple[str, str, int]:
 
     if dt is None:
         now = int(time.time())
-        iso = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime(now))
-        disp = time.strftime("%b %d, %Y", time.gmtime(now))
-        return iso, disp, now
+        return (
+            time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime(now)),
+            time.strftime("%b %d, %Y", time.gmtime(now)),
+            now,
+        )
 
     try:
-        if dt.tzinfo is None or dt.utcoffset() is None:
-            ts = int(dt.replace(tzinfo=None).timestamp())
-        else:
-            ts = int(dt.timestamp())
+        ts = int(dt.timestamp()) if dt.tzinfo else int(dt.replace(tzinfo=None).timestamp())
     except Exception:
         ts = int(time.time())
 
-    iso = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime(ts))
-    disp = time.strftime("%b %d, %Y", time.gmtime(ts))
-    return iso, disp, ts
+    return (
+        time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime(ts)),
+        time.strftime("%b %d, %Y", time.gmtime(ts)),
+        ts,
+    )
 
 
 def looks_like_jeff(s: str) -> bool:
@@ -195,60 +212,29 @@ def looks_like_jeff(s: str) -> bool:
     for a in JEFF_ALIASES:
         if a and a in s0:
             return True
-    if JEFF_TOKEN_RE.search(s or ""):
-        return True
-    return False
+    return bool(JEFF_TOKEN_RE.search(s or ""))
 
 
 def normalize_contact_name(s: str) -> str:
     s = (s or "").strip()
-
     s = re.sub(r"(?i)\b(mailto:|javascript:).*?$", "", s).strip()
     s = s.replace("[", "").replace("]", "").replace("(", "").replace(")", "")
     s = re.sub(r"\s+", " ", s).strip()
-
-    # strip leading header labels if OCR duplicated them
     s = re.sub(r"^(?i)(from|to|sent|subject)\s*:\s*", "", s).strip()
-
-    # If it looks like a date, it is NOT a contact
     if s and DATEISH_RE.search(s):
         return "Unknown"
-
-    # If it's nothing useful, Unknown
     if not s or s.lower() in {"unknown", "n/a", "na", "-"}:
         return "Unknown"
-
-    # If the string is extremely long and contains no email and no letters, nuke it
-    if len(s) > 120 and not EMAIL_RE.search(s) and not re.search(r"[A-Za-z]", s):
+    if len(s) > 140 and not EMAIL_RE.search(s):
         return "Unknown"
-
-    # Clean trailing punctuation / separators
-    s = s.strip(" ,;|•\t")
-
-    return s or "Unknown"
-
-
-def coerce_header_value(val: str) -> str:
-    v = (val or "").strip()
-    v = re.sub(r"^\s*[:\-]\s*", "", v).strip()
-    v = re.sub(r"\s+", " ", v).strip()
-    return v
+    return s.strip(" ,;|•\t") or "Unknown"
 
 
 def extract_headers(text: str) -> Dict[str, str]:
-    """
-    Multi-line header extraction:
-    If a header line starts "From:" and the next line does NOT start a new header,
-    treat it as a continuation.
-    """
     hdr = {"from": "", "to": "", "subject": "", "sent": ""}
-
     t = cleanup_text(text)
     lines = [ln.rstrip() for ln in t.splitlines()]
 
-    # scan the first portion where headers usually live
-    i = 0
-    max_scan = min(len(lines), 220)
     current_key: Optional[str] = None
     buf: List[str] = []
 
@@ -256,7 +242,6 @@ def extract_headers(text: str) -> Dict[str, str]:
         nonlocal current_key, buf
         if current_key and buf:
             joined = " ".join([x.strip() for x in buf if x.strip()]).strip()
-            joined = coerce_header_value(joined)
             if current_key == "from":
                 hdr["from"] = hdr["from"] or joined
             elif current_key == "to":
@@ -268,43 +253,33 @@ def extract_headers(text: str) -> Dict[str, str]:
         current_key = None
         buf = []
 
-    while i < max_scan:
+    for i in range(min(len(lines), 220)):
         ln = lines[i].strip()
         m = HEADER_RE.match(ln)
-        if m:
-            flush()
-            key = m.group(1).lower()
-            val = m.group(2) or ""
-            current_key = key
-            buf = [val]
-            i += 1
-            # capture continuation lines
-            while i < max_scan:
-                nxt = lines[i].strip()
-                if HEADER_RE.match(nxt):
-                    break
-                # stop if we hit obvious body separator
-                if nxt == "":
-                    # allow a single blank line continuation break
-                    break
-                buf.append(nxt)
-                i += 1
-            flush()
+        if not m:
             continue
-        i += 1
 
-    # Final cleanup + Unknown defaults
+        flush()
+        current_key = m.group(1).lower()
+        buf = [m.group(2) or ""]
+
+        # continuation lines until next header or blank line
+        for j in range(i + 1, min(len(lines), 220)):
+            nxt = lines[j].strip()
+            if HEADER_RE.match(nxt):
+                break
+            if nxt == "":
+                break
+            buf.append(nxt)
+
+        flush()
+
     hdr["from"] = normalize_contact_name(hdr["from"])
     hdr["to"] = normalize_contact_name(hdr["to"])
-
-    subj = coerce_header_value(hdr["subject"])
-    # subject should not be a date
-    if subj and DATEISH_RE.search(subj):
-        subj = ""
-    hdr["subject"] = subj.strip() or ""
-
-    sent = coerce_header_value(hdr["sent"])
-    hdr["sent"] = sent.strip() or ""
+    hdr["subject"] = (hdr["subject"] or "").strip()
+    if hdr["subject"] and DATEISH_RE.search(hdr["subject"]):
+        hdr["subject"] = ""
+    hdr["sent"] = (hdr["sent"] or "").strip()
 
     return hdr
 
@@ -312,7 +287,6 @@ def extract_headers(text: str) -> Dict[str, str]:
 def choose_mailbox(from_field: str, to_field: str) -> str:
     f = normalize_contact_name(from_field)
     t = normalize_contact_name(to_field)
-
     if looks_like_jeff(f):
         return "sent"
     if looks_like_jeff(t):
@@ -324,41 +298,32 @@ def extract_body(text: str) -> str:
     t = cleanup_text(text)
     lines = t.splitlines()
 
-    # Start after the last header line we can detect
     start_idx = 0
-    last_hdr = -1
     for i, ln in enumerate(lines[:220]):
         if HEADER_RE.match(ln.strip()):
-            last_hdr = i
             start_idx = i + 1
 
-    body = "\n".join(lines[start_idx:]).strip()
-    body = cleanup_text(body)
+    body = cleanup_text("\n".join(lines[start_idx:]).strip())
 
-    # If we hit iOS plist / xml dump, cut it off
     mplist = PLIST_START_RE.search(body)
     if mplist:
         body = body[: mplist.start()].strip()
 
-    # Keep a “Sent from my iPhone” style signature if present
     keep_sig = ""
     for ln in body.splitlines()[:120]:
         if SIGNATURE_KEEP_RE.match(ln.strip()):
             keep_sig = ln.strip()
             break
 
-    # Cut quoted chain
     mcut = QUOTE_CUT_RE.search("\n" + body + "\n")
     if mcut:
         body = body[: mcut.start()].strip()
 
-    # Cut confidentiality boilerplate
     mconf = CONF_BLOCK_RE.search("\n" + body + "\n")
     if mconf:
         body = body[: mconf.start()].strip()
 
     body = cleanup_text(body)
-
     if keep_sig and keep_sig.lower() not in body.lower():
         body = (body + "\n\n" + keep_sig).strip()
 
@@ -367,28 +332,19 @@ def extract_body(text: str) -> str:
 
 def make_snippet(body: str, max_len: int = 200) -> str:
     s = re.sub(r"\s+", " ", (body or "")).strip()
-    if len(s) <= max_len:
-        return s
-    return s[: max_len - 1].rstrip() + "…"
+    return s if len(s) <= max_len else s[: max_len - 1].rstrip() + "…"
 
 
 def compute_contact_key(from_name: str, to_name: str, mailbox: str) -> Tuple[str, str]:
     f = normalize_contact_name(from_name)
     t = normalize_contact_name(to_name)
-
-    # inbox: other party is from; sent: other party is to
     other = f if mailbox != "sent" else t
-
-    # if other still looks like Jeff, fallback to the other side
     if looks_like_jeff(other):
         other = t if mailbox != "sent" else f
-
     other = normalize_contact_name(other)
     if other == "Unknown":
         return "unknown", "Unknown"
-
-    key = slugify(other)
-    return key, other
+    return slugify(other), other
 
 
 @dataclass
@@ -419,35 +375,24 @@ def build_item(pdf_path: Path) -> MailItem:
     raw_text = read_pdf_text(pdf_path, max_pages=3)
     hdr = extract_headers(raw_text)
 
-    subj = (hdr.get("subject") or "").strip()
-    frm = normalize_contact_name(hdr.get("from") or "")
-    to = normalize_contact_name(hdr.get("to") or "")
+    subj = (hdr.get("subject") or "").strip() or pdf_path.stem
+    frm = normalize_contact_name(hdr.get("from") or "") or "Unknown"
+    to = normalize_contact_name(hdr.get("to") or "") or "Unknown"
     sent_raw = (hdr.get("sent") or "").strip()
 
-    # If anything is missing, force Unknown
-    if not frm:
-        frm = "Unknown"
-    if not to:
-        to = "Unknown"
-    if not subj:
-        subj = pdf_path.stem
-
     iso, disp, ts = parse_date_to_iso(sent_raw)
-
     mailbox = choose_mailbox(frm, to)
     contact_key, contact_name = compute_contact_key(frm, to, mailbox)
 
     body = extract_body(raw_text)
     if not body:
         cleaned = cleanup_text(raw_text)
-        cleaned_lines = [x for x in cleaned.splitlines() if x.strip()]
-        body = "\n".join(cleaned_lines[:60]).strip()
-        body = cleanup_text(body)
+        lines = [x for x in cleaned.splitlines() if x.strip()]
+        body = "\n".join(lines[:60]).strip()
 
     rel_pdf = str(pdf_path.relative_to(REPO_ROOT)).replace("\\", "/")
-
     base = f"{pdf_path.name}|{frm}|{to}|{subj}|{iso}|{mailbox}"
-    mid = f"{slugify(pdf_path.stem)}-{sha1_short(base)}"
+    mid = f"{slugify(pdf_path.stem)}-{hashlib.sha1(base.encode('utf-8','ignore')).hexdigest()[:10]}"
 
     return MailItem(
         id=mid,
@@ -463,23 +408,28 @@ def build_item(pdf_path: Path) -> MailItem:
         body=body,
         contactKey=contact_key,
         contactName=contact_name,
-        source=SOURCE_LABEL,
     )
 
 
 def main() -> None:
+    print("Repo root:", REPO_ROOT)
+    print("PDF dir:", PDF_DIR)
+    print("Output:", OUT_JSON)
+
+    # Always ensure output directory exists
+    OUT_JSON.parent.mkdir(parents=True, exist_ok=True)
+
     if not PDF_DIR.exists():
-        print(f"ERROR: PDF_DIR not found: {PDF_DIR}", file=sys.stderr)
-        sys.exit(1)
+        raise SystemExit(f"ERROR: PDF_DIR not found: {PDF_DIR}")
 
     pdfs = sorted([p for p in PDF_DIR.glob("*.pdf") if p.is_file()])
+
     items: List[MailItem] = []
     seen: set[str] = set()
 
     for p in pdfs:
         try:
             it = build_item(p)
-            # Deduplicate by stable tuple
             sig = f"{it.pdf}|{it.subject}|{it.from_}|{it.to}|{it.date}|{it.mailbox}"
             if sig in seen:
                 continue
@@ -490,22 +440,20 @@ def main() -> None:
 
     items.sort(key=lambda x: int(x.ts or 0), reverse=True)
 
-    counts = {
-        "total": len(items),
-        "inbox": sum(1 for x in items if x.mailbox == "inbox"),
-        "sent": sum(1 for x in items if x.mailbox == "sent"),
-    }
-
     out = {
         "generatedAt": int(time.time()),
         "source": "jeffs-mail/index.json",
         "backend": _pdf_backend,
-        "counts": counts,
+        "counts": {
+            "total": len(items),
+            "inbox": sum(1 for x in items if x.mailbox == "inbox"),
+            "sent": sum(1 for x in items if x.mailbox == "sent"),
+        },
         "items": [x.to_json() for x in items],
     }
 
     OUT_JSON.write_text(json.dumps(out, indent=2, ensure_ascii=False), encoding="utf-8")
-    print(f"Wrote {OUT_JSON} ({counts['total']} items) using {_pdf_backend}")
+    print(f"Wrote {OUT_JSON} ({out['counts']['total']} items) using {_pdf_backend}")
 
 
 if __name__ == "__main__":
