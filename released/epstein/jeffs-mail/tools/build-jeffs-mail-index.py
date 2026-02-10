@@ -8,7 +8,7 @@ import time
 import hashlib
 from dataclasses import dataclass, asdict
 from pathlib import Path
-from typing import List, Dict, Any, Tuple, Optional
+from typing import List, Dict, Any, Tuple
 
 try:
     from dateutil import parser as dateparser  # type: ignore
@@ -57,10 +57,8 @@ SOURCE_LABEL = "Public Record Release"
 
 EMAIL_RE = re.compile(r"[\w\.\-+%]+@[\w\.\-]+\.[A-Za-z]{2,}", re.IGNORECASE)
 
-# NOTE: These PDFs often have:
-#   Sent Tue 11/20/2012 7:03:34 PM   (no colon)
-#   Subject Fwd: Jerky              (no colon)
-HEADER_ANY_RE = re.compile(r"^\s*(From|To|Cc|Bcc|Subject|Date|Sent)\s*:?\s*(.*)\s*$", re.IGNORECASE)
+# NOTE: colon optional to handle "Subject Jerky??" and also includes Sent
+HEADER_KEY_RE = re.compile(r"^\s*(From|To|Cc|Bcc|Subject|Date|Sent)\s*:?\s*(.*)\s*$", re.IGNORECASE)
 
 BEGIN_FWD_RE = re.compile(r"^\s*(Begin forwarded message:|-----Original Message-----)\s*$", re.IGNORECASE)
 WROTE_RE = re.compile(r"^\s*On\s+.+?\bwrote:\s*$", re.IGNORECASE)
@@ -70,29 +68,14 @@ PLIST_START_RE = re.compile(r"<!DOCTYPE\s+plist|<plist\b|<\?xml\b", re.IGNORECAS
 QP_SOFT_BREAK_RE = re.compile(r"=\n")
 MULTISPACE_RE = re.compile(r"[ \t]+")
 
-AT_FIXES = [("©", "@"), ("(at)", "@"), ("[at]", "@")]
+# very common OCR swaps in these files
+AT_FIXES = [("©", "@"), ("(at)", "@"), ("[at]", "@"), (" at ", "@"), (" AT ", "@")]
 DOT_FIXES = [("(dot)", "."), ("[dot]", "."), (" dot ", "."), (" DOT ", ".")]
 
-# Jeff identity detection (add as you discover)
-JEFF_EMAILS = {
-    "jeevacation@gmail.com",
-    "beevacation@gmail.com",
-}
-
-JEFF_NAME_TOKENS = {
-    "jeffrey epstein",
-    "jeff epstein",
-    "jeffrey e. epstein",
-    "jeffrey e stein",   # OCR-ish
-    "jeffrey stein",     # OCR-ish
-    "je",                # thread shorthand in these PDFs
-    "lsj",               # recipient label sometimes used
-}
-
-OCR_NAME_PATCHES = {
-    "fronds derby": "francis derby",
-    "fronds j. derby": "francis j. derby",
-}
+DATEISH_LINE_RE = re.compile(
+    r"^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\b.*\d{1,2}[/-]\d{1,2}[/-]\d{2,4}.*\d{1,2}:\d{2}",
+    re.IGNORECASE,
+)
 
 def clean_qp(t: str) -> str:
     t = (t or "").replace("\r\n", "\n").replace("\r", "\n")
@@ -105,39 +88,58 @@ def normalize_emailish(s: str) -> str:
         s = s.replace(a, b)
     for a, b in DOT_FIXES:
         s = s.replace(a, b)
+
     s = s.replace(" ", "")
-    s = s.replace(";", "")
-    s = s.replace(",", "")
-    s = s.replace("]", "")
-    s = s.replace("[", "")
-    return s.lower()
+    s = s.replace(";", "").replace(",", "").replace("]", "").replace("[", "")
+
+    low = s.lower()
+
+    # OCR-ish gmail domain fixes
+    low = low.replace("gmaii.com", "gmail.com")
+    low = low.replace("gmaiI.com".lower(), "gmail.com")
+    low = low.replace("gma1l.com", "gmail.com")
+    low = low.replace("gmali.com", "gmail.com")
+
+    return low
 
 def extract_emails(s: str) -> List[str]:
     s2 = normalize_emailish(s)
     return EMAIL_RE.findall(s2)
 
+# Jeff identity detection
+JEFF_EMAILS = {
+    "jeevacation@gmail.com",
+    "beevacation@gmail.com",
+}
+
+JEFF_NAME_TOKENS = {
+    "jeffrey epstein",
+    "jeff epstein",
+    "jeffrey e. epstein",
+    "jeffrey e stein",
+    "jeffrey stein",
+    "je",   # shorthand in these threads
+    "lsj",  # label used in these PDFs sometimes
+}
+
+OCR_NAME_PATCHES = {
+    "fronds derby": "francis derby",
+    "fronds j. derby": "francis j. derby",
+}
+
 def looks_like_jeff(s: str) -> bool:
     if not s:
         return False
     low = s.lower()
-
-    # email based
     for em in extract_emails(s):
         if em in JEFF_EMAILS:
             return True
-
-    # name tokens
     for tok in JEFF_NAME_TOKENS:
         if tok in low:
             return True
-
     return False
 
 def strip_angle_garbage(s: str) -> str:
-    """
-    Remove <...> blocks that are not emails (ex: <IMINI>, <I lla>).
-    Keep <email@domain> if present.
-    """
     def repl(m: re.Match) -> str:
         inner = m.group(1).strip()
         if "@" in inner or EMAIL_RE.search(inner):
@@ -148,6 +150,8 @@ def strip_angle_garbage(s: str) -> str:
 def is_probably_date_string(s: str) -> bool:
     if not s:
         return False
+    if DATEISH_LINE_RE.match(s.strip()):
+        return True
     if dateparser is None:
         return False
     try:
@@ -169,7 +173,6 @@ def tidy_display_name(name: str) -> str:
     if low in OCR_NAME_PATCHES:
         name = OCR_NAME_PATCHES[low]
 
-    # Remove trailing header artifacts like "al>" "<1" "<" "=al>"
     name = re.sub(r"\s*(<\d+|<|=al>|al>|>)\s*$", "", name, flags=re.IGNORECASE).strip()
 
     if is_probably_date_string(name):
@@ -181,17 +184,13 @@ def tidy_display_name(name: str) -> str:
     if name.lower() in {"unknown", "n/a", "na", "-"}:
         return "Unknown"
 
-    # Title-case human names (but keep acronyms)
     if "@" not in name and not (name.isupper() and len(name) <= 6):
         parts = []
         for w in name.split():
-            if w.isalpha():
-                parts.append(w.capitalize())
-            else:
-                parts.append(w)
+            parts.append(w.capitalize() if w.isalpha() else w)
         name = " ".join(parts)
 
-    return name or "Unknown"
+    return name
 
 def normalize_contact_field(raw: str) -> Dict[str, str]:
     raw = (raw or "").strip()
@@ -202,18 +201,25 @@ def normalize_contact_field(raw: str) -> Dict[str, str]:
     raw = strip_angle_garbage(raw)
     raw = MULTISPACE_RE.sub(" ", raw).strip()
 
-    if raw in {"", "From", "From:", "To", "To:", "Cc", "Cc:"}:
+    if raw in {"", "From:", "To:"}:
         return {"name": "Unknown", "email": ""}
 
     emails = extract_emails(raw)
     email = emails[0] if emails else ""
 
+    # If Jeffrey is anywhere in this field, force it
+    if looks_like_jeff(raw):
+        je = next((e for e in emails if e in JEFF_EMAILS), (emails[0] if emails else ""))
+        return {"name": "Jeffrey Epstein", "email": je}
+
+    # Name <email>
     m = re.search(r'^\s*"?([^"<]+?)"?\s*<([^>]+@[^>]+)>\s*$', raw)
     if m:
         name = tidy_display_name(m.group(1))
         email = normalize_emailish(m.group(2))
         return {"name": name, "email": email}
 
+    # raw is mostly email
     if email and ("@" in raw):
         local = email.split("@", 1)[0]
         local = re.sub(r"[^\w]+", " ", local).strip()
@@ -243,8 +249,18 @@ def parse_date(date_value: str, fallback_ts: int) -> Tuple[str, str, int]:
     disp = time.strftime("%b %d, %Y", time.gmtime(ts))
     return iso, disp, ts
 
+def is_dateish_line(s: str) -> bool:
+    s = (s or "").strip()
+    if not s:
+        return False
+    if DATEISH_LINE_RE.match(s):
+        return True
+    if re.search(r"\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b", s, re.IGNORECASE) and re.search(r"\d{4}|\d{1,2}:\d{2}", s):
+        return True
+    return False
+
 # ----------------------------
-# PDF reading
+# Header extraction (FIXED)
 # ----------------------------
 
 def read_pdf_text(path: Path, max_pages: int = 2) -> str:
@@ -257,73 +273,113 @@ def read_pdf_text(path: Path, max_pages: int = 2) -> str:
             out.append("")
     return "\n".join(out)
 
-# ----------------------------
-# Header extraction (ROBUST)
-# ----------------------------
-
 def extract_top_headers(text: str) -> Dict[str, str]:
     """
-    Parse only the top header block (before forwarded/message thread blocks).
-    Supports:
-      - missing colons (e.g., "Sent Tue 11/20/2012 7:03:34 PM")
-      - label-only lines where the value is on the next line
-      - "Sent" treated as date if "Date" is missing
+    Robust top-header parsing for these PDFs:
+    - Supports "Subject Jerky??" (no colon)
+    - Supports "Sent" on its own, with the actual date on the next line (or next date-ish line)
+    - Stops before quoted/forwarded sections so we don't accidentally pick "From: Date: ..." inside the thread
     """
     hdr = {"from": "", "to": "", "subject": "", "date": ""}
 
     t = clean_qp(text)
-    raw_lines = [ln.rstrip() for ln in t.splitlines()]
+    lines = [ln.replace("\u00a0", " ").rstrip() for ln in t.splitlines()]
 
-    # Only trust early portion
-    lines: List[str] = []
-    for ln in raw_lines[:120]:
-        s = ln.strip()
-        if not s:
-            continue
-        if BEGIN_FWD_RE.match(s) or WROTE_RE.match(s):
-            break
-        lines.append(s)
+    started = False
+    last_was_sent = False
+    scanned_nonempty = 0
 
     i = 0
-    while i < len(lines) and i < 80:
-        s = lines[i]
-
-        m = HEADER_ANY_RE.match(s)
-        if not m:
-            i += 1
-            continue
-
-        key = m.group(1).lower()
-        val = (m.group(2) or "").strip()
-
-        # If no value on same line, pull next non-header line as value (common in these PDFs)
-        if not val:
-            j = i + 1
-            while j < len(lines):
-                nxt = lines[j].strip()
-                if not nxt:
-                    j += 1
-                    continue
-                if BEGIN_FWD_RE.match(nxt) or WROTE_RE.match(nxt):
-                    break
-                if HEADER_ANY_RE.match(nxt):
-                    break
-                val = nxt
-                break
-
-        if key == "from" and not hdr["from"]:
-            hdr["from"] = val
-        elif key == "to" and not hdr["to"]:
-            hdr["to"] = val
-        elif key == "subject" and not hdr["subject"]:
-            hdr["subject"] = val
-        elif key in {"date", "sent"} and not hdr["date"]:
-            hdr["date"] = val
-
+    while i < len(lines) and scanned_nonempty < 140:
+        ln = lines[i].strip()
         i += 1
 
-        # Early stop if we have the important stuff
-        if hdr["to"] and hdr["subject"] and hdr["date"] and i >= 10:
+        if not ln:
+            # Don't end header early if we just saw "Sent" and are waiting for the date line
+            if started and (hdr["subject"] or hdr["date"]) and not (last_was_sent and not hdr["date"]):
+                break
+            continue
+
+        scanned_nonempty += 1
+
+        # stop at forward/reply/quoted markers
+        if BEGIN_FWD_RE.match(ln) or WROTE_RE.match(ln) or ln.startswith(">"):
+            break
+
+        # If we saw Sent and the next meaningful line is date-ish, treat it as date
+        if last_was_sent and not hdr["date"] and is_dateish_line(ln):
+            hdr["date"] = ln
+            last_was_sent = False
+            continue
+
+        m = HEADER_KEY_RE.match(ln)
+        if m:
+            started = True
+            key = m.group(1).lower()
+            val = (m.group(2) or "").strip()
+
+            if key == "sent":
+                last_was_sent = True
+            else:
+                if not (last_was_sent and not hdr["date"]):
+                    last_was_sent = False
+
+            # Subject can be "Subject Jerky??" without colon
+            if key == "subject":
+                if not val and ln.lower().startswith("subject "):
+                    parts = ln.split(None, 1)
+                    val = parts[1].strip() if len(parts) > 1 else ""
+                if val and not hdr["subject"]:
+                    hdr["subject"] = val
+                continue
+
+            # Date/Sent -> store into hdr["date"]
+            if key in ("date", "sent"):
+                if val and not hdr["date"]:
+                    hdr["date"] = val
+                    last_was_sent = False
+                continue
+
+            if key == "from" and not hdr["from"]:
+                hdr["from"] = val
+            elif key == "to" and not hdr["to"]:
+                hdr["to"] = val
+
+            # If To/From are blank, often the next line contains bracket/email garbage
+            if key in ("from", "to") and not val:
+                j = i
+                cont = []
+                while j < len(lines) and len(cont) < 2:
+                    nxt = lines[j].strip()
+                    if not nxt:
+                        j += 1
+                        continue
+                    if BEGIN_FWD_RE.match(nxt) or WROTE_RE.match(nxt) or nxt.startswith(">"):
+                        break
+                    if HEADER_KEY_RE.match(nxt):
+                        break
+                    if "@" in nxt or "]" in nxt:
+                        cont.append(nxt)
+                        j += 1
+                        continue
+                    break
+
+                if cont:
+                    add = " ".join(cont).strip()
+                    if key == "from" and not hdr["from"]:
+                        hdr["from"] = add
+                    if key == "to" and not hdr["to"]:
+                        hdr["to"] = add
+                    i = j
+
+            continue
+
+        # non-header line: if header started and we have subject/date, this is likely body.
+        if started and (hdr["subject"] or hdr["date"]):
+            # allow a single address-list line to fill empty To
+            if not hdr["to"] and ("@" in ln or "]" in ln):
+                hdr["to"] = ln
+                continue
             break
 
     return hdr
@@ -331,26 +387,21 @@ def extract_top_headers(text: str) -> Dict[str, str]:
 def extract_body(text: str) -> str:
     t = clean_qp(text).replace("\r\n", "\n").replace("\r", "\n")
 
-    # Skip top header-ish region until first blank line after headers OR until "Begin forwarded message"
     lines = t.splitlines()
     start_idx = 0
+
+    # Prefer "Date:" but also treat "Sent:" as header terminator
     for i in range(min(len(lines), 80)):
-        if BEGIN_FWD_RE.match(lines[i].strip()):
-            start_idx = i + 1
-            break
-        # common: body begins after a "Please read below..." line(s)
-        if i >= 8 and lines[i].strip() == "" and any("Subject" in x for x in lines[:i]):
+        if re.match(r"^\s*(Date|Sent)\s*:?", lines[i], re.IGNORECASE):
             start_idx = i + 1
             break
 
     body = "\n".join(lines[start_idx:]).strip()
 
-    # Cut plist/xml blocks
     m = PLIST_START_RE.search(body)
     if m:
         body = body[: m.start()].strip()
 
-    # Cut at thread markers
     cut = re.search(
         r"\n\s*(On\s.+?\bwrote:|-----Original Message-----|Begin forwarded message:)\s*\n",
         body,
@@ -361,8 +412,8 @@ def extract_body(text: str) -> str:
 
     body = re.sub(r"[ \t]+\n", "\n", body)
     body = re.sub(r"\n{3,}", "\n\n", body).strip()
+    body = re.sub(r"\n\s*EFTA\d+\s*$", "", body, flags=re.IGNORECASE).strip()
 
-    body = re.sub(r"\n\s*EFTA[_A-Z0-9\-]+\s*$", "", body, flags=re.IGNORECASE).strip()
     return body
 
 def make_snippet(body: str, max_len: int = 200) -> str:
@@ -376,35 +427,27 @@ def decide_mailbox(from_raw: str, to_raw: str) -> str:
         return "inbox"
     return "inbox"
 
-def compute_contact(from_name: str, to_name: str, mailbox: str) -> Tuple[str, str]:
+def compute_contact(from_name: str, to_name: str, mailbox: str, raw_from: str, raw_to: str) -> Tuple[str, str]:
     """
-    User requirement:
-      - If TO is Jeffrey Epstein (or his emails), group those under Jeffrey Epstein in contacts
-      - If FROM is Jeffrey Epstein, that’s sent mail (contact is recipient)
-    """
-    f = tidy_display_name(from_name)
-    t = tidy_display_name(to_name)
+    inbox => contact is sender (from)
+    sent  => contact is recipient (to)
 
+    FIX: if sender is Unknown but recipient is Jeffrey (LSJ / beevacation / jeevacation),
+         then contact becomes Jeffrey Epstein (so it doesn't show as Unknown/date).
+    """
     if mailbox == "sent":
-        other = t if t != "Unknown" else f
+        other = tidy_display_name(to_name)
+        if other == "Unknown" and looks_like_jeff(raw_from + " " + from_name):
+            other = "Jeffrey Epstein"
     else:
-        # inbox: prefer sender; if sender unknown but recipient is Jeffrey, use Jeffrey as contact
-        if f != "Unknown":
-            other = f
-        else:
-            other = t
+        other = tidy_display_name(from_name)
+        if other == "Unknown" and looks_like_jeff(raw_to + " " + to_name):
+            other = "Jeffrey Epstein"
 
-    other = tidy_display_name(other)
-
-    # Normalize Jeff contact label nicely
     if looks_like_jeff(other):
         other = "Jeffrey Epstein"
 
-    if other == "Unknown":
-        key = "unknown"
-    else:
-        key = re.sub(r"[^\w]+", "-", other.lower()).strip("-") or "unknown"
-
+    key = re.sub(r"[^\w]+", "-", other.lower()).strip("-") or "unknown"
     return key, other
 
 # ----------------------------
@@ -438,8 +481,11 @@ def build_item(pdf_path: Path) -> MailItem:
     raw = read_pdf_text(pdf_path, max_pages=2)
     hdr = extract_top_headers(raw)
 
-    nf = normalize_contact_field(hdr.get("from", ""))
-    nt = normalize_contact_field(hdr.get("to", ""))
+    raw_from = hdr.get("from", "") or ""
+    raw_to = hdr.get("to", "") or ""
+
+    nf = normalize_contact_field(raw_from)
+    nt = normalize_contact_field(raw_to)
 
     from_name = nf["name"]
     to_name = nt["name"]
@@ -451,12 +497,12 @@ def build_item(pdf_path: Path) -> MailItem:
     fallback_ts = int(pdf_path.stat().st_mtime)
     iso, disp, ts = parse_date(hdr.get("date", ""), fallback_ts)
 
-    mailbox = decide_mailbox((hdr.get("from") or "") + " " + from_name, (hdr.get("to") or "") + " " + to_name)
+    mailbox = decide_mailbox(raw_from + " " + from_name, raw_to + " " + to_name)
 
-    body = extract_body(raw)
+    body = extract_body(raw) or ""
     rel_pdf = str(pdf_path.relative_to(MAIL_ROOT)).replace("\\", "/")
 
-    contact_key, contact_name = compute_contact(from_name, to_name, mailbox)
+    contact_key, contact_name = compute_contact(from_name, to_name, mailbox, raw_from, raw_to)
 
     base = f"{pdf_path.name}|{from_name}|{to_name}|{subject}|{iso}|{mailbox}"
     mid = f"{re.sub(r'[^a-z0-9]+','-',pdf_path.stem.lower()).strip('-')}-{hashlib.sha1(base.encode('utf-8','ignore')).hexdigest()[:10]}"
