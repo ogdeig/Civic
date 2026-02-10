@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Jeffs Mail • Epstein Files | Civic Threat</title>
 
-  <meta name="description" content="Jeffs Mail is a simulated email-style interface for navigating publicly released Epstein-related documents. Browse inbox-style entries and open attached source PDFs. Adults 21+ only." />
+  <meta name="description" content="Jeffs Mail is a simulated dark-mode inbox for navigating publicly released Epstein-related PDFs. Filter by contact, search subjects and keywords, and open the original source documents. Adults 21+ only." />
   <meta name="robots" content="index,follow" />
 
   <meta property="og:title" content="Jeffs Mail • Epstein Files | Civic Threat" />
-  <meta property="og:description" content="A simulated email-style interface for navigating publicly released Epstein-related documents. Browse inbox-style entries and open attached source PDFs. Adults 21+ only." />
+  <meta property="og:description" content="A simulated dark-mode inbox for browsing publicly released Epstein-related PDFs. Filter by contact, search keywords, and open the original source documents. Adults 21+ only." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://civicthreat.us/released/epstein/jeffs-mail" />
   <meta property="og:image" content="https://civicthreat.us/assets/civicthreat-social-1200x630.jpg" />
@@ -21,7 +21,6 @@
     /* Keep your site vibe, but emulate an email client layout */
     .page-wrap{ max-width: 1240px; margin: 0 auto; padding: 16px 12px 42px; }
     .ep-box{ border-radius: 0 !important; }
-    .panel{ border: 1px solid rgba(255,255,255,.12); background: rgba(0,0,0,.25); }
 
     /* App shell */
     .mail-shell{
@@ -38,6 +37,7 @@
       padding: 10px 12px;
       border-bottom: 1px solid rgba(255,255,255,.10);
       background: rgba(0,0,0,.35);
+      flex-wrap: wrap;
     }
 
     .brand-mini{
@@ -45,6 +45,7 @@
       align-items:center;
       gap: 10px;
       min-width: 220px;
+      flex: 0 0 auto;
     }
     .brand-mini .dot{
       width: 10px; height: 10px;
@@ -69,12 +70,15 @@
     }
 
     .searchwrap{
-      flex: 1 1 auto;
+      flex: 1 1 520px;
       display:flex;
       justify-content: center;
+      gap: 8px;
+      min-width: 280px;
     }
+
     .search{
-      width: min(760px, 100%);
+      width: min(640px, 100%);
       display:flex;
       gap: 8px;
       align-items:center;
@@ -92,13 +96,33 @@
     }
     .search .hint{ font-size: 11px; opacity:.75; white-space:nowrap; }
 
+    /* Contacts dropdown */
+    .contacts{
+      width: min(360px, 100%);
+      display:flex;
+      gap: 8px;
+      align-items:center;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.35);
+      padding: 8px 10px;
+    }
+    .contacts .lbl{ font-size: 11px; opacity: .8; white-space: nowrap; }
+    .contacts select{
+      width: 100%;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: #fff;
+      font-size: 13px;
+      appearance: none;
+    }
+
     .top-actions{
       display:flex;
       gap: 8px;
       align-items:center;
       justify-content:flex-end;
-      min-width: 180px;
-      flex-wrap: wrap;
+      flex: 0 0 auto;
     }
     .pill{
       font-size: 11px;
@@ -107,10 +131,9 @@
       opacity: .92;
       background: rgba(0,0,0,.25);
       user-select:none;
+      white-space: nowrap;
     }
     .pill.good{ border-color: rgba(0,242,234,.35); }
-    .pill.warn{ border-color: rgba(255,0,80,.35); }
-    .pill a{ color:#fff; text-decoration: underline; }
 
     /* Layout columns */
     .mail-grid{
@@ -124,7 +147,6 @@
     @media (max-width: 980px){
       .mail-grid{ grid-template-columns: 220px 1fr; }
       .reader{ display:none; }
-      .reader.open{ display:block; grid-column: 1 / -1; border-left: 0 !important; border-top: 1px solid rgba(255,255,255,.10); }
       .listcol{ border-left: 1px solid rgba(255,255,255,.10); }
     }
     @media (max-width: 720px){
@@ -132,15 +154,6 @@
       .sidebar{ display:none; }
       .listcol{ border-left: 0; }
       .reader{ display:none; }
-      .reader.open{
-        display:block;
-        grid-column: 1 / -1;
-        position: fixed;
-        inset: 56px 10px 10px 10px;
-        z-index: 9997;
-        box-shadow: 0 20px 60px rgba(0,0,0,.6);
-      }
-      .reader.open .reader-top{ position: sticky; top: 0; z-index: 2; }
     }
 
     /* Sidebar */
@@ -225,11 +238,14 @@
       opacity:.82;
       white-space: nowrap;
     }
+
     .list{
       overflow:auto;
       height: 100%;
     }
-    .row{
+
+    /* Hook your JS classnames */
+    .jm-item{
       display:flex;
       gap: 10px;
       align-items:flex-start;
@@ -239,13 +255,13 @@
       min-width: 0;
       background: rgba(0,0,0,.10);
     }
-    .row:hover{ background: rgba(0,0,0,.22); }
-    .row.active{
+    .jm-item:hover{ background: rgba(0,0,0,.22); }
+    .jm-item.active{
       background: rgba(255,255,255,.06);
       outline: 1px solid rgba(255,255,255,.14);
       outline-offset: -1px;
     }
-    .star{
+    .jm-star{
       width: 18px; height: 18px;
       display:flex;
       align-items:center;
@@ -253,22 +269,27 @@
       opacity: .85;
       flex:0 0 auto;
       user-select:none;
+      border: 0;
+      background: transparent;
+      color: #fff;
+      padding: 0;
+      cursor: pointer;
     }
-    .row .mid{ flex: 1 1 auto; min-width: 0; }
-    .row .from{
+    .jm-item .main{ flex: 1 1 auto; min-width: 0; }
+    .jm-from{
       font-size: 12px;
       font-weight: 900;
       letter-spacing:.01em;
       margin: 0 0 3px;
       overflow:hidden; text-overflow: ellipsis; white-space: nowrap;
     }
-    .row .subj{
+    .jm-subj{
       font-size: 12px;
       margin: 0 0 4px;
       opacity: .95;
       overflow:hidden; text-overflow: ellipsis; white-space: nowrap;
     }
-    .row .snip{
+    .jm-snippet{
       font-size: 11px;
       opacity: .78;
       line-height: 1.35;
@@ -277,7 +298,7 @@
       -webkit-box-orient: vertical;
       overflow:hidden;
     }
-    .row .date{
+    .jm-date{
       font-size: 11px;
       opacity:.78;
       white-space: nowrap;
@@ -291,6 +312,7 @@
       min-width: 0;
       display:flex;
       flex-direction: column;
+      border-left: 1px solid rgba(255,255,255,.10);
     }
     .reader-top{
       padding: 10px 12px;
@@ -308,25 +330,34 @@
       font-size: 13px;
       text-transform: uppercase;
     }
-    .reader-top .btn{ border-radius: 0 !important; }
     .reader-body{
       padding: 12px 12px 16px;
       overflow:auto;
       min-width: 0;
     }
-    .email-card{
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.20);
-      padding: 12px;
-    }
-    .email-card h2{
+
+    /* Jeffs-mail.js output classes */
+    .jm-h1{
       margin: 0 0 8px;
       font-size: 16px;
       font-weight: 1000;
       letter-spacing:.01em;
       line-height: 1.25;
     }
-    .headers{
+    .jm-badges{
+      margin: 6px 0 10px;
+      display:flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .jm-badge{
+      font-size: 11px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.15);
+      padding: 3px 8px;
+      opacity: .9;
+    }
+    .jm-meta{
       display:grid;
       grid-template-columns: 70px 1fr;
       gap: 6px 10px;
@@ -335,42 +366,21 @@
       opacity: .92;
       margin-bottom: 10px;
     }
-    .headers .k{ opacity:.75; }
-    .chips{
-      margin: 6px 0 10px;
-      display:flex;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
-    .chip{
-      font-size: 11px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.15);
-      padding: 3px 8px;
-      opacity: .9;
-    }
-    .body{
+    .jm-bodytext{
       font-size: 13px;
       line-height: 1.65;
       opacity: .95;
       border-top: 1px solid rgba(255,255,255,.10);
       padding-top: 10px;
       word-break: break-word;
+      white-space: pre-wrap;
     }
-    .body a{ color:#fff; text-decoration: underline; }
-    .attachments{
+    .jm-attach{
       margin-top: 12px;
       border-top: 1px solid rgba(255,255,255,.10);
       padding-top: 10px;
     }
-    .attachments .ttl{
-      font-weight: 1000;
-      letter-spacing:.02em;
-      font-size: 12px;
-      margin: 0 0 8px;
-      opacity: .95;
-    }
-    .att{
+    .jm-attachrow{
       display:flex;
       gap: 10px;
       align-items:center;
@@ -378,18 +388,9 @@
       padding: 8px 10px;
       border: 1px solid rgba(255,255,255,.10);
       background: rgba(0,0,0,.16);
-      margin-bottom: 8px;
+      margin-top: 8px;
     }
-    .att .name{
-      font-size: 12px;
-      opacity:.95;
-      overflow:hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      min-width: 0;
-      flex: 1 1 auto;
-    }
-    .att .open{
+    .jm-attach .btn{
       flex:0 0 auto;
       font-size: 11px;
       border: 1px solid rgba(255,255,255,.14);
@@ -432,7 +433,6 @@
     .gate input[type="checkbox"]{ width: 18px; height: 18px; }
     .gate .actions{ display:flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; margin-top: 14px; }
     .gate .btn{ border-radius: 0 !important; }
-    .gate .legal{ margin-top: 10px; font-size: 12px; opacity: .8; line-height: 1.45; }
 
     /* safety net: ensure footer matches header red */
     .site-footer{ background: var(--red) !important; color:#fff; }
@@ -461,23 +461,27 @@
           <span class="dot" aria-hidden="true"></span>
           <div>
             <div class="title">Jeffs Mail</div>
-            <div class="sub">Simulated mailbox UI for navigating publicly released documents (21+).</div>
+            <div class="sub">Simulated dark-mode inbox for navigating publicly released documents (21+).</div>
           </div>
         </div>
 
         <div class="searchwrap">
           <div class="search ep-box" role="search" aria-label="Search mail">
             <span style="opacity:.8">🔎</span>
-            <input id="q" type="search" placeholder="Search mail (subject, sender, keywords…)" autocomplete="off" />
-            <span class="hint" id="resultHint"></span>
+            <input id="jmSearch" type="search" placeholder="Search (subject, sender, keywords…)" autocomplete="off" />
+            <span class="hint"><span id="jmFound"></span></span>
+          </div>
+
+          <div class="contacts ep-box" id="jmContactsWrap" aria-label="Filter by contact">
+            <span class="lbl">Contact</span>
+            <select id="jmContacts" aria-label="Contacts">
+              <option value="all">All contacts</option>
+            </select>
           </div>
         </div>
 
         <div class="top-actions">
-          <div class="pill good" id="sourcePill" title="Data source for this page">Source: index.json</div>
-          <div class="pill warn" id="inAppPill" style="display:none">
-            Open in <a href="#" id="openExternal">Chrome/Safari</a>
-          </div>
+          <div class="pill good">Source: <span id="jmSource">jeffs-mail/index.json</span></div>
         </div>
       </div>
 
@@ -490,78 +494,65 @@
           </div>
 
           <div class="navlist" role="navigation" aria-label="Mailboxes">
-            <div class="navbtn ep-box active" data-box="inbox" role="button" tabindex="0" aria-label="Inbox">
+            <div class="navbtn ep-box active" id="btnInbox" data-folder="inbox" role="button" tabindex="0" aria-label="Inbox">
               <div class="left">
                 <span class="ico" aria-hidden="true">📥</span>
                 <span class="label">Inbox</span>
               </div>
-              <span class="count" id="cInbox">0</span>
+              <span class="count" id="countInbox">0</span>
             </div>
 
-            <div class="navbtn ep-box" data-box="sent" role="button" tabindex="0" aria-label="Sent">
+            <div class="navbtn ep-box" id="btnSent" data-folder="sent" role="button" tabindex="0" aria-label="Sent">
               <div class="left">
                 <span class="ico" aria-hidden="true">📤</span>
                 <span class="label">Sent</span>
               </div>
-              <span class="count" id="cSent">0</span>
+              <span class="count" id="countSent">0</span>
             </div>
 
-            <div class="navbtn ep-box" data-box="starred" role="button" tabindex="0" aria-label="Starred">
+            <div class="navbtn ep-box" id="btnStarred" data-folder="starred" role="button" tabindex="0" aria-label="Starred">
               <div class="left">
                 <span class="ico" aria-hidden="true">⭐</span>
                 <span class="label">Starred</span>
               </div>
-              <span class="count" id="cStarred">0</span>
-            </div>
-
-            <div class="navbtn ep-box" data-box="attachments" role="button" tabindex="0" aria-label="Attachments">
-              <div class="left">
-                <span class="ico" aria-hidden="true">📎</span>
-                <span class="label">Attachments</span>
-              </div>
-              <span class="count" id="cAttach">0</span>
+              <span class="count" id="countStarred">0</span>
             </div>
           </div>
 
           <div class="side-note">
-            <strong>What you’re looking at:</strong> a browsing UI that <em>looks like</em> an email account, but is only an
-            <strong>organizational interface</strong> for public records. It does not claim to be a real private inbox or hacked content.
+            <strong>Disclosure:</strong> This page is an email-style <strong>organizational interface</strong> for public records.
+            It does not claim to be a real private inbox or hacked account.
           </div>
         </aside>
 
         <!-- List column -->
         <section class="listcol" aria-label="Message list">
           <div class="list-top">
-            <div class="title" id="listTitle">Inbox</div>
-            <div class="meta" id="listMeta">Loading…</div>
+            <div class="title"><span id="jmFolderTitle">INBOX</span> (<span id="jmCount">0</span>)</div>
+            <div class="meta"><span id="jmReadingMeta"></span></div>
           </div>
-          <div class="list" id="list">
+
+          <div class="list" id="jmItems">
             <div style="padding:10px 12px;opacity:.85;font-size:13px;">Loading mail…</div>
           </div>
         </section>
 
         <!-- Reader column -->
-        <section class="reader" id="reader" aria-label="Message reader" style="border-left: 1px solid rgba(255,255,255,.10);">
+        <section class="reader" aria-label="Message reader">
           <div class="reader-top">
-            <div class="rt" id="readerTopTitle">Message</div>
-            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-              <button class="btn" id="btnBack" type="button" style="display:none">← Back</button>
-              <button class="btn" id="btnClose" type="button" style="display:none">✕ Close</button>
-            </div>
+            <div class="rt">Message</div>
           </div>
 
-          <div class="reader-body" id="readerBody">
-            <div class="email-card ep-box">
-              <h2>Select an email</h2>
+          <div class="reader-body">
+            <div class="email-card ep-box" id="jmReadCard">
+              <div class="jm-h1">Select an email</div>
               <div class="legal">
-                Click a message on the left to open it here. Attachments appear inside the message and link to your source PDFs.
+                Click a message on the left to open it here. The source PDF link appears inside each message.
               </div>
             </div>
 
             <div class="legal">
-              <strong>Disclosure:</strong> Jeffs Mail is a simulated email-style UI for navigating publicly released documents.
-              Entries may contain allegations or explicit descriptions. Civic Threat does not endorse wrongdoing and does not make claims about guilt or innocence.
-              Always consult the full source document and primary sources for context.
+              <strong>Content notice:</strong> Entries may contain allegations or explicit descriptions. Always consult the full source PDF for context.
             </div>
           </div>
         </section>
@@ -569,8 +560,8 @@
     </div>
 
     <div class="legal" style="margin-top:12px">
-      <strong>SEO / discoverability:</strong> Jeffs Mail is part of the Civic Threat Epstein files hub. Browse Epstein documents, released PDFs,
-      and related materials in an inbox-style interface. Search names and keywords, open attachments, and review public records for discussion and analysis.
+      <strong>About this page:</strong> Jeffs Mail is part of the Civic Threat Epstein files hub. Browse publicly released PDFs in an inbox-style view,
+      filter by contact, search keywords, and open the original source documents.
     </div>
   </main>
 
@@ -599,546 +590,10 @@
   </div>
 
   <!-- Site header/footer injection -->
-  <script src="/config.js?v=12"></script>
-  <script src="/app.js?v=12"></script>
-
-  <script>
-    (function(){
-      "use strict";
-
-      /* ------------------------------------------------------------------
-        Jeffs Mail
-        - Gmail-like UI (simulation) that loads messages from a separate index.json
-        - You control the content via JSON: mailboxes, subjects, bodies, attachments (PDFs)
-        - No PDF reader buttons—attachments are links inside the message like email attachments.
-
-        REQUIRED FILES YOU CREATE:
-        1) /released/epstein/jeffs-mail.html   (this file)
-        2) /released/epstein/jeffs-mail/index.json  (your new data source)
-        3) Put PDFs wherever you want; JSON should point to them via "path".
-
-        JSON SCHEMA (example):
-        {
-          "account": { "name":"Jeffs Mail", "address":"jeffsmail@civicthreat.us" },
-          "items":[
-            {
-              "id":"msg-0001",
-              "mailbox":"inbox",              // inbox | sent | starred | attachments
-              "starred": true,                // optional
-              "date":"2019-07-10",             // ISO date recommended
-              "from": { "name":"Public Record Release", "email":"source@public-records" },
-              "to":   { "name":"Jeff", "email":"jeff@jeffs-mail" },
-              "subject":"Example subject line",
-              "snippet":"Short preview text for the list row…",
-              "bodyText":"Full message text… (plain text)\nLine breaks ok.",
-              "bodyHtml":"<p>Optional HTML body</p>",   // optional; if present, used instead of bodyText
-              "tags":["Released","PDF"],        // optional
-              "attachments":[
-                { "name":"ANASTASIA DOE vs EPSTEIN (Filed 12-17-19).pdf", "path":"/released/epstein/jeffs-mail-pdfs/ANASTASIA%20DOE_vs_EPSTEIN_Filed%2012-17-19.pdf" }
-              ]
-            }
-          ]
-        }
-      ------------------------------------------------------------------ */
-
-      const CONSENT_KEY = "ct_epstein_21_gate_v1";
-
-      // ✅ Separate index.json just for Jeffs Mail:
-      const INDEX_URL = "/released/epstein/jeffs-mail/index.json";
-
-      const $ = (sel, root=document) => root.querySelector(sel);
-      const esc = (s)=> String(s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-      const clamp = (n,a,b)=> Math.max(a, Math.min(b,n));
-      const toLower = (s)=> String(s||"").toLowerCase();
-
-      const el = {
-        q: $("#q"),
-        hint: $("#resultHint"),
-
-        sourcePill: $("#sourcePill"),
-        inAppPill: $("#inAppPill"),
-        openExternal: $("#openExternal"),
-
-        navBtns: Array.from(document.querySelectorAll(".navbtn[data-box]")),
-        listTitle: $("#listTitle"),
-        listMeta: $("#listMeta"),
-        list: $("#list"),
-
-        reader: $("#reader"),
-        readerTopTitle: $("#readerTopTitle"),
-        readerBody: $("#readerBody"),
-        btnBack: $("#btnBack"),
-        btnClose: $("#btnClose"),
-
-        cInbox: $("#cInbox"),
-        cSent: $("#cSent"),
-        cStarred: $("#cStarred"),
-        cAttach: $("#cAttach"),
-
-        gate: $("#ageGate"),
-        gateCheck: $("#gateCheck"),
-        gateEnter: $("#gateEnter"),
-        gateLeave: $("#gateLeave")
-      };
-
-      const state = {
-        data: null,
-        items: [],
-        mailbox: "inbox",
-        query: "",
-        filtered: [],
-        activeId: "",
-      };
-
-      function hasConsent(){
-        try{ return localStorage.getItem(CONSENT_KEY) === "yes"; }catch(_){ return false; }
-      }
-      function setConsent(){
-        try{ localStorage.setItem(CONSENT_KEY, "yes"); }catch(_){}
-      }
-      function showGate(){
-        if(!el.gate) return;
-        el.gate.style.display = "flex";
-        document.body.style.overflow = "hidden";
-        if(el.gateCheck) el.gateCheck.checked = false;
-        if(el.gateEnter) el.gateEnter.disabled = true;
-      }
-      function hideGate(){
-        if(!el.gate) return;
-        el.gate.style.display = "none";
-        document.body.style.overflow = "";
-      }
-      function wireGate(onEnter){
-        if(!el.gate || !el.gateCheck || !el.gateEnter || !el.gateLeave) return onEnter();
-
-        el.gateCheck.addEventListener("change", () => {
-          el.gateEnter.disabled = !el.gateCheck.checked;
-        });
-
-        el.gateLeave.addEventListener("click", () => {
-          location.href = "/";
-        });
-
-        el.gateEnter.addEventListener("click", () => {
-          if(!el.gateCheck.checked) return;
-          setConsent();
-          hideGate();
-          onEnter();
-        });
-
-        if(hasConsent()){
-          hideGate();
-          onEnter();
-        }else{
-          showGate();
-        }
-      }
-
-      async function fetchJsonStrict(url){
-        const u = url + (url.includes("?") ? "&" : "?") + "_=" + Date.now();
-        const r = await fetch(u, { cache: "no-store" });
-        if(!r.ok) throw new Error(`Failed to load index.json (${r.status})`);
-        return r.json();
-      }
-
-      function isFacebookInApp(){
-        const ua = navigator.userAgent || "";
-        // common FB/IG in-app markers
-        return /FBAN|FBAV|Instagram|FB_IAB|FBSS|FBIOS|FB4A/i.test(ua);
-      }
-
-      function setupInAppWarning(){
-        if(!el.inAppPill || !el.openExternal) return;
-
-        if(isFacebookInApp()){
-          el.inAppPill.style.display = "inline-block";
-          el.openExternal.addEventListener("click", (e) => {
-            e.preventDefault();
-            // Best we can do: instruct + open same URL; many in-app browsers show "Open in browser" from menu
-            alert("Tip: Tap the ••• menu in the Facebook/Instagram browser and choose “Open in Chrome” / “Open in Safari” for best results.");
-            try { window.location.href = window.location.href; } catch(_) {}
-          });
-        }
-      }
-
-      function parseDateLabel(s){
-        const str = String(s||"").trim();
-        if(!str) return "";
-        // If ISO date, format nicely; otherwise show raw
-        const d = new Date(str);
-        if(String(d) !== "Invalid Date"){
-          return d.toLocaleDateString(undefined, { year:"numeric", month:"short", day:"2-digit" });
-        }
-        return str;
-      }
-
-      function mailboxLabel(box){
-        if(box === "sent") return "Sent";
-        if(box === "starred") return "Starred";
-        if(box === "attachments") return "Attachments";
-        return "Inbox";
-      }
-
-      function setNavActive(){
-        el.navBtns.forEach(b => {
-          const on = (b.getAttribute("data-box") || "") === state.mailbox;
-          b.classList.toggle("active", on);
-        });
-      }
-
-      function computeCounts(items){
-        const inbox = items.filter(x => (x.mailbox||"inbox") === "inbox").length;
-        const sent = items.filter(x => (x.mailbox||"") === "sent").length;
-        const starred = items.filter(x => x.starred === true || (x.mailbox||"") === "starred").length;
-        const attach = items.filter(x => Array.isArray(x.attachments) && x.attachments.length).length;
-
-        if(el.cInbox) el.cInbox.textContent = String(inbox);
-        if(el.cSent) el.cSent.textContent = String(sent);
-        if(el.cStarred) el.cStarred.textContent = String(starred);
-        if(el.cAttach) el.cAttach.textContent = String(attach);
-      }
-
-      function normalizeItems(data){
-        const raw = Array.isArray(data?.items) ? data.items : [];
-        const out = [];
-
-        for(const m of raw){
-          const id = String(m.id || m._id || m.subject || "").trim() || ("msg-" + Math.random().toString(16).slice(2));
-          const mailbox = String(m.mailbox || "inbox").toLowerCase();
-          const from = m.from && typeof m.from === "object" ? m.from : { name: m.fromName || "Unknown", email: m.fromEmail || "" };
-          const to = m.to && typeof m.to === "object" ? m.to : { name: m.toName || "Jeff", email: m.toEmail || "" };
-          const subject = String(m.subject || "Untitled").trim();
-          const snippet = String(m.snippet || "").trim();
-          const date = m.date || m.sentAt || m.receivedAt || "";
-          const starred = !!m.starred;
-          const tags = Array.isArray(m.tags) ? m.tags : [];
-          const bodyHtml = m.bodyHtml || "";
-          const bodyText = m.bodyText || "";
-
-          let attachments = [];
-          if(Array.isArray(m.attachments)){
-            attachments = m.attachments
-              .map(a => {
-                const name = String(a.name || a.label || a.file || "Attachment").trim();
-                const path = String(a.path || a.url || "").trim();
-                return (path ? { name, path } : null);
-              })
-              .filter(Boolean);
-          }
-
-          // If "attachments" mailbox view is selected, we still show messages; attachments are within messages.
-          out.push({ id, mailbox, from, to, subject, snippet, date, starred, tags, bodyHtml, bodyText, attachments });
-        }
-
-        // newest first (if dates parse)
-        out.sort((a,b) => {
-          const da = new Date(a.date || 0).getTime();
-          const db = new Date(b.date || 0).getTime();
-          if(isFinite(da) && isFinite(db) && da !== db) return db - da;
-          return String(b.id).localeCompare(String(a.id));
-        });
-
-        return out;
-      }
-
-      function applyFilter(){
-        const q = toLower(state.query || "").trim();
-        const box = state.mailbox;
-
-        let list = state.items;
-
-        if(box === "starred"){
-          list = list.filter(x => x.starred === true || x.mailbox === "starred");
-        }else if(box === "attachments"){
-          list = list.filter(x => Array.isArray(x.attachments) && x.attachments.length);
-        }else{
-          list = list.filter(x => (x.mailbox || "inbox") === box);
-        }
-
-        if(q){
-          list = list.filter(x => {
-            const hay = toLower([
-              x.subject, x.snippet,
-              x.from?.name, x.from?.email,
-              x.to?.name, x.to?.email,
-              (x.tags||[]).join(" "),
-              (x.bodyText||"")
-            ].join(" "));
-            return hay.includes(q);
-          });
-        }
-
-        state.filtered = list;
-
-        const total = list.length;
-        if(el.hint) el.hint.textContent = total ? `${total} found` : "";
-        if(el.listMeta) el.listMeta.textContent = total ? `${total} messages` : "No messages";
-        if(el.listTitle) el.listTitle.textContent = mailboxLabel(box);
-
-        renderList();
-        // keep selection if possible
-        if(state.activeId){
-          const still = state.filtered.find(x => x.id === state.activeId);
-          if(still) renderMessage(still);
-          else clearReader();
-        }else{
-          clearReader();
-        }
-      }
-
-      function renderList(){
-        if(!el.list) return;
-
-        if(!state.filtered.length){
-          el.list.innerHTML = `<div style="padding:10px 12px;opacity:.85;font-size:13px;line-height:1.5;">
-            No messages found for <strong>${esc(mailboxLabel(state.mailbox))}</strong>.
-            ${state.query ? `Try clearing your search.` : `Check your index.json content.`}
-          </div>`;
-          return;
-        }
-
-        el.list.innerHTML = "";
-        state.filtered.forEach(msg => {
-          const row = document.createElement("div");
-          row.className = "row ep-box" + (msg.id === state.activeId ? " active" : "");
-          row.setAttribute("role","button");
-          row.setAttribute("tabindex","0");
-          row.setAttribute("aria-label", "Open email: " + (msg.subject || "message"));
-
-          const star = msg.starred ? "⭐" : "☆";
-          const fromName = (msg.from && (msg.from.name || msg.from.email)) ? (msg.from.name || msg.from.email) : "Unknown";
-          const subj = msg.subject || "(No subject)";
-          const snip = msg.snippet || msg.bodyText || "";
-          const date = parseDateLabel(msg.date);
-
-          row.innerHTML = `
-            <div class="star" title="${msg.starred ? "Starred" : "Not starred"}">${star}</div>
-            <div class="mid">
-              <div class="from">${esc(fromName)}</div>
-              <div class="subj">${esc(subj)}</div>
-              <div class="snip">${esc(String(snip).slice(0, 220))}</div>
-            </div>
-            <div class="date">${esc(date)}</div>
-          `;
-
-          row.addEventListener("click", () => openMessage(msg.id));
-          row.addEventListener("keydown", (e) => {
-            if(e.key === "Enter" || e.key === " "){
-              e.preventDefault();
-              openMessage(msg.id);
-            }
-          });
-
-          el.list.appendChild(row);
-        });
-      }
-
-      function setListActive(){
-        if(!el.list) return;
-        el.list.querySelectorAll(".row").forEach(r => r.classList.remove("active"));
-        const idx = state.filtered.findIndex(x => x.id === state.activeId);
-        if(idx >= 0){
-          const row = el.list.children[idx];
-          if(row) row.classList.add("active");
-        }
-      }
-
-      function openMessage(id){
-        const msg = state.filtered.find(x => x.id === id);
-        if(!msg) return;
-        state.activeId = msg.id;
-        setListActive();
-        renderMessage(msg);
-
-        // Mobile: open reader overlay
-        if(el.reader){
-          if(window.matchMedia && window.matchMedia("(max-width: 980px)").matches){
-            el.reader.classList.add("open");
-            if(el.btnClose) el.btnClose.style.display = "inline-flex";
-            if(el.btnBack) el.btnBack.style.display = "none";
-          }
-          if(window.matchMedia && window.matchMedia("(max-width: 720px)").matches){
-            if(el.btnClose) el.btnClose.style.display = "inline-flex";
-          }
-        }
-      }
-
-      function clearReader(){
-        state.activeId = "";
-        if(el.readerTopTitle) el.readerTopTitle.textContent = "Message";
-        if(el.readerBody){
-          el.readerBody.innerHTML = `
-            <div class="email-card ep-box">
-              <h2>Select an email</h2>
-              <div class="legal">
-                Click a message in <strong>${esc(mailboxLabel(state.mailbox))}</strong> to open it here.
-              </div>
-            </div>
-
-            <div class="legal">
-              <strong>Disclosure:</strong> Jeffs Mail is a simulated email-style UI for navigating publicly released documents.
-              It does not claim to show a real private inbox, hacked data, or private correspondence.
-              Entries may contain allegations or explicit descriptions. Civic Threat does not endorse wrongdoing and does not make claims about guilt or innocence.
-            </div>
-          `;
-        }
-      }
-
-      function renderMessage(msg){
-        if(!msg || !el.readerBody) return;
-
-        const fromName = msg.from?.name || "Unknown";
-        const fromEmail = msg.from?.email || "";
-        const toName = msg.to?.name || "Jeff";
-        const toEmail = msg.to?.email || "";
-        const subject = msg.subject || "(No subject)";
-        const date = parseDateLabel(msg.date);
-
-        const tags = Array.isArray(msg.tags) ? msg.tags : [];
-        const tagHtml = tags.length ? `<div class="chips">${tags.map(t => `<span class="chip">${esc(t)}</span>`).join("")}</div>` : "";
-
-        const bodyHtml = String(msg.bodyHtml || "").trim();
-        const bodyText = String(msg.bodyText || "").trim();
-        const body = bodyHtml
-          ? bodyHtml
-          : (bodyText ? `<div>${esc(bodyText).replace(/\n/g, "<br>")}</div>` : `<div style="opacity:.85">(No message body provided.)</div>`);
-
-        const att = Array.isArray(msg.attachments) ? msg.attachments : [];
-        const attHtml = att.length ? `
-          <div class="attachments">
-            <div class="ttl">Attachments</div>
-            ${att.map(a => {
-              const href = String(a.path || "").trim();
-              const nm = String(a.name || "Attachment").trim();
-              return `
-                <div class="att ep-box">
-                  <div class="name">📎 ${esc(nm)}</div>
-                  <a class="open" href="${esc(href)}" target="_blank" rel="noopener">Open</a>
-                </div>
-              `;
-            }).join("")}
-            <div class="legal" style="margin-top:8px">
-              Attachments open the original source PDFs in a new tab. If you’re in a Facebook/Instagram in-app browser, use “Open in browser” for best results.
-            </div>
-          </div>
-        ` : "";
-
-        if(el.readerTopTitle) el.readerTopTitle.textContent = "Reading";
-
-        el.readerBody.innerHTML = `
-          <div class="email-card ep-box">
-            <h2>${esc(subject)}</h2>
-
-            ${tagHtml}
-
-            <div class="headers">
-              <div class="k">From</div>
-              <div>${esc(fromName)}${fromEmail ? ` &lt;${esc(fromEmail)}&gt;` : ""}</div>
-
-              <div class="k">To</div>
-              <div>${esc(toName)}${toEmail ? ` &lt;${esc(toEmail)}&gt;` : ""}</div>
-
-              <div class="k">Date</div>
-              <div>${esc(date || "—")}</div>
-
-              <div class="k">Mailbox</div>
-              <div>${esc(mailboxLabel(state.mailbox))}${msg.starred ? " • Starred" : ""}</div>
-            </div>
-
-            <div class="body">${body}</div>
-
-            ${attHtml}
-
-            <div class="legal">
-              <strong>Safety & context:</strong> This interface is an <em>organizational simulation</em>.
-              It does not claim the message is an authentic private email. Treat entries as navigation cards tied to public sources.
-              Allegations in documents should be read in context.
-            </div>
-          </div>
-        `;
-      }
-
-      function wireNav(){
-        el.navBtns.forEach(btn => {
-          btn.addEventListener("click", () => {
-            const box = btn.getAttribute("data-box") || "inbox";
-            state.mailbox = box;
-            setNavActive();
-            clearReader();
-            applyFilter();
-          });
-          btn.addEventListener("keydown", (e) => {
-            if(e.key === "Enter" || e.key === " "){
-              e.preventDefault();
-              btn.click();
-            }
-          });
-        });
-      }
-
-      function wireSearch(){
-        if(!el.q) return;
-        el.q.addEventListener("input", () => {
-          state.query = el.q.value || "";
-          applyFilter();
-        });
-      }
-
-      function wireReaderClose(){
-        if(!el.btnClose || !el.reader) return;
-
-        function close(){
-          el.reader.classList.remove("open");
-        }
-
-        el.btnClose.addEventListener("click", close);
-
-        // Close overlay when ESC on small screens
-        document.addEventListener("keydown", (e) => {
-          if(e.key === "Escape" && el.reader.classList.contains("open")){
-            close();
-          }
-        });
-      }
-
-      function renderSourcePill(){
-        if(!el.sourcePill) return;
-        el.sourcePill.textContent = "Source: jeffs-mail/index.json";
-        el.sourcePill.title = INDEX_URL;
-      }
-
-      async function boot(){
-        renderSourcePill();
-        setupInAppWarning();
-        wireNav();
-        wireSearch();
-        wireReaderClose();
-
-        // Load JSON
-        try{
-          if(el.listMeta) el.listMeta.textContent = "Loading…";
-          const data = await fetchJsonStrict(INDEX_URL);
-          state.data = data;
-          state.items = normalizeItems(data);
-          computeCounts(state.items);
-          setNavActive();
-          applyFilter();
-        }catch(err){
-          console.error(err);
-          if(el.listMeta) el.listMeta.textContent = "Offline";
-          if(el.list){
-            el.list.innerHTML = `<div style="padding:10px 12px;opacity:.9;font-size:13px;line-height:1.5;">
-              Could not load <strong>${esc(INDEX_URL)}</strong>.<br>
-              Make sure the file exists and is publicly accessible.<br>
-              <span style="opacity:.8">Error: ${esc(err && err.message ? err.message : String(err))}</span>
-            </div>`;
-          }
-          clearReader();
-        }
-      }
-
-      document.addEventListener("DOMContentLoaded", () => wireGate(boot));
-    })();
-  </script>
+  <script src="/config.js?v=13"></script>
+  <script src="/app.js?v=13"></script>
+
+  <!-- Jeffs Mail logic (loads ./index.json) -->
+  <script src="./jeffs-mail.js?v=13"></script>
 </body>
 </html>
