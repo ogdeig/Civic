@@ -1,12 +1,12 @@
 /* jeffs-mail.js — CivicThreat.us
-   Jeffs Mail (simulated mailbox UI) for browsing publicly released PDFs.
+   Simulated mailbox UI for browsing publicly released PDFs.
 
    Data source:
    - ./index.json
 
-   Supports index.json items with:
-   - from/to as STRING (e.g. "Jane Doe <jane@x.com>")
-   - OR from/to as OBJECT (e.g. {name:"Jane", address:"jane@x.com"} or {name,email})
+   Supports index.json items where:
+   - from/to might be strings OR objects (from older/newer generators)
+   - items might include attachments arrays OR pdf path
 */
 (function(){
   "use strict";
@@ -38,7 +38,6 @@
     readCard: $("#jmReadCard"),
     readingMeta: $("#jmReadingMeta"),
 
-    // contacts UI (optional)
     contactWrap: $("#jmContactsWrap"),
     contactSelect: $("#jmContacts"),
 
@@ -51,14 +50,15 @@
   const state = {
     data: null,
     all: [],
-    folder: "inbox",     // inbox | sent | starred
+    folder: "inbox",   // inbox | sent | starred
     q: "",
     activeId: "",
-    contact: "all",      // contactKey or "all"
+    contact: "all",
     starred: new Set(),
-    contacts: [],        // { key, name }
+    contacts: [],      // { key, name }
   };
 
+  // ---------------- util ----------------
   function esc(s){
     return String(s||"").replace(/[&<>"']/g, m => ({
       "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
@@ -78,7 +78,9 @@
     }catch(_){ return ""; }
   }
 
-  // ---------------- Age Gate ----------------
+  function toLower(s){ return String(s||"").toLowerCase(); }
+
+  // ---------------- age gate ----------------
   function hasConsent(){
     try{ return localStorage.getItem(CONSENT_KEY) === "yes"; }catch(_){ return false; }
   }
@@ -123,7 +125,7 @@
     }
   }
 
-  // ---------------- Storage ----------------
+  // ---------------- storage ----------------
   function loadStarred(){
     try{
       const raw = localStorage.getItem(STAR_KEY);
@@ -147,7 +149,7 @@
     try{ localStorage.setItem(CONTACT_FILTER_KEY, state.contact || "all"); }catch(_){}
   }
 
-  // ---------------- Fetch ----------------
+  // ---------------- fetch ----------------
   async function fetchJsonStrict(url){
     const bust = Date.now();
     const u = url + (url.includes("?") ? "&" : "?") + "_=" + bust;
@@ -156,25 +158,33 @@
     return r.json();
   }
 
-  // ---------------- Parsing helpers ----------------
-  function parsePerson(v){
-    // Accept: string OR object OR null
-    if(!v) return { name:"Unknown", address:"" };
+  // ---------------- parsing helpers ----------------
 
+  // Robustly parse from/to which could be string OR object (older/newer schema)
+  function parsePerson(v){
+    if(!v) return { name:"Unknown", email:"" };
+
+    // string: "Name <email>" or "email"
     if(typeof v === "string"){
       const s = safeText(v);
-      if(!s) return { name:"Unknown", address:"" };
+      if(!s) return { name:"Unknown", email:"" };
 
-      // Try to split "Name <email>"
       const m = s.match(/^(.*?)(?:\s*<\s*([^>]+)\s*>)?\s*$/);
-      const name = safeText(m ? (m[1] || "") : s) || "Unknown";
-      const address = safeText(m ? (m[2] || "") : "");
-      return {
-        name: name === "Unknown" && address ? address : name,
-        address
-      };
+      let name = safeText(m ? (m[1] || "") : s);
+      let email = safeText(m ? (m[2] || "") : "");
+
+      // If only email provided
+      if(!email && name.includes("@") && !name.includes(" ")){
+        email = name;
+        name = "";
+      }
+
+      if(!name && email) name = email;
+
+      return { name: name || "Unknown", email: email || "" };
     }
 
+    // object: {name,email} or {name,address} etc
     if(typeof v === "object"){
       const name =
         safeText(v.name) ||
@@ -182,43 +192,56 @@
         safeText(v.fullName) ||
         safeText(v.nickname) ||
         "";
-      const address =
-        safeText(v.address) ||
+      const email =
         safeText(v.email) ||
+        safeText(v.address) ||
         safeText(v.mail) ||
         safeText(v.addr) ||
         "";
-      const merged = safeText([name, address].filter(Boolean).join(" ")) || "";
-      if(!merged) return { name:"Unknown", address:"" };
-      return {
-        name: name || (address || "Unknown"),
-        address: address || ""
-      };
+      const nm = name || (email || "");
+      return { name: nm ? nm : "Unknown", email: email || "" };
     }
 
-    return { name:"Unknown", address:"" };
+    return { name:"Unknown", email:"" };
   }
 
   function personDisplay(p){
-    if(!p) return "Unknown";
-    const name = safeText(p.name) || "Unknown";
-    const addr = safeText(p.address);
-    if(addr && name !== "Unknown" && name.toLowerCase() !== addr.toLowerCase()){
-      return `${name} <${addr}>`;
+    const name = safeText(p?.name) || "Unknown";
+    const email = safeText(p?.email);
+    if(!email) return name || "Unknown";
+    if(name && name !== "Unknown" && toLower(name) !== toLower(email)){
+      return `${name} <${email}>`;
     }
-    return name !== "Unknown" ? name : (addr || "Unknown");
+    return email || name || "Unknown";
   }
 
-  function stableContactKey(name, address){
-    // Prefer email/address for stability (prevents doubles)
-    const a = safeText(address).toLowerCase();
-    if(a) return "e_" + a.replace(/[^\w@.+-]+/g, "");
+  // Normalize label to reduce duplicate contacts
+  function normalizeContactLabel(s){
+    let t = safeText(s);
 
+    // strip wrapping quotes and stray punctuation
+    t = t.replace(/^[“”"']+|[“”"']+$/g, "");
+
+    // remove bracket noise
+    t = t.replace(/[\[\]\(\)]/g, " ");
+
+    // collapse spaces
+    t = t.replace(/\s+/g, " ").trim();
+
+    // if it looks like "Unknown <>" etc
+    if(!t || toLower(t) === "unknown" || t === "<>") return "Unknown";
+    return t;
+  }
+
+  // Prefer email-based stable keys when possible
+  function stableContactKey(name, email){
+    const e = safeText(email).toLowerCase();
+    if(e) return "e_" + e.replace(/[^\w@.+-]+/g, "");
     const n = safeText(name).toLowerCase();
     if(!n) return "unknown";
     return "n_" + n
       .replace(/["'`]/g, "")
-      .replace(/[<>()[\]{}]/g, " ")
+      .replace(/[<>]/g, " ")
       .replace(/[^\w\s-]+/g, "")
       .replace(/\s+/g, "-")
       .replace(/-+/g, "-")
@@ -226,30 +249,52 @@
   }
 
   function otherParty(mailbox, fromP, toP){
-    // inbox => other is FROM, sent => other is TO
+    // inbox => other is FROM; sent => other is TO
     return mailbox === "sent" ? toP : fromP;
   }
 
+  // Remove iPhone plist/xml spam from body if extraction goes too far
   function cleanBodyForDisplay(body){
     let t = String(body || "").trim();
     if(!t) return "";
 
-    // Kill the iPhone plist/XML dump if it appears
+    // If an embedded plist/xml starts, cut it off
     const xmlIdx = t.search(/<\?xml|<!DOCTYPE\s+plist|<plist\b/i);
     if(xmlIdx >= 0){
       t = t.slice(0, xmlIdx).trim();
     }
 
-    // If body is still massive, keep it readable
-    // (Your builder should already keep top message only, but this is a safety net.)
-    if(t.length > 6000){
-      t = t.slice(0, 6000).trim() + "\n\n…";
+    // Safety clamp for crazy long bodies
+    if(t.length > 7000){
+      t = t.slice(0, 7000).trim() + "\n\n…";
     }
 
     return t;
   }
 
-  // ---------------- Normalize items ----------------
+  function resolvePdfPath(m){
+    // Newer schema might store attachments[]; older stores pdf
+    const direct = safeText(m.pdf);
+    if(direct) return direct;
+
+    const att = Array.isArray(m.attachments) ? m.attachments : [];
+    if(att.length){
+      const first = att.find(a => a && (a.path || a.url)) || att[0];
+      const p = safeText(first?.path || first?.url);
+      if(p) return p;
+    }
+    return "";
+  }
+
+  function resolveMailbox(m){
+    const mb = safeText(m.mailbox).toLowerCase();
+    if(mb === "sent" || mb === "inbox") return mb;
+
+    // If generator uses "starred" mailbox, treat as inbox but star separately
+    return "inbox";
+  }
+
+  // ---------------- normalize items ----------------
   function normalizeItems(data){
     const items = Array.isArray(data?.items) ? data.items : [];
     const cleaned = [];
@@ -260,45 +305,56 @@
       const id = safeText(m.id);
       if(!id) continue;
 
-      const pdf = safeText(m.pdf);
+      const pdf = resolvePdfPath(m);
       if(!pdf) continue;
 
-      const mailboxRaw = safeText(m.mailbox).toLowerCase();
-      const mailbox = mailboxRaw === "sent" ? "sent" : "inbox"; // keep strict
+      const mailbox = resolveMailbox(m);
 
       const subject = safeText(m.subject) || "(No subject)";
 
       const fromP = parsePerson(m.from);
       const toP = parsePerson(m.to);
 
-      // If redacted/missing => "Unknown"
-      const fromDisplay = personDisplay(fromP) || "Unknown";
-      const toDisplay = personDisplay(toP) || "Unknown";
+      const fromDisp = normalizeContactLabel(personDisplay(fromP));
+      const toDisp = normalizeContactLabel(personDisplay(toP));
+
+      // If something is missing/redacted -> Unknown (you requested this)
+      const fromFinal = fromDisp && fromDisp !== "[object Object]" ? fromDisp : "Unknown";
+      const toFinal = toDisp && toDisp !== "[object Object]" ? toDisp : "Unknown";
 
       const date = safeText(m.date);
       const dateDisplay = safeText(m.dateDisplay);
 
-      const rawBody = String(m.body || "");
+      const rawBody = String(m.body || m.bodyText || "");
       const body = cleanBodyForDisplay(rawBody);
       const snippet = safeText(m.snippet) || safeText(body).slice(0, 220);
 
-      // Contact key/name: prefer builder-provided, else compute from other party
+      // contactKey/contactName: use builder if provided, else compute from other party
       let contactKey = safeText(m.contactKey);
       let contactName = safeText(m.contactName);
 
       if(!contactKey || !contactName){
         const other = otherParty(mailbox, fromP, toP);
-        contactName = contactName || (safeText(other?.name) || safeText(other?.address) || "Unknown");
-        contactKey = contactKey || stableContactKey(other?.name, other?.address);
+        const otherName = normalizeContactLabel(safeText(other?.name) || safeText(other?.email) || "Unknown");
+        const otherEmail = safeText(other?.email);
+        contactName = contactName || otherName || "Unknown";
+        contactKey = contactKey || stableContactKey(otherName, otherEmail);
+      }
+
+      // De-dupe "Unknown" variations
+      if(!contactName || contactName === "<>" || toLower(contactName) === "unknown"){
+        contactName = "Unknown";
+        contactKey = "unknown";
       }
 
       cleaned.push({
         id,
         mailbox,
         subject,
-        fromP, toP,
-        from: fromDisplay,
-        to: toDisplay,
+        fromP,
+        toP,
+        from: fromFinal || "Unknown",
+        to: toFinal || "Unknown",
         date,
         dateDisplay,
         snippet,
@@ -306,7 +362,7 @@
         pdf,
         contactKey: contactKey || "unknown",
         contactName: contactName || "Unknown",
-        starred: state.starred.has(id),
+        starred: state.starred.has(id) || m.starred === true || safeText(m.mailbox).toLowerCase() === "starred",
       });
     }
 
@@ -321,12 +377,17 @@
   }
 
   function rebuildContacts(){
-    const map = new Map(); // key => displayName
+    const map = new Map(); // key -> name
 
     for(const m of state.all){
       const k = safeText(m.contactKey) || "unknown";
-      const n = safeText(m.contactName) || "Unknown";
-      if(!map.has(k)) map.set(k, n);
+      const n = normalizeContactLabel(m.contactName) || "Unknown";
+
+      // prevent junk keys that cause doubles
+      const kk = (k === "n_unknown" || k === "e_" || !k) ? "unknown" : k;
+      const nn = (!n || n === "[object Object]") ? "Unknown" : n;
+
+      if(!map.has(kk)) map.set(kk, nn);
     }
 
     const list = Array.from(map.entries()).map(([key, name]) => ({ key, name }));
@@ -345,14 +406,9 @@
         list.map(c => `<option value="${esc(c.key)}">${esc(c.name)}</option>`).join("");
 
       el.contactSelect.value = (cur === "all" || map.has(cur)) ? cur : "all";
-
-      // Inline styling safety net (CSS is still recommended)
-      el.contactSelect.style.background = "rgba(0,0,0,.55)";
-      el.contactSelect.style.color = "#fff";
-      el.contactSelect.style.border = "1px solid rgba(255,255,255,.18)";
     }
 
-    // If stored filter no longer exists, reset
+    // if stored filter no longer exists, reset
     if(state.contact !== "all" && !map.has(state.contact)){
       state.contact = "all";
       saveContactFilter();
@@ -499,10 +555,11 @@
     }
 
     el.items.innerHTML = "";
+
     for(const m of list){
       const dateShort = m.date ? fmtDateShort(m.date) : (m.dateDisplay || "");
       const other = otherParty(m.mailbox, m.fromP, m.toP);
-      const fromLabel = safeText(other?.name) || safeText(other?.address) || "Unknown";
+      const fromLabel = normalizeContactLabel(safeText(other?.name) || safeText(other?.email) || "Unknown");
 
       const row = document.createElement("div");
       row.className = "jm-item";
@@ -558,6 +615,13 @@
       if(!btn) return;
       btn.addEventListener("click", () => {
         setActiveFolder(btn.getAttribute("data-folder") || "inbox");
+      });
+      // keyboard
+      btn.addEventListener("keydown", (e) => {
+        if(e.key === "Enter" || e.key === " "){
+          e.preventDefault();
+          btn.click();
+        }
       });
     });
 
