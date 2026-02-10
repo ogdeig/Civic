@@ -1,0 +1,21 @@
+{
+  "__README__": {
+    "note": "Optional per-PDF overrides. Keys can be: full filename (including prefix like inbox__), filename without prefix, or filename without extension.",
+    "mailboxValues": ["inbox", "sent", "starred", "attachments"],
+    "tip": "If you want messages to land in Sent/Starred/Attachments automatically, rename PDFs like sent__MyFile.pdf or starred__MyFile.pdf."
+  },
+
+  "jerky EFTA02396657 (17).pdf": {
+    "subject": "EFTA 02396657 (17)",
+    "snippet": "Released exhibit attached. Tap to open the PDF.",
+    "mailbox": "inbox",
+    "starred": false,
+    "tags": ["Released", "EFTA", "PDF"]
+  },
+
+  "sent__Press statement.pdf": {
+    "mailbox": "sent",
+    "subject": "Press statement (archived)",
+    "starred": true
+  }
+}
