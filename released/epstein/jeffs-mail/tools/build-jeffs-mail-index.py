@@ -1,559 +1,512 @@
-(function(){
-  "use strict";
-
-  const INDEX_URL = "./index.json";
-  const CONSENT_KEY = "ct_jeffs_mail_21_gate_v1";
-  const STAR_KEY = "ct_jeffs_mail_starred_v1";
-  const CONTACT_KEY = "ct_jeffs_mail_contact_filter_v1";
-
-  const $ = (sel, root=document) => root.querySelector(sel);
-
-  const el = {
-    search: $("#jmSearch"),
-    items: $("#jmItems"),
-    found: $("#jmFound"),
-    source: $("#jmSource"),
-
-    folderTitle: $("#jmFolderTitle"),
-    folderCount: $("#jmCount"),
-
-    btnInbox: $("#btnInbox"),
-    btnSent: $("#btnSent"),
-    btnStarred: $("#btnStarred"),
-
-    countInbox: $("#countInbox"),
-    countSent: $("#countSent"),
-    countStarred: $("#countStarred"),
-
-    readCard: $("#jmReadCard"),
-    readingMeta: $("#jmReadingMeta"),
-
-    contactWrap: $("#jmContactsWrap"),
-    contactSelect: $("#jmContacts"),
-
-    reader: $("#jmReader"),
-    btnReaderBack: $("#jmReaderBack"),
-
-    gate: $("#ageGate"),
-    gateCheck: $("#gateCheck"),
-    gateEnter: $("#gateEnter"),
-    gateLeave: $("#gateLeave"),
-  };
-
-  const state = {
-    data: null,
-    all: [],
-    folder: "inbox",
-    q: "",
-    activeId: "",
-    contact: "all",
-    starred: new Set(),
-    contacts: [],
-  };
-
-  function esc(s){
-    return String(s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  }
-
-  function safeText(s){
-    return String(s || "").replace(/\s+/g, " ").trim();
-  }
-
-  function isObj(v){
-    return v && typeof v === "object" && !Array.isArray(v);
-  }
-
-  function pickName(v){
-    // Handles legacy index.json where from/to might be objects
-    if(!v) return "";
-    if(typeof v === "string") return v;
-    if(isObj(v)){
-      return safeText(v.name || v.email || v.address || v.display || v.value || "");
-    }
-    return safeText(String(v));
-  }
-
-  function fmtDateShort(iso){
-    if(!iso) return "";
-    try{
-      const d = new Date(iso);
-      if(isNaN(d.getTime())) return "";
-      return d.toLocaleDateString(undefined, { year:"numeric", month:"short", day:"2-digit" });
-    }catch(_){ return ""; }
-  }
-
-  function slugify(s){
-    return safeText(s).toLowerCase()
-      .replace(/[^\w\s\-]+/g, "")
-      .replace(/\s+/g, "-")
-      .replace(/\-+/g, "-")
-      .replace(/^\-+|\-+$/g, "") || "unknown";
-  }
-
-  function looksDateish(s){
-    const t = safeText(s).toLowerCase();
-    if(!t) return false;
-    return /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b/.test(t) ||
-      /\b(mon|tue|wed|thu|fri|sat|sun)\b/.test(t) ||
-      /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/.test(t) ||
-      /\b\d{4}-\d{2}-\d{2}\b/.test(t);
-  }
-
-  function cleanContact(s){
-    let t = safeText(s);
-    t = t.replace(/^(from|to|sent|subject)\s*:\s*/i, "").trim();
-    t = t.replace(/^\s*[:\-]\s*/, "").trim();
-    t = t.replace(/[\[\]\(\)]/g, "").trim();
-    t = t.replace(/\s+/g, " ").trim();
-    t = t.replace(/[,;|•]+$/g, "").trim();
-    if(!t) return "Unknown";
-    if(looksDateish(t)) return "Unknown";
-    if(t.length > 140) return "Unknown";
-    return t;
-  }
-
-  function hasConsent(){
-    try{ return localStorage.getItem(CONSENT_KEY) === "yes"; }catch(_){ return false; }
-  }
-  function setConsent(){
-    try{ localStorage.setItem(CONSENT_KEY, "yes"); }catch(_){}
-  }
-  function showGate(){
-    if(!el.gate) return;
-    el.gate.style.display = "flex";
-    document.body.style.overflow = "hidden";
-    if(el.gateCheck) el.gateCheck.checked = false;
-    if(el.gateEnter) el.gateEnter.disabled = true;
-  }
-  function hideGate(){
-    if(!el.gate) return;
-    el.gate.style.display = "none";
-    document.body.style.overflow = "";
-  }
-  function wireGate(onEnter){
-    if(!el.gate || !el.gateCheck || !el.gateEnter || !el.gateLeave) return onEnter();
-
-    el.gateCheck.addEventListener("change", () => {
-      el.gateEnter.disabled = !el.gateCheck.checked;
-    });
-
-    el.gateLeave.addEventListener("click", () => {
-      location.href = "/";
-    });
-
-    el.gateEnter.addEventListener("click", () => {
-      if(!el.gateCheck.checked) return;
-      setConsent();
-      hideGate();
-      onEnter();
-    });
-
-    if(hasConsent()){
-      hideGate();
-      onEnter();
-    }else{
-      showGate();
-    }
-  }
-
-  function loadStarred(){
-    try{
-      const raw = localStorage.getItem(STAR_KEY);
-      const arr = raw ? JSON.parse(raw) : [];
-      if(Array.isArray(arr)){
-        state.starred = new Set(arr.map(String));
-      }
-    }catch(_){
-      state.starred = new Set();
-    }
-  }
-
-  function saveStarred(){
-    try{
-      localStorage.setItem(STAR_KEY, JSON.stringify(Array.from(state.starred)));
-    }catch(_){}
-  }
-
-  function loadContactFilter(){
-    try{
-      const v = localStorage.getItem(CONTACT_KEY);
-      state.contact = v || "all";
-    }catch(_){
-      state.contact = "all";
-    }
-  }
-
-  function saveContactFilter(){
-    try{ localStorage.setItem(CONTACT_KEY, state.contact || "all"); }catch(_){}
-  }
-
-  async function fetchJsonStrict(url){
-    const bust = Date.now();
-    const u = url + (url.includes("?") ? "&" : "?") + "_=" + bust;
-    const r = await fetch(u, { cache: "no-store" });
-    if(!r.ok) throw new Error(`HTTP ${r.status} for ${url}`);
-    return r.json();
-  }
-
-  function otherParty(mailbox, from, to){
-    const f = cleanContact(from);
-    const t = cleanContact(to);
-    return mailbox === "sent" ? (t || "Unknown") : (f || "Unknown");
-  }
-
-  function normalizeItems(data){
-    const items = Array.isArray(data?.items) ? data.items : [];
-    const cleaned = [];
-    const seen = new Set();
-
-    for(const m of items){
-      if(!m || !m.id) continue;
-
-      const pdf = safeText(m.pdf);
-      if(!pdf) continue;
-
-      const mailboxRaw = safeText(m.mailbox).toLowerCase();
-      const mailbox = mailboxRaw === "sent" ? "sent" : "inbox";
-
-      const subject = safeText(m.subject) || "(No subject)";
-      const from = cleanContact(pickName(m.from));
-      const to = cleanContact(pickName(m.to));
-
-      const date = safeText(m.date);
-      const dateDisplay = safeText(m.dateDisplay);
-
-      const body = safeText(m.body || "");
-      const snippet = safeText(m.snippet) || (body ? body.slice(0, 160) : "");
-
-      // contactKey/contactName (prefer builder; fallback to otherParty)
-      let contactName = cleanContact(pickName(m.contactName)) || otherParty(mailbox, from, to);
-      if(looksDateish(contactName)) contactName = otherParty(mailbox, from, to);
-      if(looksDateish(contactName)) contactName = "Unknown";
-
-      let contactKey = safeText(m.contactKey) || slugify(contactName);
-      if(contactKey === "unknown" && contactName !== "Unknown") contactKey = slugify(contactName);
-
-      const id = String(m.id);
-
-      // Dedup at UI level too
-      const sig = [pdf, subject, from, to, date, mailbox].join("|");
-      if(seen.has(sig)) continue;
-      seen.add(sig);
-
-      cleaned.push({
-        id,
-        mailbox,
-        subject,
-        from: from || "Unknown",
-        to: to || "Unknown",
-        date,
-        dateDisplay,
-        snippet,
-        body,
-        pdf,
-        contactKey: contactKey || "unknown",
-        contactName: contactName || "Unknown",
-        starred: state.starred.has(id),
-      });
-    }
-
-    cleaned.sort((a,b) => {
-      const da = Date.parse(a.date || "") || 0;
-      const db = Date.parse(b.date || "") || 0;
-      if(db !== da) return db - da;
-      return String(b.id).localeCompare(String(a.id));
-    });
-
-    return cleaned;
-  }
-
-  function rebuildContacts(){
-    const map = new Map();
-    for(const m of state.all){
-      const k = safeText(m.contactKey) || "unknown";
-      const n = cleanContact(m.contactName) || "Unknown";
-      if(n === "Unknown") continue;
-      if(!map.has(k)) map.set(k, n);
-    }
-
-    const list = Array.from(map.entries()).map(([key, name]) => ({ key, name }));
-    list.sort((a,b) => a.name.localeCompare(b.name));
-
-    state.contacts = list;
-
-    if(el.contactSelect){
-      const cur = state.contact || "all";
-      el.contactSelect.innerHTML = `
-        <option value="all">All contacts</option>
-        ${list.map(c => `<option value="${esc(c.key)}">${esc(c.name)}</option>`).join("")}
-      `;
-      el.contactSelect.value = (cur === "all" || map.has(cur)) ? cur : "all";
-    }
-  }
-
-  function setActiveFolder(folder){
-    state.folder = folder;
-
-    [el.btnInbox, el.btnSent, el.btnStarred].forEach(b => b && b.classList.remove("active"));
-    const btn =
-      folder === "sent" ? el.btnSent :
-      folder === "starred" ? el.btnStarred :
-      el.btnInbox;
-
-    if(btn) btn.classList.add("active");
-    if(el.folderTitle) el.folderTitle.textContent = folder.toUpperCase();
-    draw();
-  }
-
-  function matchesQuery(m, q){
-    if(!q) return true;
-    const hay = [
-      m.subject, m.from, m.to, m.snippet, m.body, m.contactName
-    ].join(" ").toLowerCase();
-    return hay.includes(q);
-  }
-
-  function matchesContact(m){
-    const c = state.contact || "all";
-    if(c === "all") return true;
-    return (m.contactKey || "") === c;
-  }
-
-  function getVisible(){
-    const q = (state.q || "").trim().toLowerCase();
-    let list = state.all;
-
-    if(state.folder === "starred"){
-      list = list.filter(x => x.starred);
-    }else{
-      list = list.filter(x => (x.mailbox || "inbox") === state.folder);
-    }
-
-    list = list.filter(matchesContact);
-    if(q) list = list.filter(m => matchesQuery(m, q));
-    return list;
-  }
-
-  function updateCounts(){
-    const all = state.all;
-    const inbox = all.filter(x => (x.mailbox || "inbox") === "inbox").length;
-    const sent = all.filter(x => (x.mailbox || "inbox") === "sent").length;
-    const starred = all.filter(x => !!x.starred).length;
-
-    if(el.countInbox) el.countInbox.textContent = String(inbox);
-    if(el.countSent) el.countSent.textContent = String(sent);
-    if(el.countStarred) el.countStarred.textContent = String(starred);
-  }
-
-  function toggleStar(id){
-    const sid = String(id || "");
-    if(!sid) return;
-
-    if(state.starred.has(sid)) state.starred.delete(sid);
-    else state.starred.add(sid);
-
-    saveStarred();
-
-    for(const m of state.all){
-      if(m.id === sid){
-        m.starred = state.starred.has(sid);
-        break;
-      }
-    }
-    updateCounts();
-    draw();
-  }
-
-  function isNarrow(){
-    return window.matchMedia && window.matchMedia("(max-width: 980px)").matches;
-  }
-
-  function openReaderOverlay(){
-    if(!el.reader) return;
-    if(isNarrow()){
-      el.reader.classList.add("open");
-      document.body.classList.add("jm-lock");
-    }
-  }
-
-  function closeReaderOverlay(){
-    if(!el.reader) return;
-    el.reader.classList.remove("open");
-    document.body.classList.remove("jm-lock");
-  }
-
-  function setReading(m){
-    state.activeId = m?.id || "";
-    if(!el.readCard) return;
-
-    const mailbox = m.mailbox || "inbox";
-    const bodyText = safeText(m.body || "");
-    const snippet = safeText(m.snippet || "");
-    const pdfHref = esc(m.pdf);
-
-    el.readCard.innerHTML = `
-      <div class="jm-h1">${esc(m.subject)}</div>
-
-      <div class="jm-badges">
-        <span class="jm-badge">Released</span>
-        <span class="jm-badge">PDF</span>
-        ${m.starred ? `<span class="jm-badge">★ Starred</span>` : ``}
-      </div>
-
-      <div class="jm-meta">
-        <b>From</b><div>${esc(m.from || "Unknown")}</div>
-        <b>To</b><div>${esc(m.to || "Unknown")}</div>
-        <b>Date</b><div>${esc(m.date ? fmtDateShort(m.date) : (m.dateDisplay || "Unknown"))}</div>
-        <b>Mailbox</b><div>${esc(String(mailbox))}</div>
-      </div>
-
-      <div class="jm-bodytext">${
-        esc(bodyText || snippet || "Open the source PDF below to view the original record.")
-      }</div>
-
-      <div class="jm-attach">
-        <strong>Source PDF</strong>
-        <div class="jm-attachrow">
-          <div style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-            📄 ${esc((m.pdf || "").split("/").pop() || "document.pdf")}
-          </div>
-          <a class="btn" href="${pdfHref}" target="_blank" rel="noopener">Open</a>
-        </div>
-      </div>
-    `;
-
-    if(el.readingMeta){
-      el.readingMeta.textContent = m.date ? fmtDateShort(m.date) : (m.dateDisplay || "");
-    }
-
-    document.querySelectorAll(".jm-item").forEach(row => row.classList.remove("active"));
-    const active = document.querySelector(`.jm-item[data-id="${CSS.escape(m.id)}"]`);
-    if(active) active.classList.add("active");
-
-    openReaderOverlay();
-  }
-
-  function draw(){
-    if(!el.items) return;
-
-    const list = getVisible();
-
-    if(el.found) el.found.textContent = String(list.length);
-    if(el.folderCount) el.folderCount.textContent = String(list.length);
-
-    if(!list.length){
-      el.items.innerHTML = `<div style="padding:12px;opacity:.85;">No messages found.</div>`;
-      return;
-    }
-
-    el.items.innerHTML = "";
-    for(const m of list){
-      const dateShort = m.date ? fmtDateShort(m.date) : (m.dateDisplay || "");
-      const fromLabel = otherParty(m.mailbox, m.from, m.to) || "Unknown";
-
-      const row = document.createElement("div");
-      row.className = "jm-item";
-      row.setAttribute("data-id", m.id);
-
-      row.innerHTML = `
-        <button class="jm-star ${m.starred ? "on" : ""}" type="button" aria-label="Star">
-          ${m.starred ? "★" : "☆"}
-        </button>
-        <div class="main">
-          <div class="jm-from">${esc(fromLabel)}</div>
-          <div class="jm-subj">${esc(m.subject || "(No subject)")}</div>
-          <div class="jm-snippet">${esc(m.snippet || "")}</div>
-        </div>
-        <div class="jm-date">${esc(dateShort)}</div>
-      `;
-
-      const starBtn = row.querySelector(".jm-star");
-      if(starBtn){
-        starBtn.addEventListener("click", (ev) => {
-          ev.preventDefault();
-          ev.stopPropagation();
-          toggleStar(m.id);
-        });
-      }
-
-      row.addEventListener("click", () => setReading(m));
-      el.items.appendChild(row);
-    }
-
-    if(!state.activeId){
-      setReading(list[0]);
-    }else{
-      const still = list.find(x => x.id === state.activeId);
-      if(still) setReading(still);
-      else setReading(list[0]);
-    }
-  }
-
-  async function boot(){
-    if(el.source) el.source.textContent = "jeffs-mail/index.json";
-
-    loadStarred();
-    loadContactFilter();
-
-    const data = await fetchJsonStrict(INDEX_URL);
-    state.data = data;
-    state.all = normalizeItems(data);
-
-    rebuildContacts();
-    updateCounts();
-
-    [el.btnInbox, el.btnSent, el.btnStarred].forEach(btn => {
-      if(!btn) return;
-      btn.addEventListener("click", () => {
-        setActiveFolder(btn.getAttribute("data-folder") || "inbox");
-        closeReaderOverlay();
-      });
-    });
-
-    if(el.search){
-      el.search.addEventListener("input", () => {
-        state.q = el.search.value || "";
-        state.activeId = "";
-        draw();
-      });
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import json
+import re
+import sys
+import time
+import hashlib
+from dataclasses import dataclass, asdict
+from pathlib import Path
+from typing import List, Dict, Any, Tuple, Optional
+
+try:
+    from dateutil import parser as dateparser  # type: ignore
+except Exception:
+    dateparser = None
+
+PdfReader = None
+_pdf_backend = None
+try:
+    from pypdf import PdfReader as _PdfReader  # type: ignore
+    PdfReader = _PdfReader
+    _pdf_backend = "pypdf"
+except Exception:
+    try:
+        from PyPDF2 import PdfReader as _PdfReader  # type: ignore
+        PdfReader = _PdfReader
+        _pdf_backend = "PyPDF2"
+    except Exception:
+        PdfReader = None
+        _pdf_backend = None
+
+if PdfReader is None:
+    print(
+        "ERROR: No PDF reader library installed.\n"
+        "Install one of:\n"
+        "  pip install pypdf\n"
+        "  pip install PyPDF2\n",
+        file=sys.stderr,
+    )
+    raise ModuleNotFoundError("Missing pypdf/PyPDF2")
+
+ROOT = Path(__file__).resolve()
+REPO_ROOT = ROOT.parents[4]
+MAIL_ROOT = REPO_ROOT / "released" / "epstein" / "jeffs-mail"
+PDF_DIR = MAIL_ROOT / "pdfs"
+OUT_JSON = MAIL_ROOT / "index.json"
+
+SOURCE_LABEL = "Public Record Release"
+
+JEFF_ALIASES = [
+    "jeffrey epstein",
+    "jeff epstein",
+    "jeevacation",
+    "jeevacation@gmail.com",
+    "jeevacation@gma",
+    "jeevacationagmail",
+    "jeevacation@gmail,com",
+    "lsj",
+]
+
+JEFF_TOKEN_RE = re.compile(r"\b(JE|LSJ)\b", re.IGNORECASE)
+
+HEADER_KEYS = ("From", "Sent", "To", "Subject")
+HEADER_RE = re.compile(r"^\s*(From|Sent|To|Subject)\s*:\s*(.*)\s*$", re.IGNORECASE)
+
+DATEISH_RE = re.compile(
+    r"""(?ix)
+    ^\s*
+    (?:
+      (?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*,?\s+
+    )?
+    (?:
+      \d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4} |
+      (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2},?\s+\d{4}
+    )
+    """,
+)
+
+EMAIL_RE = re.compile(r"[\w\.\-+%]+@[\w\.\-]+\.[A-Za-z]{2,}", re.IGNORECASE)
+
+FOOTER_EFTA_RE = re.compile(r"\bEFTA[_\- ]?[A-Z0-9_]{5,}\b", re.IGNORECASE)
+EFTA_R1_RE = re.compile(r"\bEFTA_R1_[A-Z0-9_]+\b", re.IGNORECASE)
+
+HTML_GARBAGE_RE = re.compile(
+    r"<\/?div>|<br\s*\/?>|&nbsp;|style:.*?$|text-align:.*?$",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+PLIST_START_RE = re.compile(r"<!DOCTYPE\s+plist|<plist\b|<\?xml\b", re.IGNORECASE)
+
+CONF_BLOCK_RE = re.compile(
+    r"""(?is)
+    (?:^|\n)\s*Confidentiality\s+Notice:.*$|
+    (?:^|\n)\s*The\s+information\s+contained\s+in\s+this\s+communication\s+is.*$
+    """
+)
+
+QUOTE_CUT_RE = re.compile(
+    r"""(?is)
+    (?:\n\s*On\s.+?\bwrote:\s*\n)|
+    (?:\n\s*-----Original Message-----\s*\n)|
+    (?:\n\s*Begin forwarded message:\s*\n)|
+    (?:\n\s*From:\s.+\n\s*Sent:\s.+\n\s*To:\s.+\n\s*Subject:\s.+\n)|
+    (?:\n\s*>+\s)
+    """
+)
+
+SIGNATURE_KEEP_RE = re.compile(r"^\s*Sent from (my|an) (iPhone|iPad|Android).*$", re.IGNORECASE)
+
+
+def slugify(s: str) -> str:
+    s = (s or "").strip().lower()
+    s = re.sub(r"[^\w\s\-]+", "", s)
+    s = re.sub(r"\s+", "-", s)
+    s = re.sub(r"\-+", "-", s)
+    return s.strip("-") or "unknown"
+
+
+def sha1_short(s: str) -> str:
+    return hashlib.sha1(s.encode("utf-8", "ignore")).hexdigest()[:10]
+
+
+def read_pdf_text(path: Path, max_pages: int = 3) -> str:
+    reader = PdfReader(str(path))
+    pages: List[str] = []
+    for i in range(min(len(reader.pages), max_pages)):
+        try:
+            txt = reader.pages[i].extract_text() or ""
+        except Exception:
+            txt = ""
+        pages.append(txt)
+    text = "\n".join(pages)
+    return text.replace("\r\n", "\n").replace("\r", "\n")
+
+
+def cleanup_text(t: str) -> str:
+    t = (t or "").replace("\r\n", "\n").replace("\r", "\n")
+    t = t.replace("=\n", "")
+    t = HTML_GARBAGE_RE.sub("", t)
+    t = FOOTER_EFTA_RE.sub("", t)
+    t = EFTA_R1_RE.sub("", t)
+    t = re.sub(r"[ \t]+\n", "\n", t)
+    t = re.sub(r"\n{3,}", "\n\n", t)
+    return t.strip()
+
+
+def parse_date_to_iso(sent_value: str) -> Tuple[str, str, int]:
+    sent_value = (sent_value or "").strip()
+
+    if not sent_value:
+        now = int(time.time())
+        iso = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime(now))
+        disp = time.strftime("%b %d, %Y", time.gmtime(now))
+        return iso, disp, now
+
+    dt = None
+    if dateparser is not None:
+        try:
+            dt = dateparser.parse(sent_value)
+        except Exception:
+            dt = None
+
+    if dt is None:
+        cleaned = re.sub(r"^[A-Za-z]+,\s*", "", sent_value)
+        if dateparser is not None:
+            try:
+                dt = dateparser.parse(cleaned)
+            except Exception:
+                dt = None
+
+    if dt is None:
+        now = int(time.time())
+        iso = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime(now))
+        disp = time.strftime("%b %d, %Y", time.gmtime(now))
+        return iso, disp, now
+
+    try:
+        if dt.tzinfo is None or dt.utcoffset() is None:
+            ts = int(dt.replace(tzinfo=None).timestamp())
+        else:
+            ts = int(dt.timestamp())
+    except Exception:
+        ts = int(time.time())
+
+    iso = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime(ts))
+    disp = time.strftime("%b %d, %Y", time.gmtime(ts))
+    return iso, disp, ts
+
+
+def looks_like_jeff(s: str) -> bool:
+    s0 = (s or "").lower()
+    if not s0:
+        return False
+    for a in JEFF_ALIASES:
+        if a and a in s0:
+            return True
+    if JEFF_TOKEN_RE.search(s or ""):
+        return True
+    return False
+
+
+def normalize_contact_name(s: str) -> str:
+    s = (s or "").strip()
+
+    s = re.sub(r"(?i)\b(mailto:|javascript:).*?$", "", s).strip()
+    s = s.replace("[", "").replace("]", "").replace("(", "").replace(")", "")
+    s = re.sub(r"\s+", " ", s).strip()
+
+    # strip leading header labels if OCR duplicated them
+    s = re.sub(r"^(?i)(from|to|sent|subject)\s*:\s*", "", s).strip()
+
+    # If it looks like a date, it is NOT a contact
+    if s and DATEISH_RE.search(s):
+        return "Unknown"
+
+    # If it's nothing useful, Unknown
+    if not s or s.lower() in {"unknown", "n/a", "na", "-"}:
+        return "Unknown"
+
+    # If the string is extremely long and contains no email and no letters, nuke it
+    if len(s) > 120 and not EMAIL_RE.search(s) and not re.search(r"[A-Za-z]", s):
+        return "Unknown"
+
+    # Clean trailing punctuation / separators
+    s = s.strip(" ,;|•\t")
+
+    return s or "Unknown"
+
+
+def coerce_header_value(val: str) -> str:
+    v = (val or "").strip()
+    v = re.sub(r"^\s*[:\-]\s*", "", v).strip()
+    v = re.sub(r"\s+", " ", v).strip()
+    return v
+
+
+def extract_headers(text: str) -> Dict[str, str]:
+    """
+    Multi-line header extraction:
+    If a header line starts "From:" and the next line does NOT start a new header,
+    treat it as a continuation.
+    """
+    hdr = {"from": "", "to": "", "subject": "", "sent": ""}
+
+    t = cleanup_text(text)
+    lines = [ln.rstrip() for ln in t.splitlines()]
+
+    # scan the first portion where headers usually live
+    i = 0
+    max_scan = min(len(lines), 220)
+    current_key: Optional[str] = None
+    buf: List[str] = []
+
+    def flush():
+        nonlocal current_key, buf
+        if current_key and buf:
+            joined = " ".join([x.strip() for x in buf if x.strip()]).strip()
+            joined = coerce_header_value(joined)
+            if current_key == "from":
+                hdr["from"] = hdr["from"] or joined
+            elif current_key == "to":
+                hdr["to"] = hdr["to"] or joined
+            elif current_key == "subject":
+                hdr["subject"] = hdr["subject"] or joined
+            elif current_key == "sent":
+                hdr["sent"] = hdr["sent"] or joined
+        current_key = None
+        buf = []
+
+    while i < max_scan:
+        ln = lines[i].strip()
+        m = HEADER_RE.match(ln)
+        if m:
+            flush()
+            key = m.group(1).lower()
+            val = m.group(2) or ""
+            current_key = key
+            buf = [val]
+            i += 1
+            # capture continuation lines
+            while i < max_scan:
+                nxt = lines[i].strip()
+                if HEADER_RE.match(nxt):
+                    break
+                # stop if we hit obvious body separator
+                if nxt == "":
+                    # allow a single blank line continuation break
+                    break
+                buf.append(nxt)
+                i += 1
+            flush()
+            continue
+        i += 1
+
+    # Final cleanup + Unknown defaults
+    hdr["from"] = normalize_contact_name(hdr["from"])
+    hdr["to"] = normalize_contact_name(hdr["to"])
+
+    subj = coerce_header_value(hdr["subject"])
+    # subject should not be a date
+    if subj and DATEISH_RE.search(subj):
+        subj = ""
+    hdr["subject"] = subj.strip() or ""
+
+    sent = coerce_header_value(hdr["sent"])
+    hdr["sent"] = sent.strip() or ""
+
+    return hdr
+
+
+def choose_mailbox(from_field: str, to_field: str) -> str:
+    f = normalize_contact_name(from_field)
+    t = normalize_contact_name(to_field)
+
+    if looks_like_jeff(f):
+        return "sent"
+    if looks_like_jeff(t):
+        return "inbox"
+    return "inbox"
+
+
+def extract_body(text: str) -> str:
+    t = cleanup_text(text)
+    lines = t.splitlines()
+
+    # Start after the last header line we can detect
+    start_idx = 0
+    last_hdr = -1
+    for i, ln in enumerate(lines[:220]):
+        if HEADER_RE.match(ln.strip()):
+            last_hdr = i
+            start_idx = i + 1
+
+    body = "\n".join(lines[start_idx:]).strip()
+    body = cleanup_text(body)
+
+    # If we hit iOS plist / xml dump, cut it off
+    mplist = PLIST_START_RE.search(body)
+    if mplist:
+        body = body[: mplist.start()].strip()
+
+    # Keep a “Sent from my iPhone” style signature if present
+    keep_sig = ""
+    for ln in body.splitlines()[:120]:
+        if SIGNATURE_KEEP_RE.match(ln.strip()):
+            keep_sig = ln.strip()
+            break
+
+    # Cut quoted chain
+    mcut = QUOTE_CUT_RE.search("\n" + body + "\n")
+    if mcut:
+        body = body[: mcut.start()].strip()
+
+    # Cut confidentiality boilerplate
+    mconf = CONF_BLOCK_RE.search("\n" + body + "\n")
+    if mconf:
+        body = body[: mconf.start()].strip()
+
+    body = cleanup_text(body)
+
+    if keep_sig and keep_sig.lower() not in body.lower():
+        body = (body + "\n\n" + keep_sig).strip()
+
+    return body
+
+
+def make_snippet(body: str, max_len: int = 200) -> str:
+    s = re.sub(r"\s+", " ", (body or "")).strip()
+    if len(s) <= max_len:
+        return s
+    return s[: max_len - 1].rstrip() + "…"
+
+
+def compute_contact_key(from_name: str, to_name: str, mailbox: str) -> Tuple[str, str]:
+    f = normalize_contact_name(from_name)
+    t = normalize_contact_name(to_name)
+
+    # inbox: other party is from; sent: other party is to
+    other = f if mailbox != "sent" else t
+
+    # if other still looks like Jeff, fallback to the other side
+    if looks_like_jeff(other):
+        other = t if mailbox != "sent" else f
+
+    other = normalize_contact_name(other)
+    if other == "Unknown":
+        return "unknown", "Unknown"
+
+    key = slugify(other)
+    return key, other
+
+
+@dataclass
+class MailItem:
+    id: str
+    mailbox: str
+    subject: str
+    from_: str
+    to: str
+    date: str
+    dateDisplay: str
+    ts: int
+    pdf: str
+    snippet: str
+    body: str
+    contactKey: str
+    contactName: str
+    source: str = SOURCE_LABEL
+
+    def to_json(self) -> Dict[str, Any]:
+        d = asdict(self)
+        d["from"] = d.pop("from_")
+        d.pop("ts", None)
+        return d
+
+
+def build_item(pdf_path: Path) -> MailItem:
+    raw_text = read_pdf_text(pdf_path, max_pages=3)
+    hdr = extract_headers(raw_text)
+
+    subj = (hdr.get("subject") or "").strip()
+    frm = normalize_contact_name(hdr.get("from") or "")
+    to = normalize_contact_name(hdr.get("to") or "")
+    sent_raw = (hdr.get("sent") or "").strip()
+
+    # If anything is missing, force Unknown
+    if not frm:
+        frm = "Unknown"
+    if not to:
+        to = "Unknown"
+    if not subj:
+        subj = pdf_path.stem
+
+    iso, disp, ts = parse_date_to_iso(sent_raw)
+
+    mailbox = choose_mailbox(frm, to)
+    contact_key, contact_name = compute_contact_key(frm, to, mailbox)
+
+    body = extract_body(raw_text)
+    if not body:
+        cleaned = cleanup_text(raw_text)
+        cleaned_lines = [x for x in cleaned.splitlines() if x.strip()]
+        body = "\n".join(cleaned_lines[:60]).strip()
+        body = cleanup_text(body)
+
+    rel_pdf = str(pdf_path.relative_to(REPO_ROOT)).replace("\\", "/")
+
+    base = f"{pdf_path.name}|{frm}|{to}|{subj}|{iso}|{mailbox}"
+    mid = f"{slugify(pdf_path.stem)}-{sha1_short(base)}"
+
+    return MailItem(
+        id=mid,
+        mailbox=mailbox,
+        subject=subj,
+        from_=frm,
+        to=to,
+        date=iso,
+        dateDisplay=disp,
+        ts=ts,
+        pdf=rel_pdf,
+        snippet=make_snippet(body),
+        body=body,
+        contactKey=contact_key,
+        contactName=contact_name,
+        source=SOURCE_LABEL,
+    )
+
+
+def main() -> None:
+    if not PDF_DIR.exists():
+        print(f"ERROR: PDF_DIR not found: {PDF_DIR}", file=sys.stderr)
+        sys.exit(1)
+
+    pdfs = sorted([p for p in PDF_DIR.glob("*.pdf") if p.is_file()])
+    items: List[MailItem] = []
+    seen: set[str] = set()
+
+    for p in pdfs:
+        try:
+            it = build_item(p)
+            # Deduplicate by stable tuple
+            sig = f"{it.pdf}|{it.subject}|{it.from_}|{it.to}|{it.date}|{it.mailbox}"
+            if sig in seen:
+                continue
+            seen.add(sig)
+            items.append(it)
+        except Exception as e:
+            print(f"WARNING: failed parsing {p.name}: {e}", file=sys.stderr)
+
+    items.sort(key=lambda x: int(x.ts or 0), reverse=True)
+
+    counts = {
+        "total": len(items),
+        "inbox": sum(1 for x in items if x.mailbox == "inbox"),
+        "sent": sum(1 for x in items if x.mailbox == "sent"),
     }
 
-    if(el.contactSelect){
-      el.contactSelect.addEventListener("change", () => {
-        state.contact = el.contactSelect.value || "all";
-        saveContactFilter();
-        state.activeId = "";
-        draw();
-      });
-      el.contactSelect.value = state.contact || "all";
+    out = {
+        "generatedAt": int(time.time()),
+        "source": "jeffs-mail/index.json",
+        "backend": _pdf_backend,
+        "counts": counts,
+        "items": [x.to_json() for x in items],
     }
 
-    if(el.btnReaderBack){
-      el.btnReaderBack.addEventListener("click", closeReaderOverlay);
-    }
+    OUT_JSON.write_text(json.dumps(out, indent=2, ensure_ascii=False), encoding="utf-8")
+    print(f"Wrote {OUT_JSON} ({counts['total']} items) using {_pdf_backend}")
 
-    document.addEventListener("keydown", (e) => {
-      if(e.key === "Escape") closeReaderOverlay();
-    });
 
-    window.addEventListener("resize", () => {
-      if(!isNarrow()) closeReaderOverlay();
-    });
-
-    setActiveFolder("inbox");
-  }
-
-  function init(){
-    wireGate(() => {
-      boot().catch(err => {
-        console.error(err);
-        if(el.items) el.items.innerHTML =
-          `<div style="padding:12px;opacity:.85;line-height:1.5;">
-            Failed to load <strong>index.json</strong>.<br><br>${esc(err.message || String(err))}
-           </div>`;
-      });
-    });
-  }
-
-  document.addEventListener("DOMContentLoaded", init);
-})();
+if __name__ == "__main__":
+    main()
