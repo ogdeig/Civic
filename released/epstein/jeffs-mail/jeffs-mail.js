@@ -4,18 +4,25 @@
    Data source:
    - /released/epstein/jeffs-mail/index.json
 
-   Notes:
-   - index.json schema used here:
+   Supports index.json schema from build-jeffs-mail-index.py:
+   {
+     counts: { total, inbox, sent, starred? },
+     contacts?: [ { key, name, count } ],
+     items: [
        {
-         counts: { total, inbox, sent },
-         items: [
-           {
-             id, mailbox, subject, from, to, date, dateDisplay,
-             snippet, body, pdf,
-             contactKey?, contactName?
-           }
-         ]
+         id,
+         folder: "inbox"|"sent",
+         starred: false,
+         subject,
+         from: { name, address },
+         to: [ { name, address }, ... ],
+         date, dateDisplay,
+         snippet, body, pdf,
+         tags: [],
+         contactKey, contactName
        }
+     ]
+   }
 */
 (function(){
   "use strict";
@@ -47,7 +54,7 @@
     readCard: $("#jmReadCard"),
     readingMeta: $("#jmReadingMeta"),
 
-    // NEW: contacts dropdown container expected in HTML (optional)
+    // contacts dropdown (optional)
     contactWrap: $("#jmContactsWrap"),
     contactSelect: $("#jmContacts"),
 
@@ -65,11 +72,16 @@
     activeId: "",
     contact: "all", // contactKey or "all"
     starred: new Set(),
-    contacts: [], // { key, name }
+    contacts: [], // { key, name, count? }
   };
 
+  // ---------- utils ----------
   function esc(s){
     return String(s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+
+  function safeText(s){
+    return String(s || "").replace(/\s+/g, " ").trim();
   }
 
   function fmtDateShort(iso){
@@ -81,16 +93,35 @@
     }catch(_){ return ""; }
   }
 
-  function safeText(s){
-    return String(s || "").replace(/\s+/g, " ").trim();
-  }
-
   function slugify(s){
     return safeText(s).toLowerCase()
       .replace(/[^\w\s\-]+/g, "")
       .replace(/\s+/g, "-")
       .replace(/\-+/g, "-")
       .replace(/^\-+|\-+$/g, "") || "unknown";
+  }
+
+  function personLabel(p){
+    // p: {name,address}
+    if(!p) return "Unknown";
+    const name = safeText(p.name);
+    const addr = safeText(p.address);
+    if(name && addr) return `${name} <${addr}>`;
+    return name || addr || "Unknown";
+  }
+
+  function peopleLine(arr){
+    if(!Array.isArray(arr) || !arr.length) return "(Redacted / not listed)";
+    return arr.map(personLabel).filter(Boolean).join(", ");
+  }
+
+  function ensurePdfHref(pdf){
+    const p = String(pdf || "").trim();
+    if(!p) return "";
+    // allow absolute URLs, root paths, or relative paths
+    if(/^https?:\/\//i.test(p)) return p;
+    if(p.startsWith("/")) return p;
+    return p; // relative from current folder
   }
 
   // ---------- Age gate ----------
@@ -145,6 +176,8 @@
       const arr = raw ? JSON.parse(raw) : [];
       if(Array.isArray(arr)){
         state.starred = new Set(arr.map(String));
+      }else{
+        state.starred = new Set();
       }
     }catch(_){
       state.starred = new Set();
@@ -180,45 +213,72 @@
   }
 
   // ---------- Normalization ----------
+  function otherPartyObj(folder, fromObj, toArr){
+    // inbox: other = sender (from)
+    // sent: other = first recipient (to[0])
+    if(folder === "sent"){
+      return (Array.isArray(toArr) && toArr.length) ? toArr[0] : null;
+    }
+    return fromObj || null;
+  }
+
   function normalizeItems(data){
     const items = Array.isArray(data?.items) ? data.items : [];
     const cleaned = [];
 
     for(const m of items){
       if(!m || !m.id) continue;
+
       const pdf = String(m.pdf || "").trim();
       if(!pdf) continue;
 
-      const mailbox = String(m.mailbox || "inbox").toLowerCase();
+      const folder = String(m.folder || m.mailbox || "inbox").toLowerCase();
+      const folderNorm = (folder === "sent") ? "sent" : "inbox";
+
       const subject = safeText(m.subject) || "(No subject)";
-      const from = safeText(m.from) || "Unknown";
-      const to = safeText(m.to) || "Unknown";
+
+      const fromObj = (m.from && typeof m.from === "object")
+        ? { name: safeText(m.from.name), address: safeText(m.from.address) }
+        : { name: safeText(m.from), address: "" };
+
+      const toArr = Array.isArray(m.to)
+        ? m.to.map(x => (x && typeof x === "object"
+            ? { name: safeText(x.name), address: safeText(x.address) }
+            : { name: safeText(x), address: "" }
+          )).filter(x => x.name || x.address)
+        : (m.to ? [{ name: safeText(m.to), address: "" }] : []);
+
       const date = safeText(m.date);
+      const dateDisplay = safeText(m.dateDisplay) || "";
+
       const body = String(m.body || "").trim();
       const snippet = safeText(m.snippet) || safeText(body).slice(0, 160);
 
-      // If builder provided contactKey/contactName, use it; else compute basic "other party"
-      const contactKey = safeText(m.contactKey) || slugify(otherParty(mailbox, from, to));
-      const contactName = safeText(m.contactName) || otherParty(mailbox, from, to);
+      const tags = Array.isArray(m.tags) ? m.tags.map(safeText).filter(Boolean) : [];
+
+      // contactKey/contactName: use builder-provided values if present; else compute from other party label
+      const other = otherPartyObj(folderNorm, fromObj, toArr);
+      const computedName = safeText(m.contactName) || personLabel(other);
+      const computedKey = safeText(m.contactKey) || slugify(computedName);
 
       cleaned.push({
         id: String(m.id),
-        mailbox: mailbox === "sent" ? "sent" : "inbox",
+        folder: folderNorm,
         subject,
-        from,
-        to,
+        from: fromObj,
+        to: toArr,
         date,
-        dateDisplay: safeText(m.dateDisplay) || "",
+        dateDisplay,
         snippet,
         body,
-        pdf,
-        contactKey,
-        contactName,
-        starred: state.starred.has(String(m.id)),
+        pdf: ensurePdfHref(pdf),
+        tags,
+        contactKey: computedKey || "unknown",
+        contactName: computedName || "Unknown",
+        starred: state.starred.has(String(m.id)) || !!m.starred,
       });
     }
 
-    // Sort newest first; stable by id if missing dates
     cleaned.sort((a,b) => {
       const da = Date.parse(a.date || "") || 0;
       const db = Date.parse(b.date || "") || 0;
@@ -229,27 +289,35 @@
     return cleaned;
   }
 
-  function otherParty(mailbox, from, to){
-    // For inbox: other party is "from"
-    // For sent: other party is "to"
-    if(mailbox === "sent"){
-      return safeText(to) || "Unknown";
-    }
-    return safeText(from) || "Unknown";
-  }
+  function rebuildContactsFromData(data){
+    // Prefer index.json.contacts if present
+    const contactsFromJson = Array.isArray(data?.contacts) ? data.contacts : null;
 
-  function rebuildContacts(){
-    // Build unique list from contactKey/contactName
-    const map = new Map(); // key -> name
-    for(const m of state.all){
-      const k = safeText(m.contactKey) || "unknown";
-      const n = safeText(m.contactName) || "Unknown";
-      if(!map.has(k)) map.set(k, n);
+    let list = [];
+    if(contactsFromJson && contactsFromJson.length){
+      list = contactsFromJson
+        .map(c => ({
+          key: safeText(c.key),
+          name: safeText(c.name) || "Unknown",
+          count: Number(c.count || 0)
+        }))
+        .filter(c => c.key);
+    }else{
+      // fallback: compute from items
+      const map = new Map();
+      for(const m of state.all){
+        const k = safeText(m.contactKey) || "unknown";
+        const n = safeText(m.contactName) || "Unknown";
+        if(!map.has(k)) map.set(k, { key:k, name:n, count:0 });
+        map.get(k).count++;
+      }
+      list = Array.from(map.values());
     }
 
-    // Sort alphabetically, keep Unknown last
-    const list = Array.from(map.entries()).map(([key, name]) => ({ key, name }));
+    // Sort: by count desc if available, then name asc; Unknown last
     list.sort((a,b) => {
+      const ac = Number(a.count || 0), bc = Number(b.count || 0);
+      if(bc !== ac) return bc - ac;
       if(a.name === "Unknown") return 1;
       if(b.name === "Unknown") return -1;
       return a.name.localeCompare(b.name);
@@ -257,14 +325,13 @@
 
     state.contacts = list;
 
-    // If dropdown exists in HTML, populate it
     if(el.contactSelect){
       const cur = state.contact || "all";
       el.contactSelect.innerHTML = `
         <option value="all">All contacts</option>
-        ${list.map(c => `<option value="${esc(c.key)}">${esc(c.name)}</option>`).join("")}
+        ${list.map(c => `<option value="${esc(c.key)}">${esc(c.name)}${c.count ? ` (${c.count})` : ""}</option>`).join("")}
       `;
-      el.contactSelect.value = (cur === "all" || map.has(cur)) ? cur : "all";
+      el.contactSelect.value = (cur === "all" || list.some(x => x.key === cur)) ? cur : "all";
     }
   }
 
@@ -288,11 +355,12 @@
     if(!q) return true;
     const hay = [
       m.subject,
-      m.from,
-      m.to,
+      personLabel(m.from),
+      peopleLine(m.to),
       m.snippet,
       m.body,
-      m.contactName
+      m.contactName,
+      (m.tags || []).join(" ")
     ].join(" ").toLowerCase();
     return hay.includes(q);
   }
@@ -310,7 +378,7 @@
     if(state.folder === "starred"){
       list = list.filter(x => x.starred);
     }else{
-      list = list.filter(x => (x.mailbox || "inbox") === state.folder);
+      list = list.filter(x => (x.folder || "inbox") === state.folder);
     }
 
     list = list.filter(matchesContact);
@@ -320,8 +388,8 @@
 
   function updateCounts(){
     const all = state.all;
-    const inbox = all.filter(x => (x.mailbox || "inbox") === "inbox").length;
-    const sent = all.filter(x => (x.mailbox || "inbox") === "sent").length;
+    const inbox = all.filter(x => (x.folder || "inbox") === "inbox").length;
+    const sent = all.filter(x => (x.folder || "inbox") === "sent").length;
     const starred = all.filter(x => !!x.starred).length;
 
     if(el.countInbox) el.countInbox.textContent = String(inbox);
@@ -332,11 +400,11 @@
   function toggleStar(id){
     const sid = String(id || "");
     if(!sid) return;
+
     if(state.starred.has(sid)) state.starred.delete(sid);
     else state.starred.add(sid);
     saveStarred();
 
-    // sync into state.all
     for(const m of state.all){
       if(m.id === sid){
         m.starred = state.starred.has(sid);
@@ -351,27 +419,29 @@
     state.activeId = m?.id || "";
     if(!el.readCard) return;
 
-    const mailbox = state.folder === "starred" ? (m.mailbox || "inbox") : state.folder;
+    const mailbox = state.folder === "starred" ? (m.folder || "inbox") : state.folder;
 
     const bodyText = (m.body || "").trim();
     const snippet = (m.snippet || "").trim();
+    const dateLine = m.date ? fmtDateShort(m.date) : (m.dateDisplay || "(Unknown)");
 
-    // PDF open in new tab (works best outside in-app browsers)
     const pdfHref = esc(m.pdf);
+    const filename = (String(m.pdf || "").split("/").pop() || "document.pdf");
+
+    const tags = Array.isArray(m.tags) ? m.tags : [];
+    const tagHtml = tags.length
+      ? `<div class="jm-badges">${tags.map(t => `<span class="jm-badge">${esc(t)}</span>`).join("")}${m.starred ? `<span class="jm-badge">★ Starred</span>` : ``}</div>`
+      : `<div class="jm-badges"><span class="jm-badge">Released</span><span class="jm-badge">PDF</span>${m.starred ? `<span class="jm-badge">★ Starred</span>` : ``}</div>`;
 
     el.readCard.innerHTML = `
       <div class="jm-h1">${esc(m.subject)}</div>
 
-      <div class="jm-badges">
-        <span class="jm-badge">Released</span>
-        <span class="jm-badge">PDF</span>
-        ${m.starred ? `<span class="jm-badge">★ Starred</span>` : ``}
-      </div>
+      ${tagHtml}
 
       <div class="jm-meta">
-        <b>From</b><div>${esc(m.from || "Unknown")}</div>
-        <b>To</b><div>${esc(m.to || "Unknown")}</div>
-        <b>Date</b><div>${esc(m.date ? fmtDateShort(m.date) : (m.dateDisplay || "Unknown"))}</div>
+        <b>From</b><div>${esc(personLabel(m.from))}</div>
+        <b>To</b><div>${esc(peopleLine(m.to))}</div>
+        <b>Date</b><div>${esc(dateLine)}</div>
         <b>Mailbox</b><div>${esc(String(mailbox || "inbox"))}</div>
       </div>
 
@@ -383,13 +453,14 @@
         <strong>Source PDF</strong>
         <div class="jm-attachrow">
           <div style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-            📄 ${esc((m.pdf || "").split("/").pop() || "document.pdf")}
+            📄 ${esc(filename)}
           </div>
           <a class="btn" href="${pdfHref}" target="_blank" rel="noopener">Open</a>
         </div>
 
         <div style="margin-top:10px;opacity:.85;line-height:1.5;">
-          <strong>Safety &amp; context:</strong> This interface is an organizational simulation for browsing public records. It does not claim the message is an authentic private email account. Allegations and references in documents should be read in context and verified with primary sources.
+          <strong>Safety &amp; context:</strong> This interface is an organizational simulation for browsing public records.
+          It does not claim the message is an authentic private email account. Allegations and references in documents should be read in context and verified with primary sources.
         </div>
       </div>
     `;
@@ -420,7 +491,11 @@
     el.items.innerHTML = "";
     for(const m of list){
       const dateShort = m.date ? fmtDateShort(m.date) : (m.dateDisplay || "");
-      const fromLabel = otherParty(m.mailbox, m.from, m.to) || "Unknown";
+
+      // In the list, show the "other party" like a mailbox UI
+      const other = otherPartyObj(m.folder, m.from, m.to);
+      const fromLabel = personLabel(other);
+
       const subj = m.subject || "(No subject)";
       const snippet = m.snippet || "";
 
@@ -440,7 +515,6 @@
         <div class="jm-date">${esc(dateShort)}</div>
       `;
 
-      // click star toggles without opening
       const starBtn = row.querySelector(".jm-star");
       if(starBtn){
         starBtn.addEventListener("click", (ev) => {
@@ -455,7 +529,7 @@
       el.items.appendChild(row);
     }
 
-    // auto-select first item if none selected
+    // auto-select
     if(!state.activeId){
       setReading(list[0]);
     }else{
@@ -475,7 +549,7 @@
     state.data = data;
     state.all = normalizeItems(data);
 
-    rebuildContacts();
+    rebuildContactsFromData(data);
     updateCounts();
 
     // wire folder buttons
@@ -504,7 +578,7 @@
         draw();
       });
 
-      // ensure selection restored
+      // restore selection
       el.contactSelect.value = state.contact || "all";
     }
 
