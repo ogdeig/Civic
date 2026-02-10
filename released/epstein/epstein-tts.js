@@ -3,20 +3,21 @@
    - /released/epstein/index.json
    - /released/epstein/pdfs/<file>.pdf
 
-   v19: Facebook in-app browser handling
-   - Adds in-app browser detection (FB/IG) and shows a clear warning
-   - Copies the current URL to clipboard to make "Open in browser" easy
-   - Keeps "Default (device)" voice option always available
-   - Primes voices + retries (iOS/WKWebView timing issues)
+   v20: HARD in-app warning (FB/IG) that cannot be "overwritten"
+   - Shows a persistent warning in the STATUS TITLE (so captions/statusLine updates won’t erase it)
+   - Shows a one-time ALERT on first Play inside FB/IG in-app browser (so user definitely sees it)
+   - Copies link to clipboard (best-effort) to make “Open in browser” easy
+   - Keeps “Default (device)” voice option always available
+   - Primes voices + retries (timing issues)
 
-   NOTE: Some Facebook/Instagram in-app browsers (especially iOS WKWebView) can
-   block or break SpeechSynthesis audio output even when speak() is called.
-   This file guides users to open in Safari/Chrome when that happens.
+   IMPORTANT REALITY:
+   Some Facebook/Instagram in-app browsers (especially iOS WKWebView) can break/disable Web Speech
+   audio output even when speak() is called. This file makes that obvious and guides users to Safari/Chrome.
 */
 (function(){
   "use strict";
 
-  const VERSION = "v19";
+  const VERSION = "v20";
   const INDEX_URL = "/released/epstein/index.json";
   const CONSENT_KEY = "ct_epstein_21_gate_v1";
 
@@ -86,23 +87,97 @@
     voicesPrimed: false,
     voiceInitStarted: false,
 
-    // in-app warning
-    inAppWarned: false
+    // in-app warnings
+    inAppWarned: false,       // status warning shown
+    inAppAlertShown: false,   // alert shown
+    inAppLinkCopied: false    // clipboard best-effort
   };
 
   window.CT_EPSTEIN_TTS = { version: VERSION };
 
+  // ---------------------------
+  // In-app detection
+  // ---------------------------
+  function isFacebookOrInstagramInApp(){
+    const ua = navigator.userAgent || "";
+    return /FBAN|FBAV|Instagram/i.test(ua);
+  }
+
+  async function copyUrlToClipboard(url){
+    try{
+      if(navigator.clipboard && window.isSecureContext){
+        await navigator.clipboard.writeText(url);
+        return true;
+      }
+    }catch(_){}
+    try{
+      const ta = document.createElement("textarea");
+      ta.value = url;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      ta.style.top = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      return true;
+    }catch(_){}
+    return false;
+  }
+
+  function inAppTitleBanner(baseTitle){
+    // Keep this short so it fits on mobile
+    return `${baseTitle}  •  ⚠ Open in Safari/Chrome`;
+  }
+
+  // Set status, but if in FB/IG in-app, keep a persistent warning in the TITLE
   function setStatus(title, line){
-    if(el.statusTitle) el.statusTitle.textContent = title || "";
-    if(el.statusLine) el.statusLine.textContent = line || "";
+    const inApp = isFacebookOrInstagramInApp();
+
+    if(el.statusTitle){
+      el.statusTitle.textContent = inApp ? inAppTitleBanner(title || "") : (title || "");
+    }
+    if(el.statusLine){
+      el.statusLine.textContent = line || "";
+    }
   }
 
   function setCaptionsLine(text){
+    // Only update when playing; keep it lightweight
     if(!el.statusLine) return;
     const now = Date.now();
     if(now - state.lastCaptionAt < CAPTION_THROTTLE_MS) return;
     state.lastCaptionAt = now;
     el.statusLine.textContent = text || "";
+  }
+
+  async function warnInAppBrowserOnce(reason){
+    if(!isFacebookOrInstagramInApp()) return;
+
+    // Show status warning immediately (persistent in title)
+    if(!state.inAppWarned){
+      state.inAppWarned = true;
+
+      // Copy URL once (best effort)
+      if(!state.inAppLinkCopied){
+        state.inAppLinkCopied = await copyUrlToClipboard(location.href);
+      }
+
+      // Put guidance in the status line (title banner will persist even when statusLine changes)
+      setStatus(
+        "Notice",
+        `Facebook/Instagram in-app browser may block TTS audio. Tap ••• → “Open in browser” (Safari/Chrome).`
+      );
+    }
+
+    // On first PLAY attempt, also show an alert so the user definitely sees it.
+    if(reason === "play" && !state.inAppAlertShown){
+      state.inAppAlertShown = true;
+      try{
+        alert("Facebook/Instagram in-app browser may block text-to-speech audio.\n\nTap the ••• menu, then choose “Open in browser” (Safari/Chrome).\n\n(We also copied this page link to your clipboard.)");
+      }catch(_){}
+    }
   }
 
   function bust(){ return String(Date.now()); }
@@ -116,16 +191,17 @@
 
   function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
 
-  // encode URLs (handles spaces in filenames reliably)
+  // ✅ IMPORTANT: encode URLs (handles spaces in filenames reliably)
   function normalizePdfUrlFromIndexPath(path){
     let p = String(path || "").trim().replace(/^\/+/, "");
     if(!p) return "";
     const full = "/" + p;
+    // encode spaces + unsafe chars, keep slashes
     return encodeURI(full);
   }
 
   function cancelSpeech(){
-    state.speechSeq++;
+    state.speechSeq++; // invalidate any pending utterance callbacks
     try{ window.speechSynthesis.cancel(); }catch(_){}
   }
 
@@ -162,56 +238,7 @@
     });
   }
 
-  // ---------------------------
-  // Facebook / Instagram in-app handling
-  // ---------------------------
-  function isFacebookOrInstagramInApp(){
-    const ua = navigator.userAgent || "";
-    return /FBAN|FBAV|Instagram/i.test(ua);
-  }
-
-  async function copyUrlToClipboard(url){
-    try{
-      if(navigator.clipboard && window.isSecureContext){
-        await navigator.clipboard.writeText(url);
-        return true;
-      }
-    }catch(_){}
-    try{
-      const ta = document.createElement("textarea");
-      ta.value = url;
-      ta.setAttribute("readonly", "");
-      ta.style.position = "fixed";
-      ta.style.left = "-9999px";
-      ta.style.top = "0";
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      document.body.removeChild(ta);
-      return true;
-    }catch(_){}
-    return false;
-  }
-
-  async function warnInAppBrowserOnce(){
-    if(state.inAppWarned) return;
-    if(!isFacebookOrInstagramInApp()) return;
-
-    state.inAppWarned = true;
-
-    const url = location.href;
-    await copyUrlToClipboard(url);
-
-    // Keep message short to fit the status line nicely
-    setStatus(
-      "Notice",
-      `Facebook/Instagram in-app browser may block TTS audio. Link copied — use ••• → “Open in browser” (Safari/Chrome).`
-    );
-  }
-
-  // ---------------------------
-  // 21+ gate
-  // ---------------------------
+  // ---- 21+ gate ----
   function hasConsent(){
     try{ return localStorage.getItem(CONSENT_KEY) === "yes"; }catch(_){ return false; }
   }
@@ -224,6 +251,9 @@
     document.body.style.overflow = "hidden";
     if(el.gateCheck) el.gateCheck.checked = false;
     if(el.gateEnter) el.gateEnter.disabled = true;
+
+    // If in-app, set a helpful status immediately (behind the overlay, but also persists after)
+    warnInAppBrowserOnce("gate");
   }
   function hideGate(){
     if(!el.gate) return;
@@ -269,7 +299,7 @@
       hideGate();
 
       // user gesture: warn + prime voices
-      await warnInAppBrowserOnce();
+      await warnInAppBrowserOnce("gate-enter");
       await primeVoices();
       refreshVoices("gate-enter");
       scheduleVoiceRetries();
@@ -285,17 +315,13 @@
     }
   }
 
-  // ---------------------------
-  // PDF.js
-  // ---------------------------
+  // ---- PDF.js ----
   async function ensurePdfJs(){
     if(window.pdfjsLib) return window.pdfjsLib;
     throw new Error("PDF.js failed to load (pdfjsLib missing).");
   }
 
-  // ---------------------------
-  // Voices
-  // ---------------------------
+  // ---- Voices ----
   function voiceSortKey(v){
     const name = (v.name || "").toLowerCase();
     const lang = (v.lang || "").toLowerCase();
@@ -378,9 +404,7 @@
     scheduleVoiceRetries();
 
     if(window.speechSynthesis){
-      window.speechSynthesis.onvoiceschanged = () => {
-        refreshVoices("voiceschanged");
-      };
+      window.speechSynthesis.onvoiceschanged = () => refreshVoices("voiceschanged");
     }
 
     if(el.voiceSelect){
@@ -398,12 +422,12 @@
       });
     }
 
-    // Prime voices + show in-app warning on the very first gesture
+    // Prime voices + show in-app status warning on the very first gesture
     if(!state.voiceInitStarted){
       state.voiceInitStarted = true;
       const once = async () => {
         try{
-          await warnInAppBrowserOnce();
+          await warnInAppBrowserOnce("gesture");
           await primeVoices();
           refreshVoices("gesture");
           scheduleVoiceRetries();
@@ -419,9 +443,7 @@
     return state.voices.find(v => v.voiceURI === state.selectedVoiceURI) || null;
   }
 
-  // ---------------------------
-  // Toggles
-  // ---------------------------
+  // ---- Toggles ----
   const LS_AUTO = "ep_reader_autoRead";
   const LS_LOOP = "ep_reader_loop";
 
@@ -454,9 +476,7 @@
     }catch(_){}
   }
 
-  // ---------------------------
-  // Index
-  // ---------------------------
+  // ---- Index ----
   async function loadIndex(){
     setStatus("Loading…", `(${VERSION}) Fetching PDF list…`);
 
@@ -707,7 +727,7 @@
     let m;
     while((m = re.exec(s))){
       out.push({ start: m.index, end: m.index + m[0].length, word: m[0] });
-      if(out.length > 20000) break;
+      if(out.length > 20000) break; // safety
     }
     return out;
   }
@@ -731,6 +751,7 @@
       return { chunks: ["(No readable text on this page.)"], starts: [0] };
     }
 
+    // move to word boundary if inside word
     while(i > 0 && i < clean.length && !/\s/.test(clean[i-1]) && !/\s/.test(clean[i])) i--;
 
     while(i < clean.length){
@@ -775,6 +796,7 @@
     if(!wordMap.length) return "";
     const idx = clamp(i|0, 0, wordMap.length - 1);
 
+    // show 4 words: prev1 + current + next2
     const a = clamp(idx - 1, 0, wordMap.length - 1);
     const b = idx;
     const c = clamp(idx + 1, 0, wordMap.length - 1);
@@ -798,7 +820,7 @@
     const voice = getVoice();
     const u = new SpeechSynthesisUtterance(state.chunks[state.chunkIndex]);
     u.rate = state.selectedRate || 1;
-    u.voice = voice || null; // null = device default
+    u.voice = voice || null;
     u.lang = voice?.lang || "en-US";
     u.volume = state.muted ? 0 : 1;
 
@@ -824,14 +846,10 @@
     };
 
     u.onerror = () => {
+      // If in-app browser, keep warning visible + alert once on play already happened
+      warnInAppBrowserOnce("tts-error");
       if(localSpeechSeq !== state.speechSeq) return;
       if(!state.playing || state.paused) return;
-
-      // If in-app browser, remind again (but don’t spam)
-      if(isFacebookOrInstagramInApp()){
-        warnInAppBrowserOnce();
-      }
-
       state.chunkIndex += 1;
       speakNextChunk(localSpeechSeq, pageText, wordMap);
     };
@@ -840,9 +858,7 @@
       window.speechSynthesis.speak(u);
     }catch(err){
       console.error(err);
-      if(isFacebookOrInstagramInApp()){
-        warnInAppBrowserOnce();
-      }
+      warnInAppBrowserOnce("tts-error");
       setStatus("Error", `(${VERSION}) TTS failed to start on this device/browser.`);
       state.playing = false;
       state.paused = false;
@@ -1050,10 +1066,10 @@
     el.btnSkipWord.textContent = `⏩ Skip +${SKIP_AHEAD_WORDS}`;
 
     el.btnPlay.addEventListener("click", async () => {
-      // Warn once for FB/IG in-app browsers (copies link)
-      await warnInAppBrowserOnce();
+      // This MUST happen first, before other status updates overwrite the line.
+      await warnInAppBrowserOnce("play");
 
-      // Prime voices + refresh
+      // Prime voices + refresh (must follow user gesture)
       await primeVoices();
       refreshVoices("play");
       scheduleVoiceRetries();
@@ -1256,6 +1272,10 @@
       wireControls();
       wirePopout();
       await loadIndex();
+
+      // Show in-app warning immediately once the reader is booted (so they see it even before Play)
+      await warnInAppBrowserOnce("boot");
+
       setStatus("Ready.", `(${VERSION}) Select a PDF, then press Play.`);
     }catch(err){
       console.error(err);
@@ -1272,6 +1292,9 @@
       if(!el.btnPlay) missing.push("#btnPlay");
       showMissingIds(missing);
     }
+
+    // If in-app, show the warning immediately (title banner persists)
+    warnInAppBrowserOnce("init");
 
     setStatus("Ready.", `(${VERSION}) JS loaded. Select a PDF, then press Play.`);
     wireGate(boot);
