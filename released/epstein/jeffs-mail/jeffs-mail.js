@@ -3,12 +3,27 @@
 
    Data source:
    - /released/epstein/jeffs-mail/index.json
+
+   Notes:
+   - index.json schema used here:
+       {
+         counts: { total, inbox, sent },
+         items: [
+           {
+             id, mailbox, subject, from, to, date, dateDisplay,
+             snippet, body, pdf,
+             contactKey?, contactName?
+           }
+         ]
+       }
 */
 (function(){
   "use strict";
 
   const INDEX_URL = "./index.json";
   const CONSENT_KEY = "ct_jeffs_mail_21_gate_v1";
+  const STAR_KEY = "ct_jeffs_mail_starred_v1";
+  const CONTACT_KEY = "ct_jeffs_mail_contact_filter_v1";
 
   const $ = (sel, root=document) => root.querySelector(sel);
 
@@ -32,6 +47,10 @@
     readCard: $("#jmReadCard"),
     readingMeta: $("#jmReadingMeta"),
 
+    // NEW: contacts dropdown container expected in HTML (optional)
+    contactWrap: $("#jmContactsWrap"),
+    contactSelect: $("#jmContacts"),
+
     gate: $("#ageGate"),
     gateCheck: $("#gateCheck"),
     gateEnter: $("#gateEnter"),
@@ -44,6 +63,9 @@
     folder: "inbox", // inbox | sent | starred
     q: "",
     activeId: "",
+    contact: "all", // contactKey or "all"
+    starred: new Set(),
+    contacts: [], // { key, name }
   };
 
   function esc(s){
@@ -59,6 +81,19 @@
     }catch(_){ return ""; }
   }
 
+  function safeText(s){
+    return String(s || "").replace(/\s+/g, " ").trim();
+  }
+
+  function slugify(s){
+    return safeText(s).toLowerCase()
+      .replace(/[^\w\s\-]+/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/\-+/g, "-")
+      .replace(/^\-+|\-+$/g, "") || "unknown";
+  }
+
+  // ---------- Age gate ----------
   function hasConsent(){
     try{ return localStorage.getItem(CONSENT_KEY) === "yes"; }catch(_){ return false; }
   }
@@ -103,6 +138,39 @@
     }
   }
 
+  // ---------- Storage ----------
+  function loadStarred(){
+    try{
+      const raw = localStorage.getItem(STAR_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      if(Array.isArray(arr)){
+        state.starred = new Set(arr.map(String));
+      }
+    }catch(_){
+      state.starred = new Set();
+    }
+  }
+
+  function saveStarred(){
+    try{
+      localStorage.setItem(STAR_KEY, JSON.stringify(Array.from(state.starred)));
+    }catch(_){}
+  }
+
+  function loadContactFilter(){
+    try{
+      const v = localStorage.getItem(CONTACT_KEY);
+      state.contact = v || "all";
+    }catch(_){
+      state.contact = "all";
+    }
+  }
+
+  function saveContactFilter(){
+    try{ localStorage.setItem(CONTACT_KEY, state.contact || "all"); }catch(_){}
+  }
+
+  // ---------- Fetch ----------
   async function fetchJsonStrict(url){
     const bust = Date.now();
     const u = url + (url.includes("?") ? "&" : "?") + "_=" + bust;
@@ -111,37 +179,46 @@
     return r.json();
   }
 
-  function normalizeMessages(data){
-    const msgs = Array.isArray(data?.messages) ? data.messages : [];
+  // ---------- Normalization ----------
+  function normalizeItems(data){
+    const items = Array.isArray(data?.items) ? data.items : [];
     const cleaned = [];
 
-    for(const m of msgs){
+    for(const m of items){
       if(!m || !m.id) continue;
       const pdf = String(m.pdf || "").trim();
       if(!pdf) continue;
 
+      const mailbox = String(m.mailbox || "inbox").toLowerCase();
+      const subject = safeText(m.subject) || "(No subject)";
+      const from = safeText(m.from) || "Unknown";
+      const to = safeText(m.to) || "Unknown";
+      const date = safeText(m.date);
+      const body = String(m.body || "").trim();
+      const snippet = safeText(m.snippet) || safeText(body).slice(0, 160);
+
+      // If builder provided contactKey/contactName, use it; else compute basic "other party"
+      const contactKey = safeText(m.contactKey) || slugify(otherParty(mailbox, from, to));
+      const contactName = safeText(m.contactName) || otherParty(mailbox, from, to);
+
       cleaned.push({
         id: String(m.id),
-        folder: (m.folder || "inbox").toLowerCase(),
-        starred: !!m.starred,
-        subject: String(m.subject || "").trim() || "(No subject)",
-        from: {
-          name: String(m.from?.name || m.from || "Public Record Release").trim() || "Public Record Release",
-          address: String(m.from?.address || "").trim()
-        },
-        to: Array.isArray(m.to) ? m.to.map(x => ({
-          name: String(x?.name || x || "").trim(),
-          address: String(x?.address || "").trim()
-        })).filter(x => x.name || x.address) : [],
-        date: String(m.date || "").trim(),
-        snippet: String(m.snippet || "").trim(),
-        body: String(m.body || "").trim(),
-        pdf: pdf,
-        tags: Array.isArray(m.tags) ? m.tags.map(String) : []
+        mailbox: mailbox === "sent" ? "sent" : "inbox",
+        subject,
+        from,
+        to,
+        date,
+        dateDisplay: safeText(m.dateDisplay) || "",
+        snippet,
+        body,
+        pdf,
+        contactKey,
+        contactName,
+        starred: state.starred.has(String(m.id)),
       });
     }
 
-    // Sort newest first if dates exist; otherwise keep stable by id
+    // Sort newest first; stable by id if missing dates
     cleaned.sort((a,b) => {
       const da = Date.parse(a.date || "") || 0;
       const db = Date.parse(b.date || "") || 0;
@@ -152,6 +229,46 @@
     return cleaned;
   }
 
+  function otherParty(mailbox, from, to){
+    // For inbox: other party is "from"
+    // For sent: other party is "to"
+    if(mailbox === "sent"){
+      return safeText(to) || "Unknown";
+    }
+    return safeText(from) || "Unknown";
+  }
+
+  function rebuildContacts(){
+    // Build unique list from contactKey/contactName
+    const map = new Map(); // key -> name
+    for(const m of state.all){
+      const k = safeText(m.contactKey) || "unknown";
+      const n = safeText(m.contactName) || "Unknown";
+      if(!map.has(k)) map.set(k, n);
+    }
+
+    // Sort alphabetically, keep Unknown last
+    const list = Array.from(map.entries()).map(([key, name]) => ({ key, name }));
+    list.sort((a,b) => {
+      if(a.name === "Unknown") return 1;
+      if(b.name === "Unknown") return -1;
+      return a.name.localeCompare(b.name);
+    });
+
+    state.contacts = list;
+
+    // If dropdown exists in HTML, populate it
+    if(el.contactSelect){
+      const cur = state.contact || "all";
+      el.contactSelect.innerHTML = `
+        <option value="all">All contacts</option>
+        ${list.map(c => `<option value="${esc(c.key)}">${esc(c.name)}</option>`).join("")}
+      `;
+      el.contactSelect.value = (cur === "all" || map.has(cur)) ? cur : "all";
+    }
+  }
+
+  // ---------- UI state ----------
   function setActiveFolder(folder){
     state.folder = folder;
 
@@ -171,13 +288,19 @@
     if(!q) return true;
     const hay = [
       m.subject,
-      m.from?.name,
-      m.from?.address,
+      m.from,
+      m.to,
       m.snippet,
       m.body,
-      ...(m.to || []).map(x => `${x.name} ${x.address}`)
+      m.contactName
     ].join(" ").toLowerCase();
     return hay.includes(q);
+  }
+
+  function matchesContact(m){
+    const c = state.contact || "all";
+    if(c === "all") return true;
+    return (m.contactKey || "") === c;
   }
 
   function getVisible(){
@@ -187,18 +310,18 @@
     if(state.folder === "starred"){
       list = list.filter(x => x.starred);
     }else{
-      list = list.filter(x => (x.folder || "inbox") === state.folder);
+      list = list.filter(x => (x.mailbox || "inbox") === state.folder);
     }
 
+    list = list.filter(matchesContact);
     if(q) list = list.filter(m => matchesQuery(m, q));
     return list;
   }
 
   function updateCounts(){
     const all = state.all;
-
-    const inbox = all.filter(x => (x.folder || "inbox") === "inbox").length;
-    const sent = all.filter(x => (x.folder || "inbox") === "sent").length;
+    const inbox = all.filter(x => (x.mailbox || "inbox") === "inbox").length;
+    const sent = all.filter(x => (x.mailbox || "inbox") === "sent").length;
     const starred = all.filter(x => !!x.starred).length;
 
     if(el.countInbox) el.countInbox.textContent = String(inbox);
@@ -206,22 +329,32 @@
     if(el.countStarred) el.countStarred.textContent = String(starred);
   }
 
+  function toggleStar(id){
+    const sid = String(id || "");
+    if(!sid) return;
+    if(state.starred.has(sid)) state.starred.delete(sid);
+    else state.starred.add(sid);
+    saveStarred();
+
+    // sync into state.all
+    for(const m of state.all){
+      if(m.id === sid){
+        m.starred = state.starred.has(sid);
+        break;
+      }
+    }
+    updateCounts();
+    draw();
+  }
+
   function setReading(m){
     state.activeId = m?.id || "";
     if(!el.readCard) return;
 
-    const toLine = (m.to && m.to.length)
-      ? m.to.map(x => esc(x.name || x.address || "")).filter(Boolean).join(", ")
-      : "(Redacted / not listed)";
+    const mailbox = state.folder === "starred" ? (m.mailbox || "inbox") : state.folder;
 
-    const fromLine = esc(m.from?.name || "Public Record Release") +
-      (m.from?.address ? ` &lt;${esc(m.from.address)}&gt;` : "");
-
-    const dateLine = m.date ? esc(fmtDateShort(m.date)) : "(Unknown)";
-    const mailbox = state.folder === "starred" ? (m.folder || "inbox") : state.folder;
-
-    const body = m.body || "";
-    const snippet = m.snippet || "";
+    const bodyText = (m.body || "").trim();
+    const snippet = (m.snippet || "").trim();
 
     // PDF open in new tab (works best outside in-app browsers)
     const pdfHref = esc(m.pdf);
@@ -236,14 +369,14 @@
       </div>
 
       <div class="jm-meta">
-        <b>From</b><div>${fromLine}</div>
-        <b>To</b><div>${toLine}</div>
-        <b>Date</b><div>${dateLine}</div>
+        <b>From</b><div>${esc(m.from || "Unknown")}</div>
+        <b>To</b><div>${esc(m.to || "Unknown")}</div>
+        <b>Date</b><div>${esc(m.date ? fmtDateShort(m.date) : (m.dateDisplay || "Unknown"))}</div>
         <b>Mailbox</b><div>${esc(String(mailbox || "inbox"))}</div>
       </div>
 
       <div class="jm-bodytext">${
-        esc(body || snippet || "This entry is a simulated mailbox record used to organize publicly released documents.\n\nOpen the source PDF below to view the original record.")
+        esc(bodyText || snippet || "Open the source PDF below to view the original record.")
       }</div>
 
       <div class="jm-attach">
@@ -256,13 +389,13 @@
         </div>
 
         <div style="margin-top:10px;opacity:.85;line-height:1.5;">
-          <strong>Safety & context:</strong> This interface is an organizational simulation for browsing public records. It does not claim the message is an authentic private email account. Allegations and references in documents should be read in context and verified with primary sources.
+          <strong>Safety &amp; context:</strong> This interface is an organizational simulation for browsing public records. It does not claim the message is an authentic private email account. Allegations and references in documents should be read in context and verified with primary sources.
         </div>
       </div>
     `;
 
     if(el.readingMeta){
-      el.readingMeta.textContent = m.date ? fmtDateShort(m.date) : "";
+      el.readingMeta.textContent = m.date ? fmtDateShort(m.date) : (m.dateDisplay || "");
     }
 
     // highlight selected row
@@ -286,8 +419,8 @@
 
     el.items.innerHTML = "";
     for(const m of list){
-      const dateShort = m.date ? fmtDateShort(m.date) : "";
-      const from = m.from?.name || "Public Record Release";
+      const dateShort = m.date ? fmtDateShort(m.date) : (m.dateDisplay || "");
+      const fromLabel = otherParty(m.mailbox, m.from, m.to) || "Unknown";
       const subj = m.subject || "(No subject)";
       const snippet = m.snippet || "";
 
@@ -296,14 +429,26 @@
       row.setAttribute("data-id", m.id);
 
       row.innerHTML = `
-        <div class="jm-star ${m.starred ? "on" : ""}" title="${m.starred ? "Starred" : ""}">${m.starred ? "★" : "☆"}</div>
+        <button class="jm-star ${m.starred ? "on" : ""}" type="button" aria-label="Star">
+          ${m.starred ? "★" : "☆"}
+        </button>
         <div class="main">
-          <div class="jm-from">${esc(from)}</div>
+          <div class="jm-from">${esc(fromLabel)}</div>
           <div class="jm-subj">${esc(subj)}</div>
           <div class="jm-snippet">${esc(snippet)}</div>
         </div>
         <div class="jm-date">${esc(dateShort)}</div>
       `;
+
+      // click star toggles without opening
+      const starBtn = row.querySelector(".jm-star");
+      if(starBtn){
+        starBtn.addEventListener("click", (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          toggleStar(m.id);
+        });
+      }
 
       row.addEventListener("click", () => setReading(m));
 
@@ -320,30 +465,25 @@
     }
   }
 
-  function buildSnippetsIfMissing(){
-    // lightweight fallback: if generator didn’t include snippet/body
-    for(const m of state.all){
-      if(!m.snippet){
-        const raw = (m.body || "").replace(/\s+/g, " ").trim();
-        m.snippet = raw ? raw.slice(0, 120) : "";
-      }
-    }
-  }
-
   async function boot(){
     if(el.source) el.source.textContent = "jeffs-mail/index.json";
 
+    loadStarred();
+    loadContactFilter();
+
     const data = await fetchJsonStrict(INDEX_URL);
     state.data = data;
-    state.all = normalizeMessages(data);
+    state.all = normalizeItems(data);
 
-    buildSnippetsIfMissing();
+    rebuildContacts();
     updateCounts();
 
     // wire folder buttons
     [el.btnInbox, el.btnSent, el.btnStarred].forEach(btn => {
       if(!btn) return;
-      btn.addEventListener("click", () => setActiveFolder(btn.getAttribute("data-folder") || "inbox"));
+      btn.addEventListener("click", () => {
+        setActiveFolder(btn.getAttribute("data-folder") || "inbox");
+      });
     });
 
     // wire search
@@ -355,6 +495,19 @@
       });
     }
 
+    // wire contacts dropdown (optional)
+    if(el.contactSelect){
+      el.contactSelect.addEventListener("change", () => {
+        state.contact = el.contactSelect.value || "all";
+        saveContactFilter();
+        state.activeId = "";
+        draw();
+      });
+
+      // ensure selection restored
+      el.contactSelect.value = state.contact || "all";
+    }
+
     setActiveFolder("inbox");
   }
 
@@ -362,7 +515,10 @@
     wireGate(() => {
       boot().catch(err => {
         console.error(err);
-        if(el.items) el.items.innerHTML = `<div style="padding:12px;opacity:.85;line-height:1.5;">Failed to load <strong>index.json</strong>. Check path and case.<br><br>${esc(err.message || String(err))}</div>`;
+        if(el.items) el.items.innerHTML =
+          `<div style="padding:12px;opacity:.85;line-height:1.5;">
+            Failed to load <strong>index.json</strong>. Check path and case.<br><br>${esc(err.message || String(err))}
+           </div>`;
       });
     });
   }
