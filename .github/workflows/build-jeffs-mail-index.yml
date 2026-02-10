@@ -1,13 +1,12 @@
-name: Build Jeffs Mail index.json (PDF parsed)
+name: Build Jeffs Mail index.json
 
 on:
+  workflow_dispatch:
   push:
-    branches: [ "main" ]
     paths:
-      - "released/epstein/jeffs-mail-pdfs/**"
-      - "released/epstein/jeffs-mail/meta.json"
-      - "tools/build-jeffs-mail-index.mjs"
-      - ".github/workflows/build-jeffs-mail-index.yml"
+      - "released/epstein/jeffs-mail/pdfs/**.pdf"
+      - "released/epstein/jeffs-mail/tools/**"
+      - "released/epstein/jeffs-mail/overrides.json"
 
 permissions:
   contents: write
@@ -19,21 +18,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          node-version: "20"
+          python-version: "3.11"
 
-      - name: Install pdf parser dependency
-        run: npm i pdfjs-dist@3
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install pypdf python-dateutil
 
       - name: Build index.json
-        run: node tools/build-jeffs-mail-index.mjs
+        run: |
+          python released/epstein/jeffs-mail/tools/build-jeffs-mail-index.py
 
-      - name: Commit changes
+      - name: Commit updated index.json (if changed)
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add released/epstein/jeffs-mail/index.json released/epstein/jeffs-mail/meta.json
-          git diff --cached --quiet || git commit -m "Auto-build Jeffs Mail index.json (parsed)"
+          git add released/epstein/jeffs-mail/index.json
+          git diff --cached --quiet || git commit -m "Auto-build Jeffs Mail index.json"
           git push
