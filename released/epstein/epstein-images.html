@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Released Images • Epstein Files | Civic Threat</title>
 
-  <meta name="description" content="Browse publicly released Epstein files images, document excerpts, and screenshots in a fast gallery viewer. Adults 21+ only. For context, consult the full PDFs." />
+  <meta name="description" content="Browse publicly released Epstein files images, document excerpts, and screenshots in a fast gallery viewer. Adults 21+ only. For context, consult the full PDFs and primary sources." />
   <meta name="robots" content="index,follow" />
 
   <meta property="og:title" content="Released Images • Epstein Files | Civic Threat" />
@@ -172,24 +172,31 @@
     <header class="hero">
       <h1>Released Images • Epstein Files</h1>
       <p>
-        Browse a curated gallery of <strong>publicly released Epstein files images</strong>—document excerpts, screenshots, and reference pages.
-        Tap any image to open the full-size viewer and flip through the set.
+        This page collects <strong>publicly released Epstein files images</strong>—document excerpts, screenshots, and reference pages—
+        in a fast gallery. Tap any image to open the full viewer and flip through the set.
       </p>
     </header>
 
     <section class="ep-panel ep-box">
       <div class="pad">
         <p style="margin:0;opacity:.92;line-height:1.6;max-width:92ch;">
-          This page is for people searching for <strong>Epstein files images</strong>, <strong>Epstein document pictures</strong>, and
-          <strong>released court record screenshots</strong> in one place. Images can help the public quickly identify names, dates,
-          and key excerpts, but images alone can remove context. For full context, use the complete PDF record set and primary sources.
-          If you’re looking for the page-by-page text-to-speech reader, use the Epstein PDF Reader under Released Files.
+          People often search for <strong>Epstein files images</strong>, <strong>Epstein document pictures</strong>, and
+          <strong>released court record screenshots</strong> to understand what was made public and what is being discussed.
+          This gallery is designed for quick review and accessibility. Images can be incomplete or out of context, so for complete context
+          you should consult the full PDF files and primary sources. If you want audio playback, use the Epstein PDF Reader under Released Files.
         </p>
 
         <div class="legal">
-          <strong>Disclosure:</strong> Images shown here are from publicly released records and may contain explicit, disturbing, or alleged content.
-          Civic Threat does not endorse wrongdoing and does not make claims about guilt or innocence. This gallery is provided for accessibility,
-          public-interest review, and discussion. For full context, consult the complete PDFs and primary sources.
+          <strong>Disclosure &amp; context:</strong> This gallery displays images derived from publicly released records and may contain explicit,
+          disturbing, or alleged content. Civic Threat provides these materials for accessibility, public-interest review, and discussion.
+          Civic Threat does not endorse wrongdoing and does not make claims about guilt or innocence. Some content may include allegations,
+          testimony, or names appearing in records; images may be incomplete, excerpted, or lacking full context. For accurate context, consult
+          the complete PDF documents and other primary sources.
+        </div>
+
+        <div class="legal">
+          <strong>Copyright &amp; attribution:</strong> Where sources are known, they are listed in captions. If you believe an image is misattributed
+          or should be removed, contact Civic Threat through the site’s contact page.
         </div>
       </div>
     </section>
@@ -209,7 +216,8 @@
         </div>
 
         <div class="legal" style="margin-top:12px">
-          <strong>Tip:</strong> Tap an image to open the full viewer. Use Prev/Next to flip quickly.
+          <strong>How to use:</strong> Tap an image to open it larger. Use Prev/Next (or swipe scroll + tap buttons) to move through the set.
+          Press Escape to close on desktop.
         </div>
       </div>
     </section>
@@ -218,7 +226,7 @@
   <!-- Footer injected by app.js -->
   <div id="siteFooter"></div>
 
-  <!-- Image lightbox -->
+  <!-- Image lightbox (supports Prev/Next) -->
   <div class="img-modal" id="imgModal" role="dialog" aria-modal="true" aria-label="Image viewer">
     <div class="card ep-box">
       <div class="head">
@@ -263,7 +271,7 @@
   <script src="/config.js?v=12"></script>
   <script src="/app.js?v=12"></script>
 
-  <!-- Gallery logic (expects ./images.json in the same folder as this page) -->
+  <!-- Gallery logic (expects /released/epstein/images.json) -->
   <script>
     (function(){
       "use strict";
@@ -404,9 +412,11 @@
         if (imgPrev) imgPrev.addEventListener("click", () => stepImg(-1));
         if (imgNext) imgNext.addEventListener("click", () => stepImg( 1));
         if (imgClose) imgClose.addEventListener("click", closeImgModal);
+
         if (imgModal){
           imgModal.addEventListener("click", (e) => { if (e.target === imgModal) closeImgModal(); });
         }
+
         document.addEventListener("keydown", (e) => {
           if (e.key === "Escape"){
             if (imgModal && imgModal.classList.contains("open")) closeImgModal();
