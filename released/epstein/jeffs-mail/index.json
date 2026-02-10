@@ -1,0 +1,93 @@
+{
+  "account": {
+    "name": "Jeffs Mail",
+    "address": "jeffsmail@civicthreat.us",
+    "disclaimerShort": "Simulated mailbox UI for navigating publicly released documents. Not a real private inbox. Adults 21+ only."
+  },
+  "items": [
+    {
+      "id": "msg-0001",
+      "mailbox": "inbox",
+      "starred": true,
+      "date": "2019-07-10",
+      "from": { "name": "Public Record Release", "email": "source@public-records" },
+      "to": { "name": "Jeff", "email": "jeff@jeffs-mail" },
+      "subject": "Release notice: court filing added to archive",
+      "snippet": "A new filing has been added to the public document archive for review and discussion.",
+      "tags": ["Released", "Court Filing", "PDF"],
+      "bodyText": "This is a simulated inbox entry used to organize publicly released documents.\n\nAn updated court filing has been added to the archive. Use the attachment below to open the source PDF.\n\nReminder: This UI is an organizational interface and does not claim to display an authentic private email account.",
+      "attachments": [
+        {
+          "name": "ANASTASIA DOE_vs_EPSTEIN_Filed 12-17-19.pdf",
+          "path": "/released/epstein/jeffs-mail-pdfs/ANASTASIA%20DOE_vs_EPSTEIN_Filed%2012-17-19.pdf"
+        }
+      ]
+    },
+    {
+      "id": "msg-0002",
+      "mailbox": "inbox",
+      "starred": false,
+      "date": "2019-07-06",
+      "from": { "name": "Archive Intake", "email": "intake@public-records" },
+      "to": { "name": "Jeff", "email": "jeff@jeffs-mail" },
+      "subject": "Index update: additional pages available",
+      "snippet": "The index has been updated with additional pages and labels for easier browsing.",
+      "tags": ["Index", "Update"],
+      "bodyText": "This entry is a simulated message used to improve browsing.\n\nThe archive index was updated to include clearer labels, improved sorting, and more consistent filenames.\n\nIf a PDF fails to open in the Facebook in-app browser, use the menu to open in Chrome/Safari.",
+      "attachments": []
+    },
+    {
+      "id": "msg-0003",
+      "mailbox": "sent",
+      "starred": false,
+      "date": "2019-07-02",
+      "from": { "name": "Jeff", "email": "jeffsmail@civicthreat.us" },
+      "to": { "name": "Archive Intake", "email": "intake@public-records" },
+      "subject": "Request: group filings by date and case caption",
+      "snippet": "It would be helpful to group filings by date and caption so readers can follow timelines.",
+      "tags": ["Sent", "Organization"],
+      "bodyText": "Simulated sent message.\n\nSuggestion: group filings by date and case caption so readers can browse chronologically and understand context.\n\nAlso: add keyword tags (motion, declaration, transcript) for faster searching.",
+      "attachments": []
+    },
+    {
+      "id": "msg-0004",
+      "mailbox": "starred",
+      "starred": true,
+      "date": "2019-07-13",
+      "from": { "name": "Public Record Release", "email": "source@public-records" },
+      "to": { "name": "Jeff", "email": "jeff@jeffs-mail" },
+      "subject": "Starred: notable exhibit referenced in filing",
+      "snippet": "A referenced exhibit is available in the archive; review the source PDF for context.",
+      "tags": ["Starred", "Exhibit", "PDF"],
+      "bodyText": "This is a simulated starred entry.\n\nA notable exhibit is referenced in a public filing. Use the attachment to open the source PDF and review the exhibit in full context.\n\nReminder: allegations in documents should be read with caution and in context.",
+      "attachments": [
+        {
+          "name": "Example_Exhibit.pdf",
+          "path": "/released/epstein/jeffs-mail-pdfs/Example_Exhibit.pdf"
+        }
+      ]
+    },
+    {
+      "id": "msg-0005",
+      "mailbox": "attachments",
+      "starred": false,
+      "date": "2019-07-25",
+      "from": { "name": "Archive Intake", "email": "intake@public-records" },
+      "to": { "name": "Jeff", "email": "jeff@jeffs-mail" },
+      "subject": "Attachments queue: newly added PDFs",
+      "snippet": "New PDFs were added to the attachments queue for quick access.",
+      "tags": ["Attachments", "PDF"],
+      "bodyText": "This mailbox view highlights messages that include attachments.\n\nOpen the PDF attachments below to view the source documents.",
+      "attachments": [
+        {
+          "name": "Another_Public_Filing.pdf",
+          "path": "/released/epstein/jeffs-mail-pdfs/Another_Public_Filing.pdf"
+        },
+        {
+          "name": "Supplement.pdf",
+          "path": "/released/epstein/jeffs-mail-pdfs/Supplement.pdf"
+        }
+      ]
+    }
+  ]
+}
