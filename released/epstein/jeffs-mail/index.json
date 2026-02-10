@@ -4,22 +4,34 @@
     "address": "jeffsmail@civicthreat.us",
     "disclaimerShort": "Simulated mailbox UI for navigating publicly released documents. Not a real private inbox. Adults 21+ only."
   },
+  "generatedAt": "2026-02-10T15:22:25.085Z",
+  "sourceFolder": "/released/epstein/jeffs-mail-pdfs/",
+  "count": 27,
   "items": [
     {
       "id": "msg-0001",
       "mailbox": "inbox",
-      "starred": true,
-      "date": "2019-07-10",
-      "from": { "name": "Public Record Release", "email": "source@public-records" },
-      "to": { "name": "Jeff", "email": "jeff@jeffs-mail" },
-      "subject": "Release notice: court filing added to archive",
-      "snippet": "A new filing has been added to the public document archive for review and discussion.",
-      "tags": ["Released", "Court Filing", "PDF"],
-      "bodyText": "This is a simulated inbox entry used to organize publicly released documents.\n\nAn updated court filing has been added to the archive. Use the attachment below to open the source PDF.\n\nReminder: This UI is an organizational interface and does not claim to display an authentic private email account.",
+      "starred": false,
+      "date": "2026-02-10",
+      "from": {
+        "name": "Public Record Release",
+        "email": "source@public-records"
+      },
+      "to": {
+        "name": "Jeff",
+        "email": "jeff@jeffs-mail"
+      },
+      "subject": "jerky EFTA02573631",
+      "snippet": "Archive item added: jerky EFTA02573631. Tap to open the attachment.",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
+      "bodyText": "This is a simulated mailbox entry used to organize publicly released documents.\n\nOpen the attachment below to view the source PDF.\n\nReminder: this UI is an organizational interface and does not claim to display an authentic private email account.",
       "attachments": [
         {
-          "name": "ANASTASIA DOE_vs_EPSTEIN_Filed 12-17-19.pdf",
-          "path": "/released/epstein/jeffs-mail-pdfs/ANASTASIA%20DOE_vs_EPSTEIN_Filed%2012-17-19.pdf"
+          "name": "jerky EFTA02573631.pdf",
+          "path": "/released/epstein/jeffs-mail-pdfs/jerky%20EFTA02573631.pdf"
         }
       ]
     },
@@ -27,65 +39,701 @@
       "id": "msg-0002",
       "mailbox": "inbox",
       "starred": false,
-      "date": "2019-07-06",
-      "from": { "name": "Archive Intake", "email": "intake@public-records" },
-      "to": { "name": "Jeff", "email": "jeff@jeffs-mail" },
-      "subject": "Index update: additional pages available",
-      "snippet": "The index has been updated with additional pages and labels for easier browsing.",
-      "tags": ["Index", "Update"],
-      "bodyText": "This entry is a simulated message used to improve browsing.\n\nThe archive index was updated to include clearer labels, improved sorting, and more consistent filenames.\n\nIf a PDF fails to open in the Facebook in-app browser, use the menu to open in Chrome/Safari.",
-      "attachments": []
+      "date": "2026-02-10",
+      "from": {
+        "name": "Public Record Release",
+        "email": "source@public-records"
+      },
+      "to": {
+        "name": "Jeff",
+        "email": "jeff@jeffs-mail"
+      },
+      "subject": "jerky EFTA02396657 (7)",
+      "snippet": "Archive item added: jerky EFTA02396657 (7). Tap to open the attachment.",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
+      "bodyText": "This is a simulated mailbox entry used to organize publicly released documents.\n\nOpen the attachment below to view the source PDF.\n\nReminder: this UI is an organizational interface and does not claim to display an authentic private email account.",
+      "attachments": [
+        {
+          "name": "jerky EFTA02396657 (7).pdf",
+          "path": "/released/epstein/jeffs-mail-pdfs/jerky%20EFTA02396657%20(7).pdf"
+        }
+      ]
     },
     {
       "id": "msg-0003",
-      "mailbox": "sent",
+      "mailbox": "inbox",
       "starred": false,
-      "date": "2019-07-02",
-      "from": { "name": "Jeff", "email": "jeffsmail@civicthreat.us" },
-      "to": { "name": "Archive Intake", "email": "intake@public-records" },
-      "subject": "Request: group filings by date and case caption",
-      "snippet": "It would be helpful to group filings by date and caption so readers can follow timelines.",
-      "tags": ["Sent", "Organization"],
-      "bodyText": "Simulated sent message.\n\nSuggestion: group filings by date and case caption so readers can browse chronologically and understand context.\n\nAlso: add keyword tags (motion, declaration, transcript) for faster searching.",
-      "attachments": []
+      "date": "2026-02-10",
+      "from": {
+        "name": "Public Record Release",
+        "email": "source@public-records"
+      },
+      "to": {
+        "name": "Jeff",
+        "email": "jeff@jeffs-mail"
+      },
+      "subject": "jerky EFTA02396657 (8)",
+      "snippet": "Archive item added: jerky EFTA02396657 (8). Tap to open the attachment.",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
+      "bodyText": "This is a simulated mailbox entry used to organize publicly released documents.\n\nOpen the attachment below to view the source PDF.\n\nReminder: this UI is an organizational interface and does not claim to display an authentic private email account.",
+      "attachments": [
+        {
+          "name": "jerky EFTA02396657 (8).pdf",
+          "path": "/released/epstein/jeffs-mail-pdfs/jerky%20EFTA02396657%20(8).pdf"
+        }
+      ]
     },
     {
       "id": "msg-0004",
-      "mailbox": "starred",
-      "starred": true,
-      "date": "2019-07-13",
-      "from": { "name": "Public Record Release", "email": "source@public-records" },
-      "to": { "name": "Jeff", "email": "jeff@jeffs-mail" },
-      "subject": "Starred: notable exhibit referenced in filing",
-      "snippet": "A referenced exhibit is available in the archive; review the source PDF for context.",
-      "tags": ["Starred", "Exhibit", "PDF"],
-      "bodyText": "This is a simulated starred entry.\n\nA notable exhibit is referenced in a public filing. Use the attachment to open the source PDF and review the exhibit in full context.\n\nReminder: allegations in documents should be read with caution and in context.",
+      "mailbox": "inbox",
+      "starred": false,
+      "date": "2026-02-10",
+      "from": {
+        "name": "Public Record Release",
+        "email": "source@public-records"
+      },
+      "to": {
+        "name": "Jeff",
+        "email": "jeff@jeffs-mail"
+      },
+      "subject": "jerky EFTA02396657 (9)",
+      "snippet": "Archive item added: jerky EFTA02396657 (9). Tap to open the attachment.",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
+      "bodyText": "This is a simulated mailbox entry used to organize publicly released documents.\n\nOpen the attachment below to view the source PDF.\n\nReminder: this UI is an organizational interface and does not claim to display an authentic private email account.",
       "attachments": [
         {
-          "name": "Example_Exhibit.pdf",
-          "path": "/released/epstein/jeffs-mail-pdfs/Example_Exhibit.pdf"
+          "name": "jerky EFTA02396657 (9).pdf",
+          "path": "/released/epstein/jeffs-mail-pdfs/jerky%20EFTA02396657%20(9).pdf"
         }
       ]
     },
     {
       "id": "msg-0005",
-      "mailbox": "attachments",
+      "mailbox": "inbox",
       "starred": false,
-      "date": "2019-07-25",
-      "from": { "name": "Archive Intake", "email": "intake@public-records" },
-      "to": { "name": "Jeff", "email": "jeff@jeffs-mail" },
-      "subject": "Attachments queue: newly added PDFs",
-      "snippet": "New PDFs were added to the attachments queue for quick access.",
-      "tags": ["Attachments", "PDF"],
-      "bodyText": "This mailbox view highlights messages that include attachments.\n\nOpen the PDF attachments below to view the source documents.",
+      "date": "2026-02-10",
+      "from": {
+        "name": "Public Record Release",
+        "email": "source@public-records"
+      },
+      "to": {
+        "name": "Jeff",
+        "email": "jeff@jeffs-mail"
+      },
+      "subject": "jerky EFTA02396657 (22)",
+      "snippet": "Archive item added: jerky EFTA02396657 (22). Tap to open the attachment.",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
+      "bodyText": "This is a simulated mailbox entry used to organize publicly released documents.\n\nOpen the attachment below to view the source PDF.\n\nReminder: this UI is an organizational interface and does not claim to display an authentic private email account.",
       "attachments": [
         {
-          "name": "Another_Public_Filing.pdf",
-          "path": "/released/epstein/jeffs-mail-pdfs/Another_Public_Filing.pdf"
-        },
+          "name": "jerky EFTA02396657 (22).pdf",
+          "path": "/released/epstein/jeffs-mail-pdfs/jerky%20EFTA02396657%20(22).pdf"
+        }
+      ]
+    },
+    {
+      "id": "msg-0006",
+      "mailbox": "inbox",
+      "starred": false,
+      "date": "2026-02-10",
+      "from": {
+        "name": "Public Record Release",
+        "email": "source@public-records"
+      },
+      "to": {
+        "name": "Jeff",
+        "email": "jeff@jeffs-mail"
+      },
+      "subject": "jerky EFTA02396657 (3)",
+      "snippet": "Archive item added: jerky EFTA02396657 (3). Tap to open the attachment.",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
+      "bodyText": "This is a simulated mailbox entry used to organize publicly released documents.\n\nOpen the attachment below to view the source PDF.\n\nReminder: this UI is an organizational interface and does not claim to display an authentic private email account.",
+      "attachments": [
         {
-          "name": "Supplement.pdf",
-          "path": "/released/epstein/jeffs-mail-pdfs/Supplement.pdf"
+          "name": "jerky EFTA02396657 (3).pdf",
+          "path": "/released/epstein/jeffs-mail-pdfs/jerky%20EFTA02396657%20(3).pdf"
+        }
+      ]
+    },
+    {
+      "id": "msg-0007",
+      "mailbox": "inbox",
+      "starred": false,
+      "date": "2026-02-10",
+      "from": {
+        "name": "Public Record Release",
+        "email": "source@public-records"
+      },
+      "to": {
+        "name": "Jeff",
+        "email": "jeff@jeffs-mail"
+      },
+      "subject": "jerky EFTA02396657 (4)",
+      "snippet": "Archive item added: jerky EFTA02396657 (4). Tap to open the attachment.",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
+      "bodyText": "This is a simulated mailbox entry used to organize publicly released documents.\n\nOpen the attachment below to view the source PDF.\n\nReminder: this UI is an organizational interface and does not claim to display an authentic private email account.",
+      "attachments": [
+        {
+          "name": "jerky EFTA02396657 (4).pdf",
+          "path": "/released/epstein/jeffs-mail-pdfs/jerky%20EFTA02396657%20(4).pdf"
+        }
+      ]
+    },
+    {
+      "id": "msg-0008",
+      "mailbox": "inbox",
+      "starred": false,
+      "date": "2026-02-10",
+      "from": {
+        "name": "Public Record Release",
+        "email": "source@public-records"
+      },
+      "to": {
+        "name": "Jeff",
+        "email": "jeff@jeffs-mail"
+      },
+      "subject": "jerky EFTA02396657 (5)",
+      "snippet": "Archive item added: jerky EFTA02396657 (5). Tap to open the attachment.",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
+      "bodyText": "This is a simulated mailbox entry used to organize publicly released documents.\n\nOpen the attachment below to view the source PDF.\n\nReminder: this UI is an organizational interface and does not claim to display an authentic private email account.",
+      "attachments": [
+        {
+          "name": "jerky EFTA02396657 (5).pdf",
+          "path": "/released/epstein/jeffs-mail-pdfs/jerky%20EFTA02396657%20(5).pdf"
+        }
+      ]
+    },
+    {
+      "id": "msg-0009",
+      "mailbox": "inbox",
+      "starred": false,
+      "date": "2026-02-10",
+      "from": {
+        "name": "Public Record Release",
+        "email": "source@public-records"
+      },
+      "to": {
+        "name": "Jeff",
+        "email": "jeff@jeffs-mail"
+      },
+      "subject": "jerky EFTA02396657 (6)",
+      "snippet": "Archive item added: jerky EFTA02396657 (6). Tap to open the attachment.",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
+      "bodyText": "This is a simulated mailbox entry used to organize publicly released documents.\n\nOpen the attachment below to view the source PDF.\n\nReminder: this UI is an organizational interface and does not claim to display an authentic private email account.",
+      "attachments": [
+        {
+          "name": "jerky EFTA02396657 (6).pdf",
+          "path": "/released/epstein/jeffs-mail-pdfs/jerky%20EFTA02396657%20(6).pdf"
+        }
+      ]
+    },
+    {
+      "id": "msg-0010",
+      "mailbox": "inbox",
+      "starred": false,
+      "date": "2026-02-10",
+      "from": {
+        "name": "Public Record Release",
+        "email": "source@public-records"
+      },
+      "to": {
+        "name": "Jeff",
+        "email": "jeff@jeffs-mail"
+      },
+      "subject": "jerky EFTA02396657 (18)",
+      "snippet": "Archive item added: jerky EFTA02396657 (18). Tap to open the attachment.",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
+      "bodyText": "This is a simulated mailbox entry used to organize publicly released documents.\n\nOpen the attachment below to view the source PDF.\n\nReminder: this UI is an organizational interface and does not claim to display an authentic private email account.",
+      "attachments": [
+        {
+          "name": "jerky EFTA02396657 (18).pdf",
+          "path": "/released/epstein/jeffs-mail-pdfs/jerky%20EFTA02396657%20(18).pdf"
+        }
+      ]
+    },
+    {
+      "id": "msg-0011",
+      "mailbox": "inbox",
+      "starred": false,
+      "date": "2026-02-10",
+      "from": {
+        "name": "Public Record Release",
+        "email": "source@public-records"
+      },
+      "to": {
+        "name": "Jeff",
+        "email": "jeff@jeffs-mail"
+      },
+      "subject": "jerky EFTA02396657 (19)",
+      "snippet": "Archive item added: jerky EFTA02396657 (19). Tap to open the attachment.",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
+      "bodyText": "This is a simulated mailbox entry used to organize publicly released documents.\n\nOpen the attachment below to view the source PDF.\n\nReminder: this UI is an organizational interface and does not claim to display an authentic private email account.",
+      "attachments": [
+        {
+          "name": "jerky EFTA02396657 (19).pdf",
+          "path": "/released/epstein/jeffs-mail-pdfs/jerky%20EFTA02396657%20(19).pdf"
+        }
+      ]
+    },
+    {
+      "id": "msg-0012",
+      "mailbox": "inbox",
+      "starred": false,
+      "date": "2026-02-10",
+      "from": {
+        "name": "Public Record Release",
+        "email": "source@public-records"
+      },
+      "to": {
+        "name": "Jeff",
+        "email": "jeff@jeffs-mail"
+      },
+      "subject": "jerky EFTA02396657 (2)",
+      "snippet": "Archive item added: jerky EFTA02396657 (2). Tap to open the attachment.",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
+      "bodyText": "This is a simulated mailbox entry used to organize publicly released documents.\n\nOpen the attachment below to view the source PDF.\n\nReminder: this UI is an organizational interface and does not claim to display an authentic private email account.",
+      "attachments": [
+        {
+          "name": "jerky EFTA02396657 (2).pdf",
+          "path": "/released/epstein/jeffs-mail-pdfs/jerky%20EFTA02396657%20(2).pdf"
+        }
+      ]
+    },
+    {
+      "id": "msg-0013",
+      "mailbox": "inbox",
+      "starred": false,
+      "date": "2026-02-10",
+      "from": {
+        "name": "Public Record Release",
+        "email": "source@public-records"
+      },
+      "to": {
+        "name": "Jeff",
+        "email": "jeff@jeffs-mail"
+      },
+      "subject": "jerky EFTA02396657 (20)",
+      "snippet": "Archive item added: jerky EFTA02396657 (20). Tap to open the attachment.",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
+      "bodyText": "This is a simulated mailbox entry used to organize publicly released documents.\n\nOpen the attachment below to view the source PDF.\n\nReminder: this UI is an organizational interface and does not claim to display an authentic private email account.",
+      "attachments": [
+        {
+          "name": "jerky EFTA02396657 (20).pdf",
+          "path": "/released/epstein/jeffs-mail-pdfs/jerky%20EFTA02396657%20(20).pdf"
+        }
+      ]
+    },
+    {
+      "id": "msg-0014",
+      "mailbox": "inbox",
+      "starred": false,
+      "date": "2026-02-10",
+      "from": {
+        "name": "Public Record Release",
+        "email": "source@public-records"
+      },
+      "to": {
+        "name": "Jeff",
+        "email": "jeff@jeffs-mail"
+      },
+      "subject": "jerky EFTA02396657 (21)",
+      "snippet": "Archive item added: jerky EFTA02396657 (21). Tap to open the attachment.",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
+      "bodyText": "This is a simulated mailbox entry used to organize publicly released documents.\n\nOpen the attachment below to view the source PDF.\n\nReminder: this UI is an organizational interface and does not claim to display an authentic private email account.",
+      "attachments": [
+        {
+          "name": "jerky EFTA02396657 (21).pdf",
+          "path": "/released/epstein/jeffs-mail-pdfs/jerky%20EFTA02396657%20(21).pdf"
+        }
+      ]
+    },
+    {
+      "id": "msg-0015",
+      "mailbox": "inbox",
+      "starred": false,
+      "date": "2026-02-10",
+      "from": {
+        "name": "Public Record Release",
+        "email": "source@public-records"
+      },
+      "to": {
+        "name": "Jeff",
+        "email": "jeff@jeffs-mail"
+      },
+      "subject": "jerky EFTA02396657 (12)",
+      "snippet": "Archive item added: jerky EFTA02396657 (12). Tap to open the attachment.",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
+      "bodyText": "This is a simulated mailbox entry used to organize publicly released documents.\n\nOpen the attachment below to view the source PDF.\n\nReminder: this UI is an organizational interface and does not claim to display an authentic private email account.",
+      "attachments": [
+        {
+          "name": "jerky EFTA02396657 (12).pdf",
+          "path": "/released/epstein/jeffs-mail-pdfs/jerky%20EFTA02396657%20(12).pdf"
+        }
+      ]
+    },
+    {
+      "id": "msg-0016",
+      "mailbox": "inbox",
+      "starred": false,
+      "date": "2026-02-10",
+      "from": {
+        "name": "Public Record Release",
+        "email": "source@public-records"
+      },
+      "to": {
+        "name": "Jeff",
+        "email": "jeff@jeffs-mail"
+      },
+      "subject": "jerky EFTA02396657 (13)",
+      "snippet": "Archive item added: jerky EFTA02396657 (13). Tap to open the attachment.",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
+      "bodyText": "This is a simulated mailbox entry used to organize publicly released documents.\n\nOpen the attachment below to view the source PDF.\n\nReminder: this UI is an organizational interface and does not claim to display an authentic private email account.",
+      "attachments": [
+        {
+          "name": "jerky EFTA02396657 (13).pdf",
+          "path": "/released/epstein/jeffs-mail-pdfs/jerky%20EFTA02396657%20(13).pdf"
+        }
+      ]
+    },
+    {
+      "id": "msg-0017",
+      "mailbox": "inbox",
+      "starred": false,
+      "date": "2026-02-10",
+      "from": {
+        "name": "Public Record Release",
+        "email": "source@public-records"
+      },
+      "to": {
+        "name": "Jeff",
+        "email": "jeff@jeffs-mail"
+      },
+      "subject": "jerky EFTA02396657 (14)",
+      "snippet": "Archive item added: jerky EFTA02396657 (14). Tap to open the attachment.",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
+      "bodyText": "This is a simulated mailbox entry used to organize publicly released documents.\n\nOpen the attachment below to view the source PDF.\n\nReminder: this UI is an organizational interface and does not claim to display an authentic private email account.",
+      "attachments": [
+        {
+          "name": "jerky EFTA02396657 (14).pdf",
+          "path": "/released/epstein/jeffs-mail-pdfs/jerky%20EFTA02396657%20(14).pdf"
+        }
+      ]
+    },
+    {
+      "id": "msg-0018",
+      "mailbox": "inbox",
+      "starred": false,
+      "date": "2026-02-10",
+      "from": {
+        "name": "Public Record Release",
+        "email": "source@public-records"
+      },
+      "to": {
+        "name": "Jeff",
+        "email": "jeff@jeffs-mail"
+      },
+      "subject": "jerky EFTA02396657 (15)",
+      "snippet": "Archive item added: jerky EFTA02396657 (15). Tap to open the attachment.",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
+      "bodyText": "This is a simulated mailbox entry used to organize publicly released documents.\n\nOpen the attachment below to view the source PDF.\n\nReminder: this UI is an organizational interface and does not claim to display an authentic private email account.",
+      "attachments": [
+        {
+          "name": "jerky EFTA02396657 (15).pdf",
+          "path": "/released/epstein/jeffs-mail-pdfs/jerky%20EFTA02396657%20(15).pdf"
+        }
+      ]
+    },
+    {
+      "id": "msg-0019",
+      "mailbox": "inbox",
+      "starred": false,
+      "date": "2026-02-10",
+      "from": {
+        "name": "Public Record Release",
+        "email": "source@public-records"
+      },
+      "to": {
+        "name": "Jeff",
+        "email": "jeff@jeffs-mail"
+      },
+      "subject": "jerky EFTA02396657 (16)",
+      "snippet": "Archive item added: jerky EFTA02396657 (16). Tap to open the attachment.",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
+      "bodyText": "This is a simulated mailbox entry used to organize publicly released documents.\n\nOpen the attachment below to view the source PDF.\n\nReminder: this UI is an organizational interface and does not claim to display an authentic private email account.",
+      "attachments": [
+        {
+          "name": "jerky EFTA02396657 (16).pdf",
+          "path": "/released/epstein/jeffs-mail-pdfs/jerky%20EFTA02396657%20(16).pdf"
+        }
+      ]
+    },
+    {
+      "id": "msg-0020",
+      "mailbox": "inbox",
+      "starred": false,
+      "date": "2026-02-10",
+      "from": {
+        "name": "Public Record Release",
+        "email": "source@public-records"
+      },
+      "to": {
+        "name": "Jeff",
+        "email": "jeff@jeffs-mail"
+      },
+      "subject": "jerky EFTA02396657 (17)",
+      "snippet": "Archive item added: jerky EFTA02396657 (17). Tap to open the attachment.",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
+      "bodyText": "This is a simulated mailbox entry used to organize publicly released documents.\n\nOpen the attachment below to view the source PDF.\n\nReminder: this UI is an organizational interface and does not claim to display an authentic private email account.",
+      "attachments": [
+        {
+          "name": "jerky EFTA02396657 (17).pdf",
+          "path": "/released/epstein/jeffs-mail-pdfs/jerky%20EFTA02396657%20(17).pdf"
+        }
+      ]
+    },
+    {
+      "id": "msg-0021",
+      "mailbox": "inbox",
+      "starred": false,
+      "date": "2026-02-10",
+      "from": {
+        "name": "Public Record Release",
+        "email": "source@public-records"
+      },
+      "to": {
+        "name": "Jeff",
+        "email": "jeff@jeffs-mail"
+      },
+      "subject": "jerky EFTA01982675",
+      "snippet": "Archive item added: jerky EFTA01982675. Tap to open the attachment.",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
+      "bodyText": "This is a simulated mailbox entry used to organize publicly released documents.\n\nOpen the attachment below to view the source PDF.\n\nReminder: this UI is an organizational interface and does not claim to display an authentic private email account.",
+      "attachments": [
+        {
+          "name": "jerky EFTA01982675.pdf",
+          "path": "/released/epstein/jeffs-mail-pdfs/jerky%20EFTA01982675.pdf"
+        }
+      ]
+    },
+    {
+      "id": "msg-0022",
+      "mailbox": "inbox",
+      "starred": false,
+      "date": "2026-02-10",
+      "from": {
+        "name": "Public Record Release",
+        "email": "source@public-records"
+      },
+      "to": {
+        "name": "Jeff",
+        "email": "jeff@jeffs-mail"
+      },
+      "subject": "jerky EFTA02302560",
+      "snippet": "Archive item added: jerky EFTA02302560. Tap to open the attachment.",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
+      "bodyText": "This is a simulated mailbox entry used to organize publicly released documents.\n\nOpen the attachment below to view the source PDF.\n\nReminder: this UI is an organizational interface and does not claim to display an authentic private email account.",
+      "attachments": [
+        {
+          "name": "jerky EFTA02302560.pdf",
+          "path": "/released/epstein/jeffs-mail-pdfs/jerky%20EFTA02302560.pdf"
+        }
+      ]
+    },
+    {
+      "id": "msg-0023",
+      "mailbox": "inbox",
+      "starred": false,
+      "date": "2026-02-10",
+      "from": {
+        "name": "Public Record Release",
+        "email": "source@public-records"
+      },
+      "to": {
+        "name": "Jeff",
+        "email": "jeff@jeffs-mail"
+      },
+      "subject": "jerky EFTA02396657 (1)",
+      "snippet": "Archive item added: jerky EFTA02396657 (1). Tap to open the attachment.",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
+      "bodyText": "This is a simulated mailbox entry used to organize publicly released documents.\n\nOpen the attachment below to view the source PDF.\n\nReminder: this UI is an organizational interface and does not claim to display an authentic private email account.",
+      "attachments": [
+        {
+          "name": "jerky EFTA02396657 (1).pdf",
+          "path": "/released/epstein/jeffs-mail-pdfs/jerky%20EFTA02396657%20(1).pdf"
+        }
+      ]
+    },
+    {
+      "id": "msg-0024",
+      "mailbox": "inbox",
+      "starred": false,
+      "date": "2026-02-10",
+      "from": {
+        "name": "Public Record Release",
+        "email": "source@public-records"
+      },
+      "to": {
+        "name": "Jeff",
+        "email": "jeff@jeffs-mail"
+      },
+      "subject": "jerky EFTA02396657 (10)",
+      "snippet": "Archive item added: jerky EFTA02396657 (10). Tap to open the attachment.",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
+      "bodyText": "This is a simulated mailbox entry used to organize publicly released documents.\n\nOpen the attachment below to view the source PDF.\n\nReminder: this UI is an organizational interface and does not claim to display an authentic private email account.",
+      "attachments": [
+        {
+          "name": "jerky EFTA02396657 (10).pdf",
+          "path": "/released/epstein/jeffs-mail-pdfs/jerky%20EFTA02396657%20(10).pdf"
+        }
+      ]
+    },
+    {
+      "id": "msg-0025",
+      "mailbox": "inbox",
+      "starred": false,
+      "date": "2026-02-10",
+      "from": {
+        "name": "Public Record Release",
+        "email": "source@public-records"
+      },
+      "to": {
+        "name": "Jeff",
+        "email": "jeff@jeffs-mail"
+      },
+      "subject": "jerky EFTA02396657 (11)",
+      "snippet": "Archive item added: jerky EFTA02396657 (11). Tap to open the attachment.",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
+      "bodyText": "This is a simulated mailbox entry used to organize publicly released documents.\n\nOpen the attachment below to view the source PDF.\n\nReminder: this UI is an organizational interface and does not claim to display an authentic private email account.",
+      "attachments": [
+        {
+          "name": "jerky EFTA02396657 (11).pdf",
+          "path": "/released/epstein/jeffs-mail-pdfs/jerky%20EFTA02396657%20(11).pdf"
+        }
+      ]
+    },
+    {
+      "id": "msg-0026",
+      "mailbox": "inbox",
+      "starred": false,
+      "date": "2026-02-10",
+      "from": {
+        "name": "Public Record Release",
+        "email": "source@public-records"
+      },
+      "to": {
+        "name": "Jeff",
+        "email": "jeff@jeffs-mail"
+      },
+      "subject": "jerky EFTA00405427",
+      "snippet": "Archive item added: jerky EFTA00405427. Tap to open the attachment.",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
+      "bodyText": "This is a simulated mailbox entry used to organize publicly released documents.\n\nOpen the attachment below to view the source PDF.\n\nReminder: this UI is an organizational interface and does not claim to display an authentic private email account.",
+      "attachments": [
+        {
+          "name": "jerky EFTA00405427.pdf",
+          "path": "/released/epstein/jeffs-mail-pdfs/jerky%20EFTA00405427.pdf"
+        }
+      ]
+    },
+    {
+      "id": "msg-0027",
+      "mailbox": "inbox",
+      "starred": false,
+      "date": "2026-02-10",
+      "from": {
+        "name": "Public Record Release",
+        "email": "source@public-records"
+      },
+      "to": {
+        "name": "Jeff",
+        "email": "jeff@jeffs-mail"
+      },
+      "subject": "jerky EFTA00535465",
+      "snippet": "Archive item added: jerky EFTA00535465. Tap to open the attachment.",
+      "tags": [
+        "Released",
+        "PDF"
+      ],
+      "bodyText": "This is a simulated mailbox entry used to organize publicly released documents.\n\nOpen the attachment below to view the source PDF.\n\nReminder: this UI is an organizational interface and does not claim to display an authentic private email account.",
+      "attachments": [
+        {
+          "name": "jerky EFTA00535465.pdf",
+          "path": "/released/epstein/jeffs-mail-pdfs/jerky%20EFTA00535465.pdf"
         }
       ]
     }
