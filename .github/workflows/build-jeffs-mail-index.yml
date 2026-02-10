@@ -1,0 +1,35 @@
+name: Build Jeffs Mail index.json
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "released/epstein/jeffs-mail-pdfs/**"
+      - "tools/build-jeffs-mail-index.mjs"
+      - ".github/workflows/build-jeffs-mail-index.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build index.json
+        run: node tools/build-jeffs-mail-index.mjs
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add released/epstein/jeffs-mail/index.json
+          git diff --cached --quiet || git commit -m "Auto-build Jeffs Mail index.json"
+          git push
