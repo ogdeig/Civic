@@ -53,7 +53,6 @@ def find_repo_root(start: Path) -> Path:
         if cur.parent == cur:
             break
         cur = cur.parent
-    # fallback: current working directory if it looks like repo root
     cwd = Path.cwd().resolve()
     if (cwd / "released").exists():
         return cwd
@@ -62,9 +61,25 @@ def find_repo_root(start: Path) -> Path:
 
 ROOT = Path(__file__).resolve()
 REPO_ROOT = find_repo_root(ROOT)
+
+# Correct layout (per your screenshot):
+#   released/epstein/jeffs-mail/
+#     jeffs-mail.html
+#     jeffs-mail.js
+#     index.json   <-- generated here
+#     meta.json
+#     pdfs/        <-- PDFs live here
+#     tools/
 MAIL_ROOT = REPO_ROOT / "released" / "epstein" / "jeffs-mail"
 PDF_DIR = MAIL_ROOT / "pdfs"
 OUT_JSON = MAIL_ROOT / "index.json"
+
+if not PDF_DIR.exists():
+    raise RuntimeError(
+        "No PDFs folder found. Expected:\n"
+        f"- {PDF_DIR}\n"
+        "Check your repo structure."
+    )
 
 SOURCE_LABEL = "Public Record Release"
 
@@ -131,10 +146,6 @@ def slugify(s: str) -> str:
     s = re.sub(r"\s+", "-", s)
     s = re.sub(r"\-+", "-", s)
     return s.strip("-") or "unknown"
-
-
-def sha1_short(s: str) -> str:
-    return hashlib.sha1(s.encode("utf-8", "ignore")).hexdigest()[:10]
 
 
 def read_pdf_text(path: Path, max_pages: int = 3) -> str:
@@ -263,12 +274,9 @@ def extract_headers(text: str) -> Dict[str, str]:
         current_key = m.group(1).lower()
         buf = [m.group(2) or ""]
 
-        # continuation lines until next header or blank line
         for j in range(i + 1, min(len(lines), 220)):
             nxt = lines[j].strip()
-            if HEADER_RE.match(nxt):
-                break
-            if nxt == "":
+            if HEADER_RE.match(nxt) or nxt == "":
                 break
             buf.append(nxt)
 
@@ -390,7 +398,9 @@ def build_item(pdf_path: Path) -> MailItem:
         lines = [x for x in cleaned.splitlines() if x.strip()]
         body = "\n".join(lines[:60]).strip()
 
-    rel_pdf = str(pdf_path.relative_to(REPO_ROOT)).replace("\\", "/")
+    # Store PDF paths relative to /released/epstein/jeffs-mail/
+    rel_pdf = str(pdf_path.relative_to(MAIL_ROOT)).replace("\\", "/")
+
     base = f"{pdf_path.name}|{frm}|{to}|{subj}|{iso}|{mailbox}"
     mid = f"{slugify(pdf_path.stem)}-{hashlib.sha1(base.encode('utf-8','ignore')).hexdigest()[:10]}"
 
@@ -413,14 +423,11 @@ def build_item(pdf_path: Path) -> MailItem:
 
 def main() -> None:
     print("Repo root:", REPO_ROOT)
+    print("Mail root:", MAIL_ROOT)
     print("PDF dir:", PDF_DIR)
     print("Output:", OUT_JSON)
 
-    # Always ensure output directory exists
     OUT_JSON.parent.mkdir(parents=True, exist_ok=True)
-
-    if not PDF_DIR.exists():
-        raise SystemExit(f"ERROR: PDF_DIR not found: {PDF_DIR}")
 
     pdfs = sorted([p for p in PDF_DIR.glob("*.pdf") if p.is_file()])
 
@@ -442,7 +449,7 @@ def main() -> None:
 
     out = {
         "generatedAt": int(time.time()),
-        "source": "jeffs-mail/index.json",
+        "source": "index.json",
         "backend": _pdf_backend,
         "counts": {
             "total": len(items),
