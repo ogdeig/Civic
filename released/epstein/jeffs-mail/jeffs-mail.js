@@ -54,12 +54,15 @@
   function esc(s){
     return String(s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   }
+
   function safeText(s){
     return String(s || "").replace(/\s+/g, " ").trim();
   }
+
   function isObj(v){
     return v && typeof v === "object" && !Array.isArray(v);
   }
+
   function pickName(v){
     if(!v) return "";
     if(typeof v === "string") return v;
@@ -78,6 +81,14 @@
     }catch(_){ return ""; }
   }
 
+  function slugify(s){
+    return safeText(s).toLowerCase()
+      .replace(/[^\w\s\-]+/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/\-+/g, "-")
+      .replace(/^\-+|\-+$/g, "") || "unknown";
+  }
+
   function looksDateish(s){
     const t = safeText(s).toLowerCase();
     if(!t) return false;
@@ -85,12 +96,13 @@
       /\b(mon|tue|wed|thu|fri|sat|sun)\b/.test(t) ||
       /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/.test(t) ||
       /\b\d{4}-\d{2}-\d{2}\b/.test(t) ||
-      /\b\d{1,2}:\d{2}\b/.test(t);
+      /\b\d{1,2}:\d{2}(:\d{2})?\s*(am|pm)\b/.test(t);
   }
 
   function cleanContact(s){
     let t = safeText(s);
-    t = t.replace(/^(from|to|sent|subject)\s*:\s*/i, "").trim();
+    // strip any header-like prefixes (including Date:)
+    t = t.replace(/^(from|to|sent|subject|date)\s*:\s*/i, "").trim();
     t = t.replace(/^\s*[:\-]\s*/, "").trim();
     t = t.replace(/[\[\]\(\)]/g, "").trim();
     t = t.replace(/\s+/g, " ").trim();
@@ -149,13 +161,18 @@
     try{
       const raw = localStorage.getItem(STAR_KEY);
       const arr = raw ? JSON.parse(raw) : [];
-      if(Array.isArray(arr)) state.starred = new Set(arr.map(String));
+      if(Array.isArray(arr)){
+        state.starred = new Set(arr.map(String));
+      }
     }catch(_){
       state.starred = new Set();
     }
   }
+
   function saveStarred(){
-    try{ localStorage.setItem(STAR_KEY, JSON.stringify(Array.from(state.starred))); }catch(_){}
+    try{
+      localStorage.setItem(STAR_KEY, JSON.stringify(Array.from(state.starred)));
+    }catch(_){}
   }
 
   function loadContactFilter(){
@@ -166,6 +183,7 @@
       state.contact = "all";
     }
   }
+
   function saveContactFilter(){
     try{ localStorage.setItem(CONTACT_KEY, state.contact || "all"); }catch(_){}
   }
@@ -205,16 +223,16 @@
       const date = safeText(m.date);
       const dateDisplay = safeText(m.dateDisplay);
 
-      const body = String(m.body || "");
-      const snippet = safeText(m.snippet) || (safeText(body).slice(0, 160) || "");
+      const body = (m.body || "");
+      const snippet = safeText(m.snippet) || safeText(body).slice(0, 160);
 
-      // contactName/contactKey (prefer builder; fallback to otherParty)
+      // contactKey/contactName: trust the generator, but still sanitize hard
       let contactName = cleanContact(pickName(m.contactName)) || otherParty(mailbox, from, to);
       if(looksDateish(contactName)) contactName = otherParty(mailbox, from, to);
       if(looksDateish(contactName)) contactName = "Unknown";
 
-      let contactKey = safeText(m.contactKey) || (contactName !== "Unknown" ? contactName.toLowerCase().replace(/[^\w]+/g, "-") : "unknown");
-      if(looksDateish(contactKey)) contactKey = "unknown";
+      let contactKey = safeText(m.contactKey) || slugify(contactName);
+      if(contactKey === "unknown" && contactName !== "Unknown") contactKey = slugify(contactName);
 
       const id = String(m.id);
 
@@ -231,7 +249,7 @@
         date,
         dateDisplay,
         snippet,
-        body, // keep as-is (don’t safeText it; preserve newlines)
+        body: String(body || ""),
         pdf,
         contactKey: contactKey || "unknown",
         contactName: contactName || "Unknown",
@@ -251,20 +269,17 @@
 
   function rebuildContacts(){
     const map = new Map();
-
     for(const m of state.all){
       const k = safeText(m.contactKey) || "unknown";
       const n = cleanContact(m.contactName) || "Unknown";
-
-      // HARD BLOCK: never allow date-like contacts in the dropdown
       if(n === "Unknown") continue;
       if(looksDateish(n)) continue;
-
       if(!map.has(k)) map.set(k, n);
     }
 
     const list = Array.from(map.entries()).map(([key, name]) => ({ key, name }));
     list.sort((a,b) => a.name.localeCompare(b.name));
+
     state.contacts = list;
 
     if(el.contactSelect){
@@ -293,9 +308,7 @@
 
   function matchesQuery(m, q){
     if(!q) return true;
-    const hay = [
-      m.subject, m.from, m.to, m.snippet, m.body, m.contactName
-    ].join(" ").toLowerCase();
+    const hay = [m.subject, m.from, m.to, m.snippet, m.body, m.contactName].join(" ").toLowerCase();
     return hay.includes(q);
   }
 
@@ -354,12 +367,25 @@
     return window.matchMedia && window.matchMedia("(max-width: 980px)").matches;
   }
 
+  function setReaderInsetForHeader(){
+    // Keep overlay below sticky site header if present
+    if(!el.reader || !isNarrow()) return;
+    const hdr = document.querySelector(".site-header, header, #siteHeader");
+    let top = 56;
+    if(hdr && hdr.getBoundingClientRect){
+      const h = hdr.getBoundingClientRect().height || 56;
+      top = Math.max(56, Math.round(h));
+    }
+    el.reader.style.top = (top + 8) + "px";
+    el.reader.style.left = "10px";
+    el.reader.style.right = "10px";
+    el.reader.style.bottom = "10px";
+  }
+
   function openReaderOverlay(){
     if(!el.reader) return;
     if(isNarrow()){
-      // force strong overlay styling (fix “transparent overlap”)
-      el.reader.style.background = "#050505";
-      el.reader.style.zIndex = "99999";
+      setReaderInsetForHeader();
       el.reader.classList.add("open");
       document.body.classList.add("jm-lock");
     }
@@ -376,7 +402,7 @@
     if(!el.readCard) return;
 
     const mailbox = m.mailbox || "inbox";
-    const bodyText = String(m.body || "").trim();
+    const bodyText = String(m.body || "");
     const snippet = safeText(m.snippet || "");
     const pdfHref = esc(m.pdf);
 
@@ -397,7 +423,7 @@
       </div>
 
       <div class="jm-bodytext">${
-        esc(bodyText || snippet || "Open the source PDF below to view the original record.")
+        esc(safeText(bodyText) || snippet || "Open the source PDF below to view the original record.")
       }</div>
 
       <div class="jm-attach">
@@ -527,6 +553,7 @@
 
     window.addEventListener("resize", () => {
       if(!isNarrow()) closeReaderOverlay();
+      else setReaderInsetForHeader();
     });
 
     setActiveFolder("inbox");
