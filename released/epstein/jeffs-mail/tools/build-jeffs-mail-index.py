@@ -42,10 +42,6 @@ if PdfReader is None:
 
 
 def find_repo_root(start: Path) -> Path:
-    """
-    Walk upward until we find a folder that contains 'released/'.
-    This prevents REPO_ROOT from being wrong when folder depth changes.
-    """
     cur = start.resolve()
     for _ in range(12):
         if (cur / "released").exists() and (cur / "released").is_dir():
@@ -62,24 +58,14 @@ def find_repo_root(start: Path) -> Path:
 ROOT = Path(__file__).resolve()
 REPO_ROOT = find_repo_root(ROOT)
 
-# Correct layout (per your screenshot):
-#   released/epstein/jeffs-mail/
-#     jeffs-mail.html
-#     jeffs-mail.js
-#     index.json   <-- generated here
-#     meta.json
-#     pdfs/        <-- PDFs live here
-#     tools/
+# Correct layout:
+# released/epstein/jeffs-mail/
 MAIL_ROOT = REPO_ROOT / "released" / "epstein" / "jeffs-mail"
 PDF_DIR = MAIL_ROOT / "pdfs"
 OUT_JSON = MAIL_ROOT / "index.json"
 
 if not PDF_DIR.exists():
-    raise RuntimeError(
-        "No PDFs folder found. Expected:\n"
-        f"- {PDF_DIR}\n"
-        "Check your repo structure."
-    )
+    raise RuntimeError(f"No PDFs folder found at: {PDF_DIR}")
 
 SOURCE_LABEL = "Public Record Release"
 
@@ -88,17 +74,14 @@ JEFF_ALIASES = [
     "jeff epstein",
     "jeevacation",
     "jeevacation@gmail.com",
-    "jeevacation@gma",
-    "jeevacationagmail",
-    "jeevacation@gmail,com",
     "lsj",
 ]
 JEFF_TOKEN_RE = re.compile(r"\b(JE|LSJ)\b", re.IGNORECASE)
 
-HEADER_RE = re.compile(r"^\s*(From|Sent|To|Subject)\s*:\s*(.*)\s*$", re.IGNORECASE)
+HEADER_RE = re.compile(r"^\s*(From|Sent|To|Subject|Date)\s*:\s*(.*)\s*$", re.IGNORECASE)
 
 DATEISH_RE = re.compile(
-    r"""(?ix)
+    r"""
     ^\s*
     (?:
       (?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*,?\s+
@@ -108,6 +91,7 @@ DATEISH_RE = re.compile(
       (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2},?\s+\d{4}
     )
     """,
+    re.IGNORECASE | re.VERBOSE,
 )
 
 EMAIL_RE = re.compile(r"[\w\.\-+%]+@[\w\.\-]+\.[A-Za-z]{2,}", re.IGNORECASE)
@@ -121,20 +105,22 @@ HTML_GARBAGE_RE = re.compile(
 PLIST_START_RE = re.compile(r"<!DOCTYPE\s+plist|<plist\b|<\?xml\b", re.IGNORECASE)
 
 CONF_BLOCK_RE = re.compile(
-    r"""(?is)
+    r"""
     (?:^|\n)\s*Confidentiality\s+Notice:.*$|
     (?:^|\n)\s*The\s+information\s+contained\s+in\s+this\s+communication\s+is.*$
-    """
+    """,
+    re.IGNORECASE | re.DOTALL | re.VERBOSE,
 )
 
 QUOTE_CUT_RE = re.compile(
-    r"""(?is)
+    r"""
     (?:\n\s*On\s.+?\bwrote:\s*\n)|
     (?:\n\s*-----Original Message-----\s*\n)|
     (?:\n\s*Begin forwarded message:\s*\n)|
     (?:\n\s*From:\s.+\n\s*Sent:\s.+\n\s*To:\s.+\n\s*Subject:\s.+\n)|
     (?:\n\s*>+\s)
-    """
+    """,
+    re.IGNORECASE | re.DOTALL | re.VERBOSE,
 )
 
 SIGNATURE_KEEP_RE = re.compile(r"^\s*Sent from (my|an) (iPhone|iPad|Android).*$", re.IGNORECASE)
@@ -189,14 +175,6 @@ def parse_date_to_iso(sent_value: str) -> Tuple[str, str, int]:
             dt = None
 
     if dt is None:
-        cleaned = re.sub(r"^[A-Za-z]+,\s*", "", sent_value)
-        if dateparser is not None:
-            try:
-                dt = dateparser.parse(cleaned)
-            except Exception:
-                dt = None
-
-    if dt is None:
         now = int(time.time())
         return (
             time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime(now)),
@@ -228,10 +206,13 @@ def looks_like_jeff(s: str) -> bool:
 
 def normalize_contact_name(s: str) -> str:
     s = (s or "").strip()
-    s = re.sub(r"(?i)\b(mailto:|javascript:).*?$", "", s).strip()
+    s = re.sub(r"\b(mailto:|javascript:).*?$", "", s, flags=re.IGNORECASE).strip()
     s = s.replace("[", "").replace("]", "").replace("(", "").replace(")", "")
     s = re.sub(r"\s+", " ", s).strip()
-    s = re.sub(r"^(?i)(from|to|sent|subject)\s*:\s*", "", s).strip()
+
+    # ✅ FIX: do NOT use ^(?i) patterns; use flags instead
+    s = re.sub(r"^(from|to|sent|subject|date)\s*:\s*", "", s, flags=re.IGNORECASE).strip()
+
     if s and DATEISH_RE.search(s):
         return "Unknown"
     if not s or s.lower() in {"unknown", "n/a", "na", "-"}:
@@ -243,6 +224,7 @@ def normalize_contact_name(s: str) -> str:
 
 def extract_headers(text: str) -> Dict[str, str]:
     hdr = {"from": "", "to": "", "subject": "", "sent": ""}
+
     t = cleanup_text(text)
     lines = [ln.rstrip() for ln in t.splitlines()]
 
@@ -259,7 +241,7 @@ def extract_headers(text: str) -> Dict[str, str]:
                 hdr["to"] = hdr["to"] or joined
             elif current_key == "subject":
                 hdr["subject"] = hdr["subject"] or joined
-            elif current_key == "sent":
+            elif current_key in ("sent", "date"):
                 hdr["sent"] = hdr["sent"] or joined
         current_key = None
         buf = []
@@ -398,7 +380,7 @@ def build_item(pdf_path: Path) -> MailItem:
         lines = [x for x in cleaned.splitlines() if x.strip()]
         body = "\n".join(lines[:60]).strip()
 
-    # Store PDF paths relative to /released/epstein/jeffs-mail/
+    # PDF path relative to /released/epstein/jeffs-mail/
     rel_pdf = str(pdf_path.relative_to(MAIL_ROOT)).replace("\\", "/")
 
     base = f"{pdf_path.name}|{frm}|{to}|{subj}|{iso}|{mailbox}"
