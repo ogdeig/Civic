@@ -18,11 +18,9 @@
   <link rel="stylesheet" href="/styles.css" />
 
   <style>
-    /* Keep your site vibe, but emulate an email client layout */
     .page-wrap{ max-width: 1240px; margin: 0 auto; padding: 16px 12px 42px; }
     .ep-box{ border-radius: 0 !important; }
 
-    /* App shell */
     .mail-shell{
       border: 1px solid rgba(255,255,255,.12);
       background: rgba(0,0,0,.20);
@@ -96,7 +94,6 @@
     }
     .search .hint{ font-size: 11px; opacity:.75; white-space:nowrap; }
 
-    /* Contacts dropdown */
     .contacts{
       width: min(360px, 100%);
       display:flex;
@@ -115,6 +112,10 @@
       color: #fff;
       font-size: 13px;
       appearance: none;
+    }
+    .contacts select option{
+      background: #0b0b0b;
+      color: #fff;
     }
 
     .top-actions{
@@ -135,7 +136,6 @@
     }
     .pill.good{ border-color: rgba(0,242,234,.35); }
 
-    /* Layout columns */
     .mail-grid{
       display:grid;
       grid-template-columns: 240px 380px 1fr;
@@ -144,19 +144,33 @@
     @media (max-width: 1100px){
       .mail-grid{ grid-template-columns: 220px 360px 1fr; }
     }
+
+    /* Mobile Gmail-style: open reader as overlay */
     @media (max-width: 980px){
       .mail-grid{ grid-template-columns: 220px 1fr; }
-      .reader{ display:none; }
       .listcol{ border-left: 1px solid rgba(255,255,255,.10); }
+      .reader{
+        display:none;
+        position: fixed;
+        inset: 56px 10px 10px 10px;
+        z-index: 9997;
+        box-shadow: 0 20px 60px rgba(0,0,0,.6);
+        background: rgba(0,0,0,.92);
+      }
+      .reader.open{ display:flex; }
     }
     @media (max-width: 720px){
       .mail-grid{ grid-template-columns: 1fr; }
       .sidebar{ display:none; }
       .listcol{ border-left: 0; }
-      .reader{ display:none; }
+      .reader{
+        inset: 56px 8px 8px 8px;
+      }
     }
 
-    /* Sidebar */
+    /* prevent body scroll when reader open */
+    body.jm-lock{ overflow:hidden; }
+
     .sidebar{
       border-right: 1px solid rgba(255,255,255,.10);
       background: rgba(0,0,0,.18);
@@ -210,7 +224,6 @@
       padding-top: 10px;
     }
 
-    /* Message list */
     .listcol{
       border-right: 1px solid rgba(255,255,255,.10);
       background: rgba(0,0,0,.14);
@@ -238,13 +251,8 @@
       opacity:.82;
       white-space: nowrap;
     }
+    .list{ overflow:auto; height: 100%; }
 
-    .list{
-      overflow:auto;
-      height: 100%;
-    }
-
-    /* Hook your JS classnames */
     .jm-item{
       display:flex;
       gap: 10px;
@@ -306,7 +314,6 @@
       margin-left: 8px;
     }
 
-    /* Reader */
     .reader{
       background: rgba(0,0,0,.10);
       min-width: 0;
@@ -322,7 +329,6 @@
       align-items:center;
       justify-content: space-between;
       gap: 10px;
-      flex-wrap: wrap;
     }
     .reader-top .rt{
       font-weight: 1000;
@@ -336,7 +342,6 @@
       min-width: 0;
     }
 
-    /* Jeffs-mail.js output classes */
     .jm-h1{
       margin: 0 0 8px;
       font-size: 16px;
@@ -402,6 +407,15 @@
       white-space: nowrap;
     }
 
+    .jm-backbtn{
+      display:none;
+    }
+    @media (max-width: 980px){
+      .jm-backbtn{
+        display:inline-flex;
+      }
+    }
+
     .legal{
       margin-top: 12px;
       font-size: 12px;
@@ -409,7 +423,6 @@
       line-height: 1.55;
     }
 
-    /* 21+ gate */
     .gate{
       position: fixed; inset: 0; z-index: 9999;
       background: rgba(0,0,0,.78);
@@ -434,12 +447,10 @@
     .gate .actions{ display:flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; margin-top: 14px; }
     .gate .btn{ border-radius: 0 !important; }
 
-    /* safety net: ensure footer matches header red */
     .site-footer{ background: var(--red) !important; color:#fff; }
     .site-footer a{ color:#fff; }
   </style>
 
-  <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-Z03YK1FYXW"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
@@ -450,12 +461,10 @@
 </head>
 
 <body>
-  <!-- Header injected by app.js -->
   <div id="siteHeader"></div>
 
   <main class="page-wrap">
     <div class="mail-shell ep-box">
-      <!-- App-like topbar -->
       <div class="mail-topbar">
         <div class="brand-mini">
           <span class="dot" aria-hidden="true"></span>
@@ -485,9 +494,7 @@
         </div>
       </div>
 
-      <!-- 3-column email UI -->
       <div class="mail-grid">
-        <!-- Sidebar -->
         <aside class="sidebar">
           <div class="compose ep-box" title="Compose disabled (simulation)">
             <span class="lock">🔒</span> Compose
@@ -525,7 +532,6 @@
           </div>
         </aside>
 
-        <!-- List column -->
         <section class="listcol" aria-label="Message list">
           <div class="list-top">
             <div class="title"><span id="jmFolderTitle">INBOX</span> (<span id="jmCount">0</span>)</div>
@@ -537,10 +543,10 @@
           </div>
         </section>
 
-        <!-- Reader column -->
-        <section class="reader" aria-label="Message reader">
+        <section class="reader" id="jmReader" aria-label="Message reader">
           <div class="reader-top">
             <div class="rt">Message</div>
+            <button class="btn jm-backbtn" id="jmReaderBack" type="button">← Back</button>
           </div>
 
           <div class="reader-body">
@@ -565,10 +571,8 @@
     </div>
   </main>
 
-  <!-- Footer injected by app.js -->
   <div id="siteFooter"></div>
 
-  <!-- 21+ gate -->
   <div class="gate" id="ageGate" role="dialog" aria-modal="true" aria-labelledby="gateTitle">
     <div class="card ep-box">
       <h2 id="gateTitle">Adults 21+ Only</h2>
@@ -589,11 +593,8 @@
     </div>
   </div>
 
-  <!-- Site header/footer injection -->
-  <script src="/config.js?v=13"></script>
-  <script src="/app.js?v=13"></script>
-
-  <!-- Jeffs Mail logic (loads ./index.json) -->
-  <script src="./jeffs-mail.js?v=13"></script>
+  <script src="/config.js?v=14"></script>
+  <script src="/app.js?v=14"></script>
+  <script src="./jeffs-mail.js?v=14"></script>
 </body>
 </html>
