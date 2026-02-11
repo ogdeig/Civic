@@ -37,16 +37,10 @@
 
     /* On small screens, let it breathe a bit more */
     @media (max-width: 980px){
-      .mail-shell{
-        height: calc(100vh - 140px);
-        min-height: 520px;
-      }
+      .mail-shell{ height: calc(100vh - 140px); min-height: 520px; }
     }
     @media (max-width: 720px){
-      .mail-shell{
-        height: calc(100vh - 120px);
-        min-height: 520px;
-      }
+      .mail-shell{ height: calc(100vh - 120px); min-height: 520px; }
     }
 
     .mail-topbar{
@@ -99,7 +93,7 @@
     }
 
     .search{
-      width: min(640px, 100%);
+      width: min(720px, 100%);
       display:flex;
       gap: 8px;
       align-items:center;
@@ -117,36 +111,13 @@
     }
     .search .hint{ font-size: 11px; opacity:.75; white-space:nowrap; }
 
-    .contacts{
-      width: min(360px, 100%);
-      display:flex;
-      gap: 8px;
-      align-items:center;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.35);
-      padding: 8px 10px;
-    }
-    .contacts .lbl{ font-size: 11px; opacity: .8; white-space: nowrap; }
-    .contacts select{
-      width: 100%;
-      border: 0;
-      outline: 0;
-      background: transparent;
-      color: #fff;
-      font-size: 13px;
-      appearance: none;
-    }
-    .contacts select option{
-      background: #0b0b0b;
-      color: #fff;
-    }
-
     .top-actions{
       display:flex;
       gap: 8px;
       align-items:center;
       justify-content:flex-end;
       flex: 0 0 auto;
+      flex-wrap: wrap;
     }
     .pill{
       font-size: 11px;
@@ -158,32 +129,45 @@
       white-space: nowrap;
     }
     .pill.good{ border-color: rgba(0,242,234,.35); }
+    .pill.dim{ opacity:.78; }
 
     /* Key: the grid must be allowed to shrink inside flex parent */
     .mail-grid{
       display:grid;
       grid-template-columns: 240px 380px 1fr;
-
-      /* take the remaining height under topbar */
       flex: 1 1 auto;
-      min-height: 0;      /* CRITICAL for nested scroll */
-      overflow: hidden;   /* keep scroll inside list/reader */
+      min-height: 0;
+      overflow: hidden;
     }
     @media (max-width: 1100px){
       .mail-grid{ grid-template-columns: 220px 360px 1fr; }
     }
 
-    /* Mobile Gmail-style: open reader as overlay */
+    /* Mobile overlay + backdrop */
     @media (max-width: 980px){
       .mail-grid{ grid-template-columns: 220px 1fr; }
       .listcol{ border-left: 1px solid rgba(255,255,255,.10); }
+
+      .jm-backdrop{
+        display:none;
+        position: fixed;
+        inset: 0;
+        z-index: 9996;
+        background: rgba(0,0,0,.72);
+        backdrop-filter: blur(2px);
+      }
+      .jm-backdrop.open{ display:block; }
+
       .reader{
         display:none;
         position: fixed;
         inset: 56px 10px 10px 10px;
         z-index: 9997;
         box-shadow: 0 20px 60px rgba(0,0,0,.6);
-        background: rgba(0,0,0,.92);
+
+        /* Fully opaque, no “transparent overlay” feel */
+        background: #0b0b0b;
+        border: 1px solid rgba(255,255,255,.14);
       }
       .reader.open{ display:flex; }
     }
@@ -191,19 +175,15 @@
       .mail-grid{ grid-template-columns: 1fr; }
       .sidebar{ display:none; }
       .listcol{ border-left: 0; }
-      .reader{
-        inset: 56px 8px 8px 8px;
-      }
+      .reader{ inset: 56px 8px 8px 8px; }
     }
 
-    /* prevent body scroll when reader open */
     body.jm-lock{ overflow:hidden; }
 
-    /* Columns must allow inner children to scroll */
     .sidebar,
     .listcol,
     .reader{
-      min-height: 0;  /* CRITICAL */
+      min-height: 0;
       overflow: hidden;
     }
 
@@ -211,7 +191,11 @@
       border-right: 1px solid rgba(255,255,255,.10);
       background: rgba(0,0,0,.18);
       padding: 10px;
+      display:flex;
+      flex-direction: column;
+      gap: 10px;
     }
+
     .compose{
       width:100%;
       display:flex;
@@ -226,10 +210,11 @@
       color:#fff;
       cursor: default;
       user-select:none;
+      flex: 0 0 auto;
     }
     .compose .lock{ opacity:.9; }
 
-    .navlist{ margin-top: 10px; display:flex; flex-direction:column; gap: 6px; }
+    .navlist{ display:flex; flex-direction:column; gap: 6px; flex: 0 0 auto; }
     .navbtn{
       display:flex;
       align-items:center;
@@ -251,8 +236,114 @@
     }
     .navbtn .count{ font-size: 11px; opacity:.85; flex:0 0 auto; }
 
+    .divider{
+      height: 1px;
+      background: rgba(255,255,255,.10);
+      margin: 2px 0;
+      flex: 0 0 auto;
+    }
+
+    /* Sidebar sections: Contacts + Subjects */
+    .side-section{ flex: 0 0 auto; }
+    .side-head{
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 8px 10px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.16);
+      cursor:pointer;
+      user-select:none;
+    }
+    .side-head:hover{ background: rgba(0,0,0,.24); }
+    .side-head .title{
+      display:flex;
+      gap: 8px;
+      align-items:center;
+      font-weight: 1000;
+      letter-spacing:.02em;
+      font-size: 12px;
+      text-transform: uppercase;
+      min-width:0;
+    }
+    .side-head .right{
+      display:flex;
+      align-items:center;
+      gap: 8px;
+      flex: 0 0 auto;
+    }
+    .side-head .mini{
+      font-size: 11px;
+      opacity:.82;
+      white-space: nowrap;
+    }
+    .side-head .chev{ opacity:.85; }
+
+    .side-body{
+      border: 1px solid rgba(255,255,255,.10);
+      border-top: 0;
+      background: rgba(0,0,0,.12);
+      padding: 6px;
+      display:none;
+      max-height: 240px;
+      overflow:auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .side-body.open{ display:block; }
+
+    .side-item{
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 7px 8px;
+      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(0,0,0,.14);
+      cursor:pointer;
+      user-select:none;
+      margin-bottom: 6px;
+    }
+    .side-item:last-child{ margin-bottom: 0; }
+    .side-item:hover{ background: rgba(0,0,0,.24); }
+    .side-item.active{ outline: 1px solid rgba(0,242,234,.35); outline-offset: -1px; background: rgba(255,255,255,.05); }
+    .side-item .name{
+      font-size: 12px;
+      font-weight: 900;
+      overflow:hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width:0;
+    }
+    .side-item .count{
+      font-size: 11px;
+      opacity:.82;
+      flex:0 0 auto;
+    }
+
+    .side-actions{
+      display:flex;
+      gap: 8px;
+      align-items:center;
+    }
+    .iconbtn{
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.18);
+      color:#fff;
+      width: 26px;
+      height: 22px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      user-select:none;
+      padding:0;
+      line-height: 1;
+    }
+    .iconbtn:hover{ background: rgba(0,0,0,.28); }
+
     .side-note{
-      margin-top: 10px;
+      margin-top: auto;
       font-size: 11px;
       opacity: .80;
       line-height: 1.45;
@@ -289,7 +380,6 @@
       white-space: nowrap;
     }
 
-    /* Key: list is the scroll container */
     .list{
       overflow:auto;
       flex: 1 1 auto;
@@ -382,7 +472,6 @@
       text-transform: uppercase;
     }
 
-    /* Key: reader-body is the scroll container */
     .reader-body{
       padding: 12px 12px 16px;
       overflow:auto;
@@ -398,6 +487,7 @@
       font-weight: 1000;
       letter-spacing:.01em;
       line-height: 1.25;
+      word-break: break-word;
     }
     .jm-badges{
       margin: 6px 0 10px;
@@ -457,14 +547,8 @@
       white-space: nowrap;
     }
 
-    .jm-backbtn{
-      display:none;
-    }
-    @media (max-width: 980px){
-      .jm-backbtn{
-        display:inline-flex;
-      }
-    }
+    .jm-backbtn{ display:none; }
+    @media (max-width: 980px){ .jm-backbtn{ display:inline-flex; } }
 
     .legal{
       margin-top: 12px;
@@ -496,6 +580,40 @@
     .gate input[type="checkbox"]{ width: 18px; height: 18px; }
     .gate .actions{ display:flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; margin-top: 14px; }
     .gate .btn{ border-radius: 0 !important; }
+
+    /* Subject modal */
+    .jm-modal{
+      position: fixed;
+      inset: 0;
+      z-index: 10010;
+      display:none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      background: rgba(0,0,0,.72);
+      backdrop-filter: blur(2px);
+    }
+    .jm-modal.open{ display:flex; }
+    .jm-modal .card{
+      width: min(520px, 100%);
+      border: 1px solid rgba(255,255,255,.16);
+      background: rgba(10,10,10,.96);
+      padding: 14px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.6);
+    }
+    .jm-modal h3{ margin: 0 0 10px; font-size: 18px; }
+    .jm-modal .row{ display:flex; flex-direction: column; gap: 8px; margin: 10px 0; }
+    .jm-modal label{ font-size: 12px; opacity:.88; }
+    .jm-modal input{
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.20);
+      color:#fff;
+      padding: 10px;
+      outline: none;
+      font-size: 13px;
+    }
+    .jm-modal .actions{ display:flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; margin-top: 12px; }
+    .jm-modal .btn{ border-radius: 0 !important; }
 
     .site-footer{ background: var(--red) !important; color:#fff; }
     .site-footer a{ color:#fff; }
@@ -530,16 +648,11 @@
             <input id="jmSearch" type="search" placeholder="Search (subject, sender, keywords…)" autocomplete="off" />
             <span class="hint"><span id="jmFound"></span></span>
           </div>
-
-          <div class="contacts ep-box" id="jmContactsWrap" aria-label="Filter by contact">
-            <span class="lbl">Contact</span>
-            <select id="jmContacts" aria-label="Contacts">
-              <option value="all">All contacts</option>
-            </select>
-          </div>
         </div>
 
         <div class="top-actions">
+          <div class="pill dim">Contact: <span id="jmActiveContact">All</span></div>
+          <div class="pill dim">Subject: <span id="jmActiveSubject">All</span></div>
           <div class="pill good">Source: <span id="jmSource">jeffs-mail/index.json</span></div>
         </div>
       </div>
@@ -573,6 +686,41 @@
                 <span class="label">Starred</span>
               </div>
               <span class="count" id="countStarred">0</span>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- CONTACTS (collapsible) -->
+          <div class="side-section" aria-label="Contacts">
+            <div class="side-head ep-box" id="jmContactsToggle" role="button" tabindex="0" aria-label="Toggle contacts list">
+              <div class="title"><span aria-hidden="true">👤</span> Contacts</div>
+              <div class="right">
+                <span class="mini" id="jmContactsCount">0</span>
+                <span class="chev" id="jmContactsChev">▾</span>
+              </div>
+            </div>
+            <div class="side-body ep-box open" id="jmContactsList">
+              <div style="padding:8px;opacity:.8;font-size:12px;">Loading…</div>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- SUBJECTS (saved searches) -->
+          <div class="side-section" aria-label="Subjects">
+            <div class="side-head ep-box" id="jmSubjectsToggle" role="button" tabindex="0" aria-label="Toggle subjects list">
+              <div class="title"><span aria-hidden="true">🏷️</span> Subjects</div>
+              <div class="right">
+                <div class="side-actions">
+                  <button class="iconbtn ep-box" id="jmAddSubject" type="button" title="Add subject">＋</button>
+                </div>
+                <span class="mini" id="jmSubjectsCount">0</span>
+                <span class="chev" id="jmSubjectsChev">▾</span>
+              </div>
+            </div>
+            <div class="side-body ep-box open" id="jmSubjectsList">
+              <div style="padding:8px;opacity:.8;font-size:12px;">No subjects yet.</div>
             </div>
           </div>
 
@@ -623,6 +771,10 @@
 
   <div id="siteFooter"></div>
 
+  <!-- Mobile backdrop -->
+  <div class="jm-backdrop" id="jmBackdrop" aria-hidden="true"></div>
+
+  <!-- Age Gate -->
   <div class="gate" id="ageGate" role="dialog" aria-modal="true" aria-labelledby="gateTitle">
     <div class="card ep-box">
       <h2 id="gateTitle">Adults 21+ Only</h2>
@@ -639,6 +791,31 @@
       </div>
       <div class="legal">
         By continuing, you agree you are 21+ and understand the content may be explicit.
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Subject Modal -->
+  <div class="jm-modal" id="jmSubjectModal" role="dialog" aria-modal="true" aria-labelledby="jmSubTitle">
+    <div class="card ep-box">
+      <h3 id="jmSubTitle">Create a Subject (Saved Search)</h3>
+      <div class="legal" style="margin-top:-2px;">
+        Add a short label and a search term. Clicking the subject will filter messages the same way the search bar does.
+      </div>
+
+      <div class="row">
+        <label for="jmSubLabel">Label (what users will click)</label>
+        <input id="jmSubLabel" type="text" maxlength="60" placeholder="Example: Jerky" />
+      </div>
+
+      <div class="row">
+        <label for="jmSubQuery">Search term (1–2 words recommended)</label>
+        <input id="jmSubQuery" type="text" maxlength="80" placeholder="Example: jerky" />
+      </div>
+
+      <div class="actions">
+        <button class="btn" id="jmSubCancel" type="button">Cancel</button>
+        <button class="btn blue" id="jmSubSave" type="button">Save</button>
       </div>
     </div>
   </div>
