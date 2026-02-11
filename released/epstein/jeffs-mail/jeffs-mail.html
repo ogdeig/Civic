@@ -5,906 +5,674 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Jeffs Mail • Epstein Files | Civic Threat</title>
 
-  <meta name="description" content="Jeffs Mail is a simulated dark-mode inbox for navigating publicly released Epstein-related PDFs. Filter by contact, search subjects and keywords, and open the original source documents. Adults 21+ only." />
+  <meta name="description" content="Simulated dark-mode inbox for navigating publicly released documents (21+). Public records only — not a hacked inbox." />
   <meta name="robots" content="index,follow" />
 
-  <meta property="og:title" content="Jeffs Mail • Epstein Files | Civic Threat" />
-  <meta property="og:description" content="A simulated dark-mode inbox for browsing publicly released Epstein-related PDFs. Filter by contact, search keywords, and open the original source documents. Adults 21+ only." />
-  <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://civicthreat.us/released/epstein/jeffs-mail" />
-  <meta property="og:image" content="https://civicthreat.us/assets/civicthreat-social-1200x630.jpg" />
-
-  <link rel="icon" href="/assets/logo.png" />
-  <link rel="stylesheet" href="/styles.css" />
-
   <style>
-    .page-wrap{ max-width: 1240px; margin: 0 auto; padding: 16px 12px 42px; }
-    .ep-box{ border-radius: 0 !important; }
+    :root{
+      --bg:#05060a;
+      --panel:#0a0c12;
+      --panel2:#0e1018;
+      --line:rgba(255,255,255,.09);
+      --line2:rgba(255,255,255,.14);
+      --txt:#e8ebf3;
+      --muted:rgba(232,235,243,.68);
+      --muted2:rgba(232,235,243,.52);
+      --accent:#ff0050;
+      --aqua:#00f2ea;
+      --warn:#ffcc00;
+      --bad:#ff3b3b;
+      --good:#2bd576;
 
-    /* Fixed-height flex column so internal panes scroll */
-    .mail-shell{
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.20);
-      overflow: hidden;
-
-      display:flex;
-      flex-direction: column;
-
-      height: min(860px, calc(100vh - 170px));
-      min-height: 520px;
+      --sidebarW: 320px;
+      --gutter: 14px;
+      --radius: 12px;
+      --shadow: 0 18px 50px rgba(0,0,0,.55);
+      --font: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
     }
-    @media (max-width: 980px){
-      .mail-shell{ height: calc(100vh - 140px); min-height: 520px; }
-    }
-    @media (max-width: 720px){
-      .mail-shell{ height: calc(100vh - 120px); min-height: 520px; }
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:var(--font);
+      color:var(--txt);
+      background:
+        radial-gradient(900px 600px at 25% 18%, rgba(255,0,80,.18), transparent 70%),
+        radial-gradient(900px 600px at 75% 20%, rgba(0,242,234,.14), transparent 70%),
+        linear-gradient(180deg, #02030a, #05060a 25%, #05060a);
+      overflow-x:hidden;
     }
 
-    .mail-topbar{
-      display:flex;
-      align-items:center;
-      justify-content: space-between;
-      gap: 10px;
-      padding: 10px 12px;
-      border-bottom: 1px solid rgba(255,255,255,.10);
+    /* Top bar */
+    .topbar{
+      position:sticky; top:0; z-index:50;
+      display:flex; align-items:center; gap:14px;
+      padding:10px 14px;
+      background: linear-gradient(180deg, rgba(10,12,18,.96), rgba(10,12,18,.84));
+      border-bottom:1px solid var(--line);
+      backdrop-filter: blur(12px);
+    }
+    .brand{
+      display:flex; align-items:center; gap:10px;
+      min-width: 220px;
+    }
+    .brand .pfp{
+      width:36px; height:36px;
+      border-radius:999px;
+      border:1px solid var(--line2);
+      box-shadow: 0 10px 26px rgba(0,0,0,.55);
+      object-fit:cover;
+      display:block;
+      flex:0 0 auto;
+    }
+    .brand .titlewrap{line-height:1.05}
+    .brand .title{
+      font-weight:900; letter-spacing:.8px;
+      font-size:13px;
+      text-transform:uppercase;
+    }
+    .brand .desc{
+      font-size:11px;
+      color:var(--muted);
+      margin-top:2px;
+      max-width: 340px;
+    }
+
+    .searchbar{
+      flex:1;
+      display:flex; align-items:center; gap:10px;
+      max-width: 980px;
+    }
+    .searchbar .input{
+      flex:1;
+      display:flex; align-items:center; gap:10px;
+      border:1px solid var(--line);
       background: rgba(0,0,0,.35);
-      flex-wrap: wrap;
-      flex: 0 0 auto;
-    }
-
-    /* Jeff header */
-    .brand-mini{
-      display:flex;
-      align-items:center;
-      gap: 10px;
-      min-width: 260px;
-      flex: 0 0 auto;
-    }
-    .avatar{
-      width: 34px; height: 34px;
       border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(0,0,0,.25);
-      display:flex; align-items:center; justify-content:center;
-      overflow:hidden;
-      flex: 0 0 auto;
-      user-select:none;
+      padding: 10px 14px;
     }
-    .avatar img{ width:100%; height:100%; object-fit:cover; display:block; }
-    .brand-mini .title{
-      font-weight: 1000;
-      letter-spacing: .04em;
-      font-size: 13px;
-      line-height: 1.1;
-      text-transform: uppercase;
-    }
-    .brand-mini .sub{
-      font-size: 11px;
-      opacity: .82;
-      margin-top: 2px;
-      line-height: 1.2;
-      max-width: 420px;
-    }
-
-    .searchwrap{
-      flex: 1 1 520px;
-      display:flex;
-      justify-content: center;
-      gap: 8px;
-      min-width: 280px;
-    }
-
-    .search{
-      width: min(720px, 100%);
-      display:flex;
-      gap: 8px;
-      align-items:center;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.35);
-      padding: 8px 10px;
-    }
-    .search input{
-      width: 100%;
-      border: 0;
-      outline: 0;
-      background: transparent;
-      color: #fff;
-      font-size: 13px;
-    }
-    .search .hint{ font-size: 11px; opacity:.75; white-space:nowrap; }
-
-    .top-actions{
-      display:flex;
-      gap: 8px;
-      align-items:center;
-      justify-content:flex-end;
-      flex: 0 0 auto;
-    }
-
-    /* Grid */
-    .mail-grid{
-      display:grid;
-      grid-template-columns: 260px 380px 1fr;
-      flex: 1 1 auto;
-      min-height: 0;
-      overflow: hidden;
-    }
-    @media (max-width: 1100px){
-      .mail-grid{ grid-template-columns: 240px 360px 1fr; }
-    }
-
-    /* Mobile overlay reader */
-    @media (max-width: 980px){
-      .mail-grid{ grid-template-columns: 240px 1fr; }
-      .listcol{ border-left: 1px solid rgba(255,255,255,.10); }
-      .reader{
-        display:none;
-        position: fixed;
-        inset: 56px 10px 10px 10px;
-        z-index: 9997;
-        box-shadow: 0 20px 60px rgba(0,0,0,.65);
-        background: #0b0b0b;
-        border: 1px solid rgba(255,255,255,.14);
-      }
-      .reader.open{ display:flex; }
-      .reader::before{
-        content:"";
-        position:absolute; inset:0;
-        background: radial-gradient(700px 420px at 50% 20%, rgba(255,0,80,.14), rgba(0,0,0,.75));
-        pointer-events:none;
-        opacity:.9;
-      }
-      .reader > *{ position: relative; }
-    }
-    @media (max-width: 720px){
-      .mail-grid{ grid-template-columns: 1fr; }
-      .sidebar{ display:none; }
-      .listcol{ border-left: 0; }
-      .reader{ inset: 56px 8px 8px 8px; }
-    }
-    body.jm-lock{ overflow:hidden; }
-
-    .sidebar, .listcol, .reader{
-      min-height: 0;
-      overflow: hidden;
-    }
-
-    /* Sidebar */
-    .sidebar{
-      border-right: 1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.18);
-      padding: 10px;
-      display:flex;
-      flex-direction: column;
-      gap: 10px;
-      min-width: 0;
-    }
-
-    .compose{
+    .searchbar .input span{opacity:.75}
+    .searchbar input{
       width:100%;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      gap: 8px;
-      padding: 10px 12px;
-      font-weight: 900;
-      letter-spacing:.02em;
-      border: 1px solid rgba(255,255,255,.14);
+      background:transparent;
+      border:0; outline:0;
+      color:var(--txt);
+      font-size:14px;
+    }
+    .btn{
+      border:1px solid var(--line);
       background: rgba(0,0,0,.25);
-      color:#fff;
-      cursor: pointer;
-      user-select:none;
-    }
-    .compose:hover{ background: rgba(0,0,0,.32); }
-
-    .navlist{ display:flex; flex-direction:column; gap: 6px; }
-    .navbtn{
-      display:flex;
-      align-items:center;
-      justify-content: space-between;
-      gap: 10px;
-      padding: 8px 10px;
-      border: 1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.18);
+      color:var(--txt);
+      padding:9px 12px;
+      border-radius: 10px;
       cursor:pointer;
-      user-select:none;
+      font-weight:700;
     }
-    .navbtn:hover{ background: rgba(0,0,0,.28); }
-    .navbtn.active{ outline: 1px solid rgba(0,242,234,.35); outline-offset: -1px; background: rgba(255,255,255,.05); }
-    .navbtn .left{ display:flex; align-items:center; gap: 8px; min-width:0; }
-    .navbtn .ico{ width: 18px; height: 18px; opacity:.9; flex:0 0 auto; }
-    .navbtn .label{
-      font-size: 12px; font-weight: 900; letter-spacing:.02em;
-      overflow:hidden; text-overflow: ellipsis; white-space: nowrap;
-    }
-    .navbtn .count{ font-size: 11px; opacity:.85; flex:0 0 auto; }
-
-    .divider{
-      height: 1px;
-      background: rgba(255,255,255,.10);
-      margin: 2px 0;
+    .btn:hover{border-color: rgba(255,255,255,.22)}
+    .btn:active{transform: translateY(1px)}
+    .btn.primary{
+      background: rgba(255,0,80,.16);
+      border-color: rgba(255,0,80,.35);
     }
 
-    /* Accordion blocks */
-    .acc{
-      border: 1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.16);
+    /* Layout */
+    .wrap{
+      display:grid;
+      grid-template-columns: var(--sidebarW) 1fr;
+      min-height: calc(100vh - 58px);
     }
-    .acc-h{
-      display:flex;
-      align-items:center;
-      justify-content: space-between;
-      gap: 10px;
-      padding: 8px 10px;
-      cursor:pointer;
-      user-select:none;
-      border-bottom: 1px solid rgba(255,255,255,.08);
+    .sidebar{
+      border-right: 1px solid var(--line);
+      padding: var(--gutter);
     }
-    .acc-h strong{ font-size: 12px; letter-spacing:.02em; }
-    .acc-h span{ font-size: 11px; opacity:.8; }
-    .acc-b{
-      display:none;
-      padding: 8px 10px;
-    }
-    .acc.open .acc-b{ display:block; }
-
-    .contact-list{
-      display:flex;
-      flex-direction: column;
-      gap: 6px;
-      max-height: 220px;
-      overflow:auto;
-      -webkit-overflow-scrolling: touch;
-      padding-right: 4px;
-    }
-    .cbtn{
-      display:flex;
-      align-items:center;
-      justify-content: space-between;
-      gap: 10px;
-      padding: 7px 8px;
-      border: 1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.14);
-      cursor:pointer;
-      user-select:none;
-      min-width: 0;
-    }
-    .cbtn:hover{ background: rgba(0,0,0,.26); }
-    .cbtn.active{ outline: 1px solid rgba(0,242,234,.35); outline-offset: -1px; background: rgba(255,255,255,.05); }
-    .cbtn .nm{ overflow:hidden; text-overflow: ellipsis; white-space: nowrap; font-size:12px; font-weight: 900; }
-    .cbtn .ct{ font-size:11px; opacity:.8; flex:0 0 auto; }
-
-    .subject-row{
-      display:flex;
-      gap: 8px;
-      align-items:center;
-      margin-bottom: 8px;
-    }
-    .subject-row .btn{
-      font-size: 11px;
-      border-radius: 0 !important;
-      padding: 7px 10px;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(0,0,0,.20);
-      color:#fff;
-      cursor:pointer;
-      user-select:none;
-      white-space: nowrap;
-    }
-    .subject-list{
-      display:flex;
-      flex-direction: column;
-      gap: 6px;
-      max-height: 160px;
-      overflow:auto;
-      -webkit-overflow-scrolling: touch;
-      padding-right: 4px;
-    }
-    .sbtn{
-      display:flex;
-      align-items:center;
-      justify-content: space-between;
-      gap: 10px;
-      padding: 7px 8px;
-      border: 1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.14);
-      cursor:pointer;
-      user-select:none;
-      min-width: 0;
-    }
-    .sbtn:hover{ background: rgba(0,0,0,.26); }
-    .sbtn .nm{ overflow:hidden; text-overflow: ellipsis; white-space: nowrap; font-size:12px; font-weight: 900; }
-    .sbtn .q{ font-size:11px; opacity:.78; flex:0 0 auto; }
-
-    .side-note{
-      margin-top: auto;
-      font-size: 11px;
-      opacity: .80;
-      line-height: 1.45;
-      border-top: 1px solid rgba(255,255,255,.10);
-      padding-top: 10px;
+    .main{
+      display:grid;
+      grid-template-columns: 420px 1fr;
+      gap: 0;
+      min-width:0;
     }
 
-    /* List column */
-    .listcol{
-      border-right: 1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.14);
-      display:flex;
-      flex-direction: column;
-      min-width: 0;
-    }
-    .list-top{
-      padding: 10px 12px;
-      border-bottom: 1px solid rgba(255,255,255,.10);
-      display:flex;
-      align-items:center;
-      justify-content: space-between;
-      gap: 10px;
+    /* Sidebar sections */
+    .box{
+      border:1px solid var(--line);
       background: rgba(0,0,0,.22);
-      flex: 0 0 auto;
-    }
-    .list-top .title{
-      font-weight: 1000;
-      letter-spacing:.02em;
-      font-size: 13px;
-      text-transform: uppercase;
-    }
-    .list-top .meta{
-      font-size: 11px;
-      opacity:.82;
-      white-space: nowrap;
-    }
-    .list{
-      overflow:auto;
-      flex: 1 1 auto;
-      min-height: 0;
-      -webkit-overflow-scrolling: touch;
-    }
-
-    .jm-item{
-      display:flex;
-      gap: 10px;
-      align-items:flex-start;
-      padding: 10px 12px;
-      border-bottom: 1px solid rgba(255,255,255,.08);
-      cursor:pointer;
-      min-width: 0;
-      background: rgba(0,0,0,.10);
-    }
-    .jm-item:hover{ background: rgba(0,0,0,.22); }
-    .jm-item.active{
-      background: rgba(255,255,255,.06);
-      outline: 1px solid rgba(255,255,255,.14);
-      outline-offset: -1px;
-    }
-    .jm-star{
-      width: 18px; height: 18px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      opacity: .85;
-      flex:0 0 auto;
-      user-select:none;
-      border: 0;
-      background: transparent;
-      color: #fff;
-      padding: 0;
-      cursor: pointer;
-    }
-    .jm-item .main{ flex: 1 1 auto; min-width: 0; }
-    .jm-from{
-      font-size: 12px;
-      font-weight: 900;
-      letter-spacing:.01em;
-      margin: 0 0 3px;
-      overflow:hidden; text-overflow: ellipsis; white-space: nowrap;
-    }
-    .jm-subj{
-      font-size: 12px;
-      margin: 0 0 4px;
-      opacity: .95;
-      overflow:hidden; text-overflow: ellipsis; white-space: nowrap;
-    }
-    .jm-snippet{
-      font-size: 11px;
-      opacity: .78;
-      line-height: 1.35;
-      display:-webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
       overflow:hidden;
     }
-    .jm-date{
-      font-size: 11px;
-      opacity:.78;
-      white-space: nowrap;
-      flex:0 0 auto;
-      margin-left: 8px;
+    .box + .box{margin-top:12px}
+    .box .hdr{
+      display:flex; align-items:center; justify-content:space-between;
+      padding: 10px 12px;
+      border-bottom:1px solid var(--line);
+      background: rgba(255,255,255,.02);
+      font-weight:900;
+      letter-spacing:.4px;
+      font-size:12px;
+      text-transform:uppercase;
     }
+    .navbtn{
+      width:100%;
+      display:flex; align-items:center; justify-content:space-between;
+      padding: 10px 12px;
+      border:0;
+      background: transparent;
+      color: var(--txt);
+      cursor:pointer;
+      font-weight:800;
+    }
+    .navbtn:hover{background: rgba(255,255,255,.03)}
+    .navbtn.active{
+      background: rgba(0,242,234,.10);
+      outline: 1px solid rgba(0,242,234,.22);
+    }
+    .badge{
+      font-size:12px;
+      color:var(--muted);
+      font-weight:800;
+    }
+    .composeBtn{
+      width:100%;
+      display:flex; align-items:center; justify-content:center;
+      gap:10px;
+      padding: 12px 12px;
+      font-weight:900;
+      border-radius: 12px;
+    }
+
+    /* Contacts list */
+    .list{
+      max-height: 320px;
+      overflow:auto;
+      padding: 10px;
+    }
+    .contactRow{
+      display:flex; align-items:center; gap:10px;
+      width:100%;
+      padding: 10px 10px;
+      border:1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(0,0,0,.22);
+      cursor:pointer;
+      margin-bottom:10px;
+    }
+    .contactRow:hover{border-color: rgba(255,255,255,.22)}
+    .contactRow.active{
+      border-color: rgba(0,242,234,.35);
+      background: rgba(0,242,234,.10);
+    }
+    .cAvatar{
+      width:34px; height:34px; border-radius:999px;
+      display:flex; align-items:center; justify-content:center;
+      border:1px solid var(--line2);
+      overflow:hidden;
+      flex:0 0 auto;
+    }
+    .cAvatar img{width:100%; height:100%; object-fit:cover; display:block}
+    .cMeta{min-width:0; flex:1}
+    .cName{
+      font-weight:900;
+      font-size:13px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .cSub{
+      font-size:11px;
+      color:var(--muted);
+      margin-top:2px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .cCount{
+      font-weight:900;
+      color: var(--muted);
+      font-size:12px;
+      padding-left:6px;
+    }
+
+    /* Subjects */
+    .subjectRow{
+      display:flex; gap:8px;
+      padding:10px;
+      flex-wrap:wrap;
+    }
+    .chip{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:7px 10px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background: rgba(0,0,0,.22);
+      cursor:pointer;
+      font-weight:800;
+      font-size:12px;
+    }
+    .chip:hover{border-color: rgba(255,255,255,.22)}
+    .chip .x{
+      opacity:.7;
+      font-weight:900;
+      margin-left:2px;
+    }
+    .subjectActions{
+      display:flex; gap:10px;
+      padding: 10px;
+      border-top:1px solid var(--line);
+    }
+    .subjectActions .btn{flex:1}
+
+    /* Mail list */
+    .listPane{
+      border-right: 1px solid var(--line);
+      min-width:0;
+      display:flex;
+      flex-direction:column;
+    }
+    .listHdr{
+      padding: 12px 14px;
+      border-bottom:1px solid var(--line);
+      display:flex; align-items:center; justify-content:space-between;
+      background: rgba(255,255,255,.02);
+      font-weight:900;
+      text-transform:uppercase;
+      letter-spacing:.45px;
+      font-size:12px;
+    }
+    .mailList{
+      overflow:auto;
+      padding: 10px;
+      min-height:0;
+    }
+    .mailItem{
+      border:1px solid var(--line);
+      background: rgba(0,0,0,.20);
+      border-radius: 12px;
+      padding: 10px 10px;
+      cursor:pointer;
+      margin-bottom:10px;
+    }
+    .mailItem:hover{border-color: rgba(255,255,255,.22)}
+    .mailItem.active{
+      border-color: rgba(0,242,234,.35);
+      background: rgba(0,242,234,.10);
+    }
+    .miTop{display:flex; align-items:center; justify-content:space-between; gap:10px}
+    .miFrom{
+      font-weight:900;
+      font-size:13px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width: 280px;
+    }
+    .miDate{font-size:11px; color:var(--muted); font-weight:800}
+    .miSub{margin-top:4px; color:var(--muted); font-size:12px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+    .miSnip{margin-top:6px; color:var(--muted2); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 
     /* Reader */
     .reader{
-      background: rgba(0,0,0,.10);
-      min-width: 0;
-      display:flex;
-      flex-direction: column;
-      border-left: 1px solid rgba(255,255,255,.10);
-    }
-    .reader-top{
-      padding: 10px 12px;
-      border-bottom: 1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.22);
-      display:flex;
-      align-items:center;
-      justify-content: space-between;
-      gap: 10px;
-      flex: 0 0 auto;
-    }
-    .reader-top .rt{
-      font-weight: 1000;
-      letter-spacing:.02em;
-      font-size: 13px;
-      text-transform: uppercase;
-    }
-    .reader-body{
-      padding: 12px 12px 16px;
-      overflow:auto;
-      min-width: 0;
-      flex: 1 1 auto;
-      min-height: 0;
-      -webkit-overflow-scrolling: touch;
-    }
-
-    .jm-h1{
-      margin: 0 0 8px;
-      font-size: 16px;
-      font-weight: 1000;
-      letter-spacing:.01em;
-      line-height: 1.25;
-    }
-    .jm-badges{
-      margin: 6px 0 10px;
-      display:flex;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
-    .jm-badge{
-      font-size: 11px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.15);
-      padding: 3px 8px;
-      opacity: .9;
-    }
-
-    /* Thread message cards */
-    .thread{
-      display:flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .msg{
-      border: 1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.16);
-      padding: 10px;
-    }
-    .msg-head{
-      display:flex;
-      gap: 10px;
-      align-items:flex-start;
-      margin-bottom: 8px;
-    }
-    .msg-head .av{
-      width: 34px; height: 34px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.25);
-      display:flex; align-items:center; justify-content:center;
-      overflow:hidden;
-      flex: 0 0 auto;
-    }
-    .msg-head .av img{ width:100%; height:100%; object-fit:cover; display:block; }
-    .msg-head .meta{
       min-width:0;
-      flex: 1 1 auto;
-    }
-    .msg-head .meta .line1{
       display:flex;
-      align-items:baseline;
-      justify-content: space-between;
+      flex-direction:column;
+    }
+    .readerHdr{
+      padding: 12px 14px;
+      border-bottom:1px solid var(--line);
+      background: rgba(255,255,255,.02);
+      display:flex; align-items:center; justify-content:space-between;
       gap: 10px;
     }
-    .msg-head .who{
-      font-weight: 1000;
-      font-size: 13px;
-      overflow:hidden; text-overflow: ellipsis; white-space: nowrap;
+    .readerHdr .title{
+      font-weight:950;
+      font-size:16px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width: 66vw;
     }
-    .msg-head .when{
-      font-size: 11px;
-      opacity:.82;
-      white-space: nowrap;
-      flex:0 0 auto;
-    }
-    .msg-head .line2{
-      font-size: 12px;
-      opacity:.88;
-      margin-top: 2px;
-      overflow:hidden; text-overflow: ellipsis; white-space: nowrap;
-    }
-    .msg-head .subj{
-      font-size: 12px;
-      opacity:.92;
-      margin-top: 2px;
-      overflow:hidden; text-overflow: ellipsis; white-space: nowrap;
-    }
-    .msg-body{
-      font-size: 13px;
-      line-height: 1.65;
-      opacity: .95;
-      border-top: 1px solid rgba(255,255,255,.10);
-      padding-top: 8px;
-      word-break: break-word;
-      white-space: pre-wrap;
-    }
-
-    .jm-attach{
-      margin-top: 12px;
-      border-top: 1px solid rgba(255,255,255,.10);
-      padding-top: 10px;
-    }
-    .jm-attachrow{
-      display:flex;
-      gap: 10px;
-      align-items:center;
-      justify-content: space-between;
-      padding: 8px 10px;
-      border: 1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.16);
-      margin-top: 8px;
-    }
-    .jm-attach .btn{
-      flex:0 0 auto;
-      font-size: 11px;
-      border: 1px solid rgba(255,255,255,.14);
-      padding: 6px 10px;
-      text-decoration: none;
-      color:#fff;
+    .tags{display:flex; gap:8px; flex-wrap:wrap}
+    .tag{
+      border:1px solid var(--line);
       background: rgba(0,0,0,.20);
-      border-radius: 0 !important;
-      white-space: nowrap;
+      padding: 5px 9px;
+      border-radius: 10px;
+      font-size:11px;
+      color:var(--muted);
+      font-weight:900;
+      text-transform:uppercase;
+      letter-spacing:.35px;
     }
+    .readerBody{
+      overflow:auto;
+      padding: 12px 14px 18px;
+      min-height:0;
+    }
+    .msgCard{
+      border:1px solid var(--line);
+      background: rgba(0,0,0,.22);
+      border-radius: 14px;
+      padding: 12px;
+      margin-bottom:12px;
+    }
+    .msgMeta{
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      border-bottom:1px solid var(--line);
+      padding-bottom:10px;
+      margin-bottom:10px;
+    }
+    .who{
+      display:flex; align-items:center; gap:10px;
+      min-width:0;
+    }
+    .who .avatar{
+      width:38px; height:38px;
+      border-radius:999px;
+      border:1px solid var(--line2);
+      overflow:hidden;
+      display:flex; align-items:center; justify-content:center;
+      flex:0 0 auto;
+    }
+    .avatar img{width:100%; height:100%; object-fit:cover; display:block}
+    .who .names{min-width:0}
+    .who .from{
+      font-weight:950;
+      font-size:13px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width: 46vw;
+    }
+    .who .to{
+      font-size:11px;
+      color:var(--muted);
+      font-weight:800;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width: 46vw;
+    }
+    .when{
+      font-size:11px;
+      color:var(--muted);
+      font-weight:850;
+      white-space:nowrap;
+    }
+    .bodyText{
+      white-space:pre-wrap;
+      word-break:break-word;
+      font-size:13px;
+      line-height:1.55;
+      color: rgba(232,235,243,.92);
+    }
+    .srcRow{
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      margin-top: 10px;
+      padding-top:10px;
+      border-top:1px solid var(--line);
+    }
+    .srcRow .srcName{font-size:12px; color:var(--muted); font-weight:900}
+    .srcRow .btn{padding:8px 10px}
 
-    .jm-backbtn{ display:none; }
+    /* Mobile reader overlay */
+    .mobileOnly{display:none}
     @media (max-width: 980px){
-      .jm-backbtn{ display:inline-flex; }
+      :root{ --sidebarW: 290px; }
+      .main{ grid-template-columns: 1fr; }
+      .listPane{ border-right:0; }
+      .reader{
+        position:fixed;
+        inset:0;
+        background: linear-gradient(180deg, rgba(5,6,10,.98), rgba(5,6,10,.98));
+        z-index: 80;
+        transform: translateX(105%);
+        transition: transform .22s ease;
+        box-shadow: var(--shadow);
+      }
+      body.readerOpen .reader{ transform: translateX(0%); }
+      .mobileOnly{display:inline-flex}
+      .readerHdr .title{max-width: 78vw}
+    }
+    @media (max-width: 760px){
+      .wrap{ grid-template-columns: 1fr; }
+      .sidebar{ border-right:0; border-bottom:1px solid var(--line); }
+      .brand{ min-width: 160px; }
+      .brand .desc{display:none}
+      .searchbar .btn{display:none}
     }
 
-    .legal{
-      margin-top: 12px;
-      font-size: 12px;
-      opacity: .82;
-      line-height: 1.55;
-    }
-
-    /* Modals */
-    .modal{
-      position: fixed; inset: 0; z-index: 9998;
+    /* Modal */
+    .modalWrap{
+      position:fixed;
+      inset:0;
+      z-index: 120;
       display:none;
       align-items:center;
       justify-content:center;
-      background: rgba(0,0,0,.78);
-      padding: 18px;
-    }
-    .modal.open{ display:flex; }
-    .modal .card{
-      width: min(560px, 100%);
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(10,10,10,.92);
-      border-radius: 0;
       padding: 16px;
-      box-shadow: 0 20px 60px rgba(0,0,0,.6);
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(10px);
     }
-    .modal h3{ margin:0 0 10px; font-size: 18px; }
-    .modal p{ margin:0 0 12px; opacity:.9; line-height:1.5; }
-    .modal input{
+    .modalWrap.open{display:flex}
+    .modal{
+      width:min(720px, 96vw);
+      border:1px solid var(--line2);
+      border-radius: 16px;
+      background: rgba(10,12,18,.96);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .modalHdr{
+      display:flex; align-items:center; justify-content:space-between;
+      padding: 12px 14px;
+      border-bottom:1px solid var(--line);
+      font-weight:950;
+    }
+    .modalBody{padding: 12px 14px}
+    .field{display:flex; flex-direction:column; gap:6px; margin-bottom:10px}
+    .field label{font-size:12px; color:var(--muted); font-weight:900}
+    .field input, .field textarea{
       width:100%;
-      border-radius: 0 !important;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(0,0,0,.25);
-      color:#fff;
       padding: 10px 10px;
-      outline:none;
-      font-size: 13px;
+      border-radius: 12px;
+      border:1px solid var(--line);
+      background: rgba(0,0,0,.22);
+      color: var(--txt);
+      outline: none;
+      font-size:14px;
     }
-    .modal textarea{
-      width:100%;
-      border-radius: 0 !important;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(0,0,0,.25);
-      color:#fff;
-      padding: 10px 10px;
-      outline:none;
-      font-size: 13px;
-      resize: vertical;
+    .field textarea{min-height: 170px; resize: vertical}
+    .modalActions{
+      display:flex; gap:10px;
+      padding: 12px 14px;
+      border-top:1px solid var(--line);
+      background: rgba(255,255,255,.02);
     }
-    .modal .actions{
+    .modalActions .btn{flex:1}
+    .statusLine{
+      font-size:12px;
+      color:var(--muted);
+      margin-top: 8px;
+      font-weight:800;
+    }
+    .statusLine .ok{color:var(--good)}
+    .statusLine .bad{color:var(--bad)}
+    .footnote{
+      padding: 12px 14px;
+      color: var(--muted);
+      font-size: 11px;
+      border-top: 1px solid var(--line);
+      background: rgba(0,0,0,.18);
+    }
+
+    /* Small disclosure at bottom left */
+    .disclaimer{
       margin-top: 12px;
-      display:flex;
-      justify-content:flex-end;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    .modal .btn{
-      font-size: 12px;
-      border-radius: 0 !important;
-      padding: 8px 12px;
-      border: 1px solid rgba(255,255,255,.14);
+      padding: 10px 12px;
+      color: var(--muted);
+      font-size: 11px;
+      border:1px solid var(--line);
+      border-radius: 12px;
       background: rgba(0,0,0,.20);
-      color:#fff;
-      cursor:pointer;
-    }
-    .modal .btn.blue{
-      border-color: rgba(0,242,234,.35);
     }
 
-    /* Compose form helpers (used by v2 js) */
-    .grid2{ display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    @media (max-width: 860px){ .grid2{ grid-template-columns: 1fr; } }
-    .label{ display:block; font-size:12px; opacity:.85; margin:6px 0 4px; }
-    .in{ width:100%; }
-
-    .modal-actions{
-      margin-top: 12px;
-      display:flex;
-      justify-content:flex-end;
-      gap: 10px;
-      flex-wrap: wrap;
+    /* No icon for Unknown */
+    .noIcon{
+      width:18px; height:18px;
+      border-radius:999px;
+      border:2px solid var(--bad);
+      position:relative;
+      display:inline-block;
     }
-
-    .gate{
-      position: fixed; inset: 0; z-index: 9999;
-      background: rgba(0,0,0,.78);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 18px;
+    .noIcon:after{
+      content:"";
+      position:absolute;
+      left:3px; right:3px; top:8px;
+      height:2px; background: var(--bad);
+      transform: rotate(-18deg);
     }
-    .gate .card{
-      width: min(720px, 100%);
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(10,10,10,.92);
-      border-radius: 0;
-      padding: 18px;
-      box-shadow: 0 20px 60px rgba(0,0,0,.6);
-    }
-    .gate h2{ margin: 0 0 10px; font-size: 22px; }
-    .gate p{ margin: 0 0 10px; opacity: .9; line-height: 1.55; }
-    .gate .row{ display:flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
-    .gate label{ display:flex; gap:10px; align-items:center; cursor:pointer; }
-    .gate input[type="checkbox"]{ width: 18px; height: 18px; }
-    .gate .actions{ display:flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; margin-top: 14px; }
-    .gate .btn{ border-radius: 0 !important; }
-
-    .site-footer{ background: var(--red) !important; color:#fff; }
-    .site-footer a{ color:#fff; }
   </style>
-
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-Z03YK1FYXW"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-Z03YK1FYXW');
-  </script>
 </head>
 
 <body>
-  <div id="siteHeader"></div>
+  <div class="topbar">
+    <div class="brand">
+      <img class="pfp" id="jmJeffPfp" alt="Jeff profile" src="/released/epstein/jeffs-mail/assets/jeff.jpg" />
+      <div class="titlewrap">
+        <div class="title">JEFFS MAIL</div>
+        <div class="desc">Simulated dark-mode inbox for navigating publicly released documents (21+). Public records only — not a hacked inbox.</div>
+      </div>
+    </div>
 
-  <main class="page-wrap">
-    <div class="mail-shell ep-box">
-      <div class="mail-topbar">
-        <div class="brand-mini">
-          <div class="avatar ep-box" title="Jeff">
-            <img id="jmJeffAvatar" alt="Jeff avatar" src="./assets/jeff.jpg" onerror="this.remove()" />
-            <span id="jmJeffFallback" style="font-weight:1000;letter-spacing:.02em;">JE</span>
+    <div class="searchbar">
+      <div class="input">
+        <span>🔎</span>
+        <input id="jmSearch" type="search" placeholder="Search (subject, sender, keywords…)" autocomplete="off" />
+      </div>
+      <button class="btn" id="jmClear">Clear</button>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <aside class="sidebar">
+      <div class="box">
+        <div class="hdr">Actions</div>
+        <button class="btn primary composeBtn" id="jmComposeBtn">✉️ Compose</button>
+      </div>
+
+      <div class="box">
+        <div class="hdr">Folders</div>
+        <button class="navbtn active" data-mailbox="inbox" id="jmInboxBtn">
+          <span>📥 Inbox</span> <span class="badge" id="jmInboxCount">0</span>
+        </button>
+        <button class="navbtn" data-mailbox="sent" id="jmSentBtn">
+          <span>📤 Sent</span> <span class="badge" id="jmSentCount">0</span>
+        </button>
+        <button class="navbtn" data-mailbox="starred" id="jmStarBtn">
+          <span>⭐ Starred</span> <span class="badge" id="jmStarCount">0</span>
+        </button>
+      </div>
+
+      <div class="box">
+        <div class="hdr">Contacts <span class="badge" id="jmContactsCount">0</span></div>
+        <div class="list" id="jmContactsList"></div>
+      </div>
+
+      <div class="box">
+        <div class="hdr">Subjects <span class="badge" id="jmSubjectsCount">0</span></div>
+        <div class="subjectRow" id="jmSubjectsList"></div>
+        <div class="subjectActions">
+          <button class="btn" id="jmAddSubjectBtn">+ Add</button>
+          <button class="btn" id="jmClearSubjectsBtn">Clear</button>
+        </div>
+      </div>
+
+      <div class="disclaimer">
+        <strong>Disclosure:</strong> This page is an email-style organizational interface for public records.
+        It does not claim to be a real private inbox or hacked account.
+      </div>
+    </aside>
+
+    <main class="main">
+      <section class="listPane">
+        <div class="listHdr">
+          <span id="jmListTitle">INBOX</span>
+          <span class="badge" id="jmListCount">0</span>
+        </div>
+        <div class="mailList" id="jmMailList">
+          <div class="mailItem">
+            <div class="miTop">
+              <div class="miFrom">Loading mail…</div>
+              <div class="miDate"></div>
+            </div>
+            <div class="miSub">Please wait</div>
+            <div class="miSnip">Fetching index.json…</div>
           </div>
+        </div>
+      </section>
+
+      <section class="reader" id="jmReader">
+        <div class="readerHdr">
           <div>
-            <div class="title">Jeffs Mail</div>
-            <div class="sub">Simulated dark-mode inbox for navigating publicly released documents (21+). Public records only — not a hacked inbox.</div>
+            <div class="title" id="jmReaderTitle">MESSAGE</div>
+            <div class="tags" id="jmReaderTags"></div>
           </div>
+          <button class="btn mobileOnly" id="jmCloseReaderBtn">Close</button>
         </div>
 
-        <div class="searchwrap">
-          <div class="search ep-box" role="search" aria-label="Search mail">
-            <span style="opacity:.8">🔎</span>
-            <input id="jmSearch" type="search" placeholder="Search (subject, sender, keywords…)" autocomplete="off" />
-            <span class="hint"><span id="jmFound"></span></span>
-          </div>
-
-          <div class="top-actions">
-            <button class="btn" id="jmClearFilters" type="button" style="border-radius:0">Clear</button>
+        <div class="readerBody" id="jmReaderBody">
+          <div class="msgCard">
+            <div class="bodyText">Select a message from the list.</div>
           </div>
         </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Compose Modal -->
+  <div class="modalWrap" id="jmComposeModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modalHdr">
+        <span>Compose (Simulation)</span>
+        <button class="btn" id="jmComposeClose">Close</button>
       </div>
 
-      <div class="mail-grid">
-        <aside class="sidebar">
-          <button class="compose ep-box" id="jmComposeBtn" type="button" title="Compose (simulation)"><span style="opacity:.9">✉️</span> Compose</button>
-
-          <div class="navlist" role="navigation" aria-label="Mailboxes">
-            <div class="navbtn ep-box active" id="btnInbox" data-folder="inbox" role="button" tabindex="0" aria-label="Inbox">
-              <div class="left"><span class="ico" aria-hidden="true">📥</span><span class="label">Inbox</span></div>
-              <span class="count" id="countInbox">0</span>
-            </div>
-
-            <div class="navbtn ep-box" id="btnSent" data-folder="sent" role="button" tabindex="0" aria-label="Sent">
-              <div class="left"><span class="ico" aria-hidden="true">📤</span><span class="label">Sent</span></div>
-              <span class="count" id="countSent">0</span>
-            </div>
-
-            <div class="navbtn ep-box" id="btnStarred" data-folder="starred" role="button" tabindex="0" aria-label="Starred">
-              <div class="left"><span class="ico" aria-hidden="true">⭐</span><span class="label">Starred</span></div>
-              <span class="count" id="countStarred">0</span>
-            </div>
-          </div>
-
-          <div class="divider"></div>
-
-          <!-- CONTACTS accordion -->
-          <div class="acc ep-box open" id="jmContactsAcc">
-            <div class="acc-h" id="jmContactsToggle" role="button" tabindex="0" aria-label="Toggle contacts">
-              <strong>CONTACTS</strong>
-              <span><span id="jmContactsCount">0</span></span>
-            </div>
-            <div class="acc-b">
-              <div class="contact-list" id="jmContactsList">
-                <div style="opacity:.8;font-size:12px;">Loading…</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="divider"></div>
-
-          <!-- SUBJECTS accordion -->
-          <div class="acc ep-box open" id="jmSubjectsAcc">
-            <div class="acc-h" id="jmSubjectsToggle" role="button" tabindex="0" aria-label="Toggle subjects">
-              <strong>SUBJECTS</strong>
-              <span><span id="jmSubjectsCount">0</span></span>
-            </div>
-            <div class="acc-b">
-              <div class="subject-row">
-                <button class="btn" id="jmAddSubject" type="button">＋ Add</button>
-                <button class="btn" id="jmClearSubjects" type="button">Clear</button>
-              </div>
-              <div class="subject-list" id="jmSubjectsList">
-                <div style="opacity:.8;font-size:12px;">No subjects saved yet.</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="side-note">
-            <strong>Disclosure:</strong> This page is an email-style <strong>organizational interface</strong> for public records. It does not claim to be a real private inbox or hacked account.
-          </div>
-        </aside>
-
-        <section class="listcol" aria-label="Message list">
-          <div class="list-top">
-            <div class="title"><span id="jmFolderTitle">INBOX</span> (<span id="jmCount">0</span>)</div>
-            <div class="meta"><span id="jmReadingMeta"></span></div>
-          </div>
-
-          <div class="list" id="jmItems">
-            <div style="padding:10px 12px;opacity:.85;font-size:13px;">Loading mail…</div>
-          </div>
-        </section>
-
-        <section class="reader" id="jmReader" aria-label="Message reader">
-          <div class="reader-top">
-            <div class="rt">Message</div>
-            <button class="btn jm-backbtn" id="jmReaderBack" type="button">← Back</button>
-          </div>
-
-          <div class="reader-body">
-            <div class="email-card ep-box" id="jmReadCard">
-              <div class="jm-h1">Select an email</div>
-              <div class="legal">
-                Click a message on the left to open it here. Chains will appear as stacked messages.
-              </div>
-            </div>
-
-            <div class="legal">
-              <strong>Content notice:</strong> Entries may contain allegations or explicit descriptions. Always consult the full source PDF for context.
-            </div>
-          </div>
-        </section>
-      </div>
-    </div>
-
-    <div class="legal" style="margin-top:12px">
-      <strong>About this page:</strong> Jeffs Mail is part of the Civic Threat Epstein files hub. Browse publicly released PDFs in an inbox-style view,
-      filter by contact/subject, search keywords, and open the original source documents.
-    </div>
-  </main>
-
-  <div id="siteFooter"></div>
-
-  <!-- Compose modal (simulation) -->
-  <div class="modal" id="jmComposeModal" role="dialog" aria-modal="true" aria-labelledby="jmComposeTitle">
-    <div class="card ep-box">
-      <h3 id="jmComposeTitle">Compose to Jeffrey (Simulation)</h3>
-      <p class="legal" id="jmComposeHint">This does NOT send real email. It creates a local/public-record simulation.</p>
-
-      <div class="grid2">
-        <div>
-          <label class="label">From</label>
-          <input class="in" id="jmComposeFrom" type="text" value="Public Visitor" readonly />
+      <div class="modalBody">
+        <div class="field">
+          <label>From</label>
+          <input id="jmCFrom" value="Public Visitor" />
         </div>
-        <div>
-          <label class="label">To</label>
-          <input class="in" id="jmComposeTo" type="text" value="Jeffrey Epstein" readonly />
+        <div class="field">
+          <label>To</label>
+          <input id="jmCTo" value="Jeffrey Epstein" readonly />
         </div>
+        <div class="field">
+          <label>Subject</label>
+          <input id="jmCSubject" placeholder="Subject…" />
+        </div>
+        <div class="field">
+          <label>Body</label>
+          <textarea id="jmCBody" placeholder="Write your message…"></textarea>
+        </div>
+
+        <div class="statusLine" id="jmComposeStatus"></div>
       </div>
 
-      <label class="label" style="margin-top:10px;">Subject</label>
-      <input class="in" id="jmComposeSubject" type="text" placeholder="Subject..." />
-
-      <label class="label" style="margin-top:10px;">Body</label>
-      <textarea class="in" id="jmComposeBody" rows="8" placeholder="Write your message..."></textarea>
-
-      <div class="modal-actions">
-        <button class="btn" id="jmComposeCancel" type="button">Cancel</button>
-        <button class="btn" id="jmComposeExport" type="button" title="Download outbox.json to commit later">Export Outbox</button>
-        <button class="btn blue" id="jmComposeSend" type="button">Send</button>
+      <div class="modalActions">
+        <button class="btn" id="jmDownloadCopyBtn">Download copy</button>
+        <button class="btn primary" id="jmSendBtn">Send</button>
       </div>
 
-      <div class="legal" style="margin-top:10px;">
-        <strong>How it becomes part of the public inbox:</strong> the PDF you download must be committed into
-        <code>released/epstein/jeffs-mail/pdfs/</code> and the exported <code>outbox.json</code> must be committed into
-        <code>released/epstein/jeffs-mail/tools/outbox.json</code>. Then run the index builder / GitHub Action.
+      <div class="footnote">
+        <strong>Note:</strong> This does not send real email. On Send, a PDF is generated and uploaded to CivicThreat’s public-record simulation system.
+        It will appear after the next automated index rebuild.
       </div>
     </div>
   </div>
 
-  <!-- Subject creation modal -->
-  <div class="modal" id="jmSubjectModal" role="dialog" aria-modal="true" aria-labelledby="jmSubjectTitle">
-    <div class="card ep-box">
-      <h3 id="jmSubjectTitle">Create a Subject Filter</h3>
-      <p>Enter a short label (shown in the list) and it will save the current search terms as a reusable subject.</p>
-      <input id="jmSubjectName" type="text" placeholder="Example: Elon" maxlength="36" />
-      <div class="actions">
-        <button class="btn" id="jmSubjectCancel" type="button">Cancel</button>
-        <button class="btn blue" id="jmSubjectSave" type="button">Save</button>
-      </div>
-      <div class="legal" style="margin-top:10px">
-        Tip: use the search bar first, then press “＋ Add”.
-      </div>
-    </div>
-  </div>
+  <!-- Add Subject Modal (lightweight prompt uses built-in prompt in JS) -->
 
-  <div class="gate" id="ageGate" role="dialog" aria-modal="true" aria-labelledby="gateTitle">
-    <div class="card ep-box">
-      <h2 id="gateTitle">Adults 21+ Only</h2>
-      <p>This section may contain sexually explicit descriptions. You must confirm you are twenty-one (21) or older to view and use Jeffs Mail.</p>
-      <div class="row">
-        <label for="gateCheck">
-          <input id="gateCheck" type="checkbox" />
-          <span>I confirm that I am 21 or older.</span>
-        </label>
-      </div>
-      <div class="actions">
-        <button class="btn" id="gateLeave" type="button">Leave</button>
-        <button class="btn blue" id="gateEnter" type="button" disabled>Continue</button>
-      </div>
-      <div class="legal">
-        By continuing, you agree you are 21+ and understand the content may be explicit.
-      </div>
-    </div>
-  </div>
-
-  <script src="/config.js?v=14"></script>
-  <script src="/app.js?v=14"></script>
-  <!-- jsPDF for Compose-to-PDF -->
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="./jeffs-mail.js?v=14"></script>
+  <script src="/config.js?v=20"></script>
+  <script src="./jeffs-mail.js?v=20"></script>
 </body>
 </html>
