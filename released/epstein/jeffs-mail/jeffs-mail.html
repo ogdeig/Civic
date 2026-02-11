@@ -192,10 +192,10 @@
       border: 1px solid rgba(255,255,255,.14);
       background: rgba(0,0,0,.25);
       color:#fff;
-      cursor: default;
+      cursor: pointer;
       user-select:none;
     }
-    .compose .lock{ opacity:.9; }
+    .compose:hover{ background: rgba(0,0,0,.32); }
 
     .navlist{ display:flex; flex-direction:column; gap: 6px; }
     .navbtn{
@@ -585,7 +585,7 @@
       line-height: 1.55;
     }
 
-    /* Subject creation modal */
+    /* Modals */
     .modal{
       position: fixed; inset: 0; z-index: 9998;
       display:none;
@@ -615,6 +615,17 @@
       outline:none;
       font-size: 13px;
     }
+    .modal textarea{
+      width:100%;
+      border-radius: 0 !important;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.25);
+      color:#fff;
+      padding: 10px 10px;
+      outline:none;
+      font-size: 13px;
+      resize: vertical;
+    }
     .modal .actions{
       margin-top: 12px;
       display:flex;
@@ -633,6 +644,20 @@
     }
     .modal .btn.blue{
       border-color: rgba(0,242,234,.35);
+    }
+
+    /* Compose form helpers (used by v2 js) */
+    .grid2{ display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media (max-width: 860px){ .grid2{ grid-template-columns: 1fr; } }
+    .label{ display:block; font-size:12px; opacity:.85; margin:6px 0 4px; }
+    .in{ width:100%; }
+
+    .modal-actions{
+      margin-top: 12px;
+      display:flex;
+      justify-content:flex-end;
+      gap: 10px;
+      flex-wrap: wrap;
     }
 
     .gate{
@@ -704,9 +729,7 @@
 
       <div class="mail-grid">
         <aside class="sidebar">
-          <div class="compose ep-box" title="Compose disabled (simulation)">
-            <span class="lock">🔒</span> Compose
-          </div>
+          <button class="compose ep-box" id="jmComposeBtn" type="button" title="Compose (simulation)"><span style="opacity:.9">✉️</span> Compose</button>
 
           <div class="navlist" role="navigation" aria-label="Mailboxes">
             <div class="navbtn ep-box active" id="btnInbox" data-folder="inbox" role="button" tabindex="0" aria-label="Inbox">
@@ -805,6 +828,43 @@
 
   <div id="siteFooter"></div>
 
+  <!-- Compose modal (simulation) -->
+  <div class="modal" id="jmComposeModal" role="dialog" aria-modal="true" aria-labelledby="jmComposeTitle">
+    <div class="card ep-box">
+      <h3 id="jmComposeTitle">Compose to Jeffrey (Simulation)</h3>
+      <p class="legal" id="jmComposeHint">This does NOT send real email. It creates a local/public-record simulation.</p>
+
+      <div class="grid2">
+        <div>
+          <label class="label">From</label>
+          <input class="in" id="jmComposeFrom" type="text" value="Public Visitor" readonly />
+        </div>
+        <div>
+          <label class="label">To</label>
+          <input class="in" id="jmComposeTo" type="text" value="Jeffrey Epstein" readonly />
+        </div>
+      </div>
+
+      <label class="label" style="margin-top:10px;">Subject</label>
+      <input class="in" id="jmComposeSubject" type="text" placeholder="Subject..." />
+
+      <label class="label" style="margin-top:10px;">Body</label>
+      <textarea class="in" id="jmComposeBody" rows="8" placeholder="Write your message..."></textarea>
+
+      <div class="modal-actions">
+        <button class="btn" id="jmComposeCancel" type="button">Cancel</button>
+        <button class="btn" id="jmComposeExport" type="button" title="Download outbox.json to commit later">Export Outbox</button>
+        <button class="btn blue" id="jmComposeSend" type="button">Send</button>
+      </div>
+
+      <div class="legal" style="margin-top:10px;">
+        <strong>How it becomes part of the public inbox:</strong> the PDF you download must be committed into
+        <code>released/epstein/jeffs-mail/pdfs/</code> and the exported <code>outbox.json</code> must be committed into
+        <code>released/epstein/jeffs-mail/tools/outbox.json</code>. Then run the index builder / GitHub Action.
+      </div>
+    </div>
+  </div>
+
   <!-- Subject creation modal -->
   <div class="modal" id="jmSubjectModal" role="dialog" aria-modal="true" aria-labelledby="jmSubjectTitle">
     <div class="card ep-box">
@@ -843,6 +903,8 @@
 
   <script src="/config.js?v=14"></script>
   <script src="/app.js?v=14"></script>
+  <!-- jsPDF for Compose-to-PDF -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="./jeffs-mail.js?v=14"></script>
 </body>
 </html>
