@@ -1,1027 +1,1178 @@
-(() => {
+/* jeffs-mail.js — CivicThreat.us (Jeffs Mail) */
+(function(){
   "use strict";
 
-  // -------- Config / URLs --------
-  const CFG = window.CT_CONFIG || {};
-  const WORKER_URL = (CFG.JEFFS_MAIL_UPLOAD_URL || "").trim();
-  const WORKER_KEY = (CFG.JEFFS_MAIL_UPLOAD_KEY || "").trim();
+  const INDEX_URL = "./index.json";
 
-  // Robust base URL handling (works for .html and extensionless routes)
-  const href = window.location.href;
-  const INDEX_URLS = [
-    new URL("index.json", href).toString(),
-    "/released/epstein/jeffs-mail/index.json",
-  ];
+  // LocalStorage keys
+  const CONSENT_KEY = "ct_jeffs_mail_21_gate_v1";
+  const STAR_KEY = "ct_jeffs_mail_starred_v2";
+  const CONTACT_KEY = "ct_jeffs_mail_contact_filter_v2";
+  const SUBJECTS_KEY = "ct_jeffs_mail_subjects_v1";
 
-  const JEFF_PFP_URL = "/released/epstein/jeffs-mail/assets/jeff.jpg";
+  // Jeff avatar
+  const JEFF_AVATAR_URL = "./assets/jeff.jpg";
 
-  // -------- LocalStorage keys --------
-  const STAR_KEY = "ct_jeffs_mail_starred_v3";
-  const SUBJECTS_KEY = "ct_jeffs_mail_subjects_v3";
-  const OUTBOX_KEY = "ct_jeffs_mail_outbox_v1";
-  const UI_KEY = "ct_jeffs_mail_ui_v3";
+  // Upload (compose) — configured in /config.js (public; key is a shared low-risk key)
+  function getUploadConfig(){
+    const cfg = (window.CT_CONFIG || {});
+    return {
+      url: String(cfg.JEFFS_MAIL_UPLOAD_URL || "").trim(),
+      key: String(cfg.JEFFS_MAIL_UPLOAD_KEY || "").trim(),
+    };
+  }
 
-  // -------- Identity rules --------
-  const JEFF_TOKENS = [
+  function hashHue(str){
+    let h = 0;
+    for(let i=0;i<str.length;i++) h = (h*31 + str.charCodeAt(i)) >>> 0;
+    return h % 360;
+  }
+
+  function avatarHtmlForContact(name, key){
+    const nm = safeText(name) || "Unknown";
+    const k = safeText(key) || slugify(nm) || "unknown";
+    const isUnknown = (nm === "Unknown" || k === "unknown" || k === "all");
+    const isJeff = (k === "jeffrey-epstein" || looksLikeJeff(nm));
+    if(k === "all"){
+      return `<div class="av" aria-hidden="true" style="background:rgba(0,0,0,.22)">★</div>`;
+    }
+    if(isUnknown && !isJeff){
+      return `<div class="av"><div class="unknown-ico" title="Unknown">⛔</div></div>`;
+    }
+    if(isJeff){
+      return `<div class="av" title="Jeff"><img src="${JEFF_AVATAR_URL}" alt="Jeff" onerror="this.remove()"></div>`;
+    }
+    const letter = (nm.trim()[0] || "?").toUpperCase();
+    const hue = hashHue(k);
+    const bg = `hsl(${hue} 65% 28%)`;
+    return `<div class="av" style="background:${bg}" aria-hidden="true">${letter}</div>`;
+  }
+
+  async function blobToBase64(blob){
+    return await new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onerror = () => reject(new Error("FileReader failed"));
+      r.onload = () => {
+        const res = String(r.result || "");
+        const i = res.indexOf("base64,");
+        resolve(i >= 0 ? res.slice(i+7) : res);
+      };
+      r.readAsDataURL(blob);
+    });
+  }
+
+  function escapePdfText(s){
+    return String(s||"").replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+  }
+
+  function buildSimplePdf({fromName,toName,subject,body,createdAtISO}){
+    // Minimal single-page PDF, standard fonts, no external libs.
+    const wrap = (text, max=92) => {
+      const out = [];
+      const parts = String(text||"").split(/\n/);
+      for(const p of parts){
+        const words = p.split(/\s+/).filter(Boolean);
+        let cur = "";
+        for(const w of words){
+          const next = (cur ? cur+" " : "") + w;
+          if(next.length > max){
+            if(cur) out.push(cur);
+            cur = w;
+          }else cur = next;
+        }
+        if(cur) out.push(cur);
+        out.push("");
+      }
+      if(out.length && out[out.length-1]==="") out.pop();
+      return out;
+    };
+
+    const dt = createdAtISO ? new Date(createdAtISO) : new Date();
+    const when = isNaN(dt.getTime()) ? new Date().toISOString() : dt.toISOString();
+
+    const lines = [];
+    lines.push(`From: ${fromName}`);
+    lines.push(`To: ${toName}`);
+    lines.push(`Date: ${when}`);
+    lines.push(`Subject: ${subject}`);
+    lines.push("");
+    lines.push(...wrap(body, 92));
+
+    const contentLines = [];
+    contentLines.push("BT");
+    contentLines.push("/F1 11 Tf");
+    contentLines.push("72 760 Td");
+    contentLines.push("14 TL");
+    for(let i=0;i<lines.length;i++){
+      const t = escapePdfText(lines[i]);
+      contentLines.push(`(${t}) Tj`);
+      if(i !== lines.length-1) contentLines.push("T*");
+    }
+    contentLines.push("ET");
+    const content = contentLines.join("\n");
+
+    const objs = [];
+    const addObj = (s) => objs.push(s);
+
+    addObj("1 0 obj<< /Type /Catalog /Pages 2 0 R >>endobj");
+    addObj("2 0 obj<< /Type /Pages /Kids [3 0 R] /Count 1 >>endobj");
+    addObj("3 0 obj<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources<< /Font<< /F1 4 0 R >> >> /Contents 5 0 R >>endobj");
+    addObj("4 0 obj<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>endobj");
+    addObj(`5 0 obj<< /Length ${content.length} >>stream\n${content}\nendstream\nendobj`);
+
+    let pdf = "%PDF-1.4\n";
+    const offsets = [0];
+    for(const o of objs){
+      offsets.push(pdf.length);
+      pdf += o + "\n";
+    }
+    const xrefStart = pdf.length;
+    pdf += "xref\n0 " + (objs.length+1) + "\n";
+    pdf += "0000000000 65535 f \n";
+    for(let i=1;i<offsets.length;i++){
+      pdf += String(offsets[i]).padStart(10,"0") + " 00000 n \n";
+    }
+    pdf += "trailer<< /Size " + (objs.length+1) + " /Root 1 0 R >>\n";
+    pdf += "startxref\n" + xrefStart + "\n%%EOF";
+
+    return new Blob([pdf], { type:"application/pdf" });
+  }
+
+  // Jeff identity detection
+  const JEFF_EMAILS = new Set([
     "jeevacation@gmail.com",
     "jeevacation@gmail.con",
-    "jeevacation@gmail",
-    "jeevacation@gmail.comailto",
-    "mailto:jeevacation@gmail.com",
+  ]);
+
+  const JEFF_TOKENS = [
     "jeffrey epstein",
     "jeff epstein",
     "jeffrey e stein",
+    "jeevacation",
     "lsj",
-    "je",
+    "je ",
+    " je\n"
   ];
 
-  function isJeffIdentity(s) {
-    const t = (s || "").toString().toLowerCase();
-    if (!t) return false;
-    return JEFF_TOKENS.some(k => t.includes(k));
-  }
-
-  function normKey(s) {
-    return (s || "")
-      .toString()
-      .trim()
-      .replace(/\s+/g, " ")
-      .toLowerCase();
-  }
-
-  function safeText(s) {
-    return (s == null ? "" : String(s));
-  }
-
-  function escapePdfText(str) {
-    // Escape for PDF literal strings
-    return String(str)
-      .replace(/\\/g, "\\\\")
-      .replace(/\(/g, "\\(")
-      .replace(/\)/g, "\\)");
-  }
-
-  // -------- Minimal PDF generator (no external libs) --------
-  // Produces a single-page PDF with Helvetica and wrapped text.
-  function makeSimplePdfBytes(text) {
-    const lines = wrapText(String(text), 92); // characters per line approx for 12pt @ letter width
-    const fontObj = "3 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n";
-
-    // Content stream: 12pt font, start near top, line height 14
-    let y = 760;
-    const startX = 54;
-    const leading = 14;
-
-    const contentParts = [];
-    contentParts.push("BT");
-    contentParts.push(`/F1 12 Tf`);
-    contentParts.push(`${startX} ${y} Td`);
-    contentParts.push(`${leading} TL`);
-
-    for (const ln of lines) {
-      const t = escapePdfText(ln);
-      contentParts.push(`(${t}) Tj`);
-      contentParts.push("T*");
+  function looksLikeJeff(s){
+    const t = safeText(s).toLowerCase();
+    if(!t) return false;
+    for(const em of JEFF_EMAILS){
+      if(t.includes(em)) return true;
     }
-    contentParts.push("ET");
-
-    const content = contentParts.join("\n") + "\n";
-    const contentBytes = new TextEncoder().encode(content);
-
-    // Objects
-    // 1: Catalog, 2: Pages, 4: Page, 5: Contents
-    const objects = [];
-    objects.push("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
-    objects.push("2 0 obj\n<< /Type /Pages /Kids [4 0 R] /Count 1 >>\nendobj\n");
-    objects.push(fontObj);
-
-    objects.push("4 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 5 0 R >>\nendobj\n");
-
-    objects.push(`5 0 obj\n<< /Length ${contentBytes.length} >>\nstream\n${content}endstream\nendobj\n`);
-
-    // Build PDF with xref
-    let pdf = "%PDF-1.4\n";
-    const offsets = [0];
-    for (const obj of objects) {
-      offsets.push(pdf.length);
-      pdf += obj;
+    for(const tok of JEFF_TOKENS){
+      if(t.includes(tok)) return true;
     }
-
-    const xrefStart = pdf.length;
-    pdf += "xref\n";
-    pdf += `0 ${objects.length + 1}\n`;
-    pdf += "0000000000 65535 f \n";
-    for (let i = 1; i <= objects.length; i++) {
-      const off = offsets[i];
-      pdf += `${String(off).padStart(10, "0")} 00000 n \n`;
-    }
-    pdf += "trailer\n";
-    pdf += `<< /Size ${objects.length + 1} /Root 1 0 R >>\n`;
-    pdf += "startxref\n";
-    pdf += `${xrefStart}\n`;
-    pdf += "%%EOF\n";
-
-    // Convert string + embed content bytes properly:
-    // Note: we already inserted content string directly; contentBytes used only for length.
-    // This is fine for ASCII/UTF-8 basic usage. Keep message text mostly ASCII for best rendering.
-    return new TextEncoder().encode(pdf);
+    return false;
   }
 
-  function wrapText(text, maxLen) {
-    // Keep existing newlines, wrap each line
-    const rawLines = String(text).replace(/\r\n/g, "\n").split("\n");
-    const out = [];
-    for (const raw of rawLines) {
-      if (raw.length <= maxLen) {
-        out.push(raw);
-        continue;
+  const $ = (sel) => document.querySelector(sel);
+
+  const el = {
+    search: $("#jmSearch"),
+    items: $("#jmItems"),
+    found: $("#jmFound"),
+
+    folderTitle: $("#jmFolderTitle"),
+    folderCount: $("#jmCount"),
+
+    btnInbox: $("#jmInboxBtn"),
+    btnSent: $("#jmSentBtn"),
+    btnStarred: $("#jmStarBtn"),
+    inboxCount: $("#jmInboxCount"),
+    sentCount: $("#jmSentCount"),
+    starCount: $("#jmStarCount"),
+
+    clear: $("#jmClear"),
+
+    // Reader
+    reader: $("#jmReader"),
+    closeReader: $("#jmCloseReader"),
+    msgTitle: $("#jmMsgTitle"),
+    chips: $("#jmChips"),
+    thread: $("#jmThread"),
+    readerHint: $("#jmReaderHint"),
+    sourceBox: $("#jmSourceBox"),
+    sourceName: $("#jmSourceName"),
+    sourceLink: $("#jmSourceLink"),
+
+    // Header avatar
+    jeffAvatar: $("#jmJeffAvatar"),
+    jeffFallback: $("#jmJeffFallback"),
+
+    // Age gate
+    gate: $("#jmGate"),
+    gateCheck: $("#jmGateCheck"),
+    gateEnter: $("#jmGateEnter"),
+    gateLeave: $("#jmGateLeave"),
+
+    // Sidebar accordions
+    contactsAcc: $("#jmContactsAcc"),
+    contactsToggle: $("#jmContactsToggle"),
+    contactsList: $("#jmContactsList"),
+    contactsCount: $("#jmContactsCount"),
+
+    subjectsAcc: $("#jmSubjectsAcc"),
+    subjectsToggle: $("#jmSubjectsToggle"),
+    subjectsList: $("#jmSubjectsList"),
+    subjectsCount: $("#jmSubjectsCount"),
+    btnAddSubject: $("#jmAddSubject"),
+    btnClearSubjects: $("#jmClearSubjects"),
+
+    // Subject modal
+    subjectModal: $("#jmSubjectModal"),
+    subjectName: $("#jmSubjectName"),
+    subjectCancel: $("#jmSubjectCancel"),
+    subjectSave: $("#jmSubjectSave"),
+
+    // Compose modal
+    composeBtn: $("#jmComposeBtn"),
+    composeModal: $("#jmComposeModal"),
+    composeFrom: $("#jmComposeFrom"),
+    composeTo: $("#jmComposeTo"),
+    composeSubject: $("#jmComposeSubject"),
+    composeBody: $("#jmComposeBody"),
+    composeCancel: $("#jmComposeCancel"),
+    composeSend: $("#jmComposeSend"),
+    composeStatus: $("#jmComposeStatus"),
+  };
+
+  const state = {
+    data: null,
+    all: [],
+    view: [],
+    contacts: [],
+    q: "",
+    folder: "inbox",
+    selectedId: null,
+    starred: new Set(),
+    contact: "all",
+    subjects: [],
+  };
+
+  function safeText(s){
+    return String(s || "").replace(/\u0000/g,"").trim();
+  }
+
+  function isNarrow(){
+    return window.matchMedia("(max-width: 980px)").matches;
+  }
+
+  function slugify(s){
+    const t = safeText(s).toLowerCase();
+    if(!t) return "unknown";
+    return t
+      .replace(/mailto:/g,"")
+      .replace(/<[^>]*>/g," ")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 80) || "unknown";
+  }
+
+  function cleanName(s){
+    let t = safeText(s);
+    t = t.replace(/^(from|to|sent|date|subject)\s*:\s*/i, "").trim();
+    t = t.replace(/[\[\]\(\)]/g, "").trim();
+    t = t.replace(/\s+/g, " ").trim();
+    // Strip common OCR/email artifacts
+    t = t.replace(/mailto:/ig, "");
+    t = t.replace(/<[^>]*>/g, " ").trim();
+    t = t.replace(/\s<[^\n]*$/g, "").trim();
+    t = t.replace(/\b(gmail\.con|gmai\.com)\b/ig, "gmail.com");
+    t = t.replace(/[,;|•]+$/g, "").trim();
+    if(!t) return "Unknown";
+
+    // If it’s basically a date string (the “Date: November 21, 2012…” contact bug)
+    if(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b/i.test(t) && /\b\d{1,2}\b/.test(t)){
+      if(t.toLowerCase().startsWith("date")) return "Unknown";
+    }
+    if(t.length > 140) return "Unknown";
+    return t;
+  }
+
+  function loadStarred(){
+    try{
+      const raw = localStorage.getItem(STAR_KEY);
+      if(!raw) return;
+      const arr = JSON.parse(raw);
+      if(Array.isArray(arr)){
+        state.starred = new Set(arr.map(String));
       }
-      const words = raw.split(/\s+/);
-      let line = "";
-      for (const w of words) {
-        const add = line ? (line + " " + w) : w;
-        if (add.length > maxLen) {
-          if (line) out.push(line);
-          line = w;
-        } else {
-          line = add;
-        }
-      }
-      if (line) out.push(line);
-    }
-    return out;
+    }catch(_){}
   }
 
-  function bytesToBase64(bytes) {
-    let bin = "";
-    const chunk = 0x8000;
-    for (let i = 0; i < bytes.length; i += chunk) {
-      bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
-    }
-    return btoa(bin);
+  function saveStarred(){
+    try{
+      localStorage.setItem(STAR_KEY, JSON.stringify(Array.from(state.starred)));
+    }catch(_){}
   }
 
-  // -------- UI refs --------
-  const el = (id) => document.getElementById(id);
-
-  const $search = el("jmSearch");
-  const $clear = el("jmClear");
-  const $mailList = el("jmMailList");
-  const $listTitle = el("jmListTitle");
-  const $listCount = el("jmListCount");
-  const $readerTitle = el("jmReaderTitle");
-  const $readerTags = el("jmReaderTags");
-  const $readerBody = el("jmReaderBody");
-  const $reader = el("jmReader");
-  const $closeReaderBtn = el("jmCloseReaderBtn");
-
-  const $inboxBtn = el("jmInboxBtn");
-  const $sentBtn = el("jmSentBtn");
-  const $starBtn = el("jmStarBtn");
-  const $inboxCount = el("jmInboxCount");
-  const $sentCount = el("jmSentCount");
-  const $starCount = el("jmStarCount");
-
-  const $contactsList = el("jmContactsList");
-  const $contactsCount = el("jmContactsCount");
-
-  const $subjectsList = el("jmSubjectsList");
-  const $subjectsCount = el("jmSubjectsCount");
-  const $addSubjectBtn = el("jmAddSubjectBtn");
-  const $clearSubjectsBtn = el("jmClearSubjectsBtn");
-
-  // Compose modal
-  const $composeBtn = el("jmComposeBtn");
-  const $composeModal = el("jmComposeModal");
-  const $composeClose = el("jmComposeClose");
-  const $cFrom = el("jmCFrom");
-  const $cTo = el("jmCTo");
-  const $cSubject = el("jmCSubject");
-  const $cBody = el("jmCBody");
-  const $sendBtn = el("jmSendBtn");
-  const $downloadCopyBtn = el("jmDownloadCopyBtn");
-  const $composeStatus = el("jmComposeStatus");
-
-  // -------- State --------
-  let indexData = null;
-  let allItems = [];
-  let filteredItems = [];
-  let activeMailbox = "inbox"; // inbox|sent|starred
-  let activeContactKey = "";   // contact filter
-  let activeId = "";           // selected item id
-  let query = "";
-  let starred = loadJSON(STAR_KEY, []);
-  let subjects = loadJSON(SUBJECTS_KEY, []);
-  let outbox = loadJSON(OUTBOX_KEY, []);
-
-  // Persist small UI state (mailbox/contact/query)
-  const uiState = loadJSON(UI_KEY, { mailbox: "inbox", contactKey: "", query: "" });
-
-  // -------- Storage helpers --------
-  function loadJSON(key, fallback) {
-    try {
-      const s = localStorage.getItem(key);
-      if (!s) return fallback;
-      return JSON.parse(s);
-    } catch { return fallback; }
+  function loadContactFilter(){
+    try{
+      const raw = localStorage.getItem(CONTACT_KEY);
+      if(raw) state.contact = String(raw);
+    }catch(_){}
   }
-  function saveJSON(key, v) {
-    try { localStorage.setItem(key, JSON.stringify(v)); } catch {}
+  function saveContactFilter(){
+    try{
+      localStorage.setItem(CONTACT_KEY, String(state.contact||"all"));
+    }catch(_){}
   }
 
-  // -------- Avatars --------
-  function hashHue(str) {
-    let h = 0;
-    for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
-    return h % 360;
+  function loadSubjects(){
+    try{
+      const raw = localStorage.getItem(SUBJECTS_KEY);
+      if(!raw) return;
+      const arr = JSON.parse(raw);
+      if(Array.isArray(arr)) state.subjects = arr;
+    }catch(_){}
   }
-  function avatarNode(name, key) {
-    const wrap = document.createElement("div");
-    wrap.className = "avatar";
-    const display = safeText(name).trim();
-
-    if (!display || display.toLowerCase() === "unknown") {
-      // Unknown red "no" icon
-      const no = document.createElement("span");
-      no.className = "noIcon";
-      wrap.appendChild(no);
-      return wrap;
-    }
-
-    if (isJeffIdentity(display) || isJeffIdentity(key)) {
-      const img = document.createElement("img");
-      img.alt = "Jeff";
-      img.src = JEFF_PFP_URL;
-      wrap.appendChild(img);
-      return wrap;
-    }
-
-    const letter = (display[0] || "?").toUpperCase();
-    const hue = hashHue(key || display);
-    wrap.style.background = `hsl(${hue} 60% 28% / .95)`;
-    wrap.style.borderColor = "rgba(255,255,255,.16)";
-    wrap.style.fontWeight = "950";
-    wrap.style.fontSize = "14px";
-    wrap.textContent = letter;
-    return wrap;
+  function saveSubjects(){
+    try{
+      localStorage.setItem(SUBJECTS_KEY, JSON.stringify(state.subjects));
+    }catch(_){}
   }
 
-  function contactAvatarNode(name, key) {
-    const a = document.createElement("div");
-    a.className = "cAvatar";
+  async function fetchJsonStrict(url){
+    const bust = Date.now();
+    const candidates = [
+      url,
+      "/released/epstein/jeffs-mail/index.json",
+      "./index.json"
+    ].filter(Boolean);
 
-    const display = safeText(name).trim();
-    if (!display || display.toLowerCase() === "unknown") {
-      const no = document.createElement("span");
-      no.className = "noIcon";
-      a.appendChild(no);
-      return a;
-    }
-
-    if (isJeffIdentity(display) || isJeffIdentity(key)) {
-      const img = document.createElement("img");
-      img.alt = "Jeff";
-      img.src = JEFF_PFP_URL;
-      a.appendChild(img);
-      return a;
-    }
-
-    const letter = (display[0] || "?").toUpperCase();
-    const hue = hashHue(key || display);
-    a.style.background = `hsl(${hue} 62% 28% / .95)`;
-    a.style.color = "rgba(232,235,243,.96)";
-    a.style.fontWeight = "950";
-    a.style.fontSize = "13px";
-    a.textContent = letter;
-    return a;
-  }
-
-  // -------- Index loading --------
-  async function fetchIndex() {
     let lastErr = null;
-    for (const url of INDEX_URLS) {
-      try {
-        const r = await fetch(url, { cache: "no-store" });
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        const j = await r.json();
-        return j;
-      } catch (e) {
-        lastErr = e;
+    for(const base of candidates){
+      try{
+        const u = base + (base.includes("?") ? "&" : "?") + "_=" + bust;
+        const r = await fetch(u, { cache: "no-store" });
+        if(!r.ok) throw new Error(`HTTP ${r.status} for ${base}`);
+        return await r.json();
+      }catch(err){
+        lastErr = err;
       }
     }
     throw lastErr || new Error("Failed to load index.json");
   }
 
-  function mergeOutbox(items) {
-    // Convert outbox records into items compatible with rendering
-    const outItems = (outbox || []).map((o) => {
-      const id = o.id || `out_${o.createdAt || Date.now()}`;
-      return {
-        id,
-        mailbox: "sent",
-        subject: o.subject || "(no subject)",
-        from: o.from || "Public Visitor",
-        to: o.to || "Jeffrey Epstein",
-        date: o.createdAtISO || new Date().toISOString(),
-        dateDisplay: o.dateDisplay || new Date(o.createdAtISO || Date.now()).toLocaleString(),
-        pdf: o.pdfPath || "",
-        snippet: o.snippet || (o.body || "").slice(0, 160),
-        body: o.body || "",
-        contactKey: normKey(o.from || "Public Visitor"),
-        contactName: o.from || "Public Visitor",
-        source: "compose",
-        thread: [
-          {
-            from: o.from || "Public Visitor",
-            to: o.to || "Jeffrey Epstein",
-            date: o.createdAtISO || new Date().toISOString(),
-            subject: o.subject || "(no subject)",
-            body: o.body || "",
-            snippet: o.snippet || (o.body || "").slice(0, 160),
-          }
-        ],
-        _pendingIndex: !!o.pendingIndex,
-        _commitUrl: o.commitUrl || "",
-      };
-    });
+  function normalizeItems(data){
+    const items = Array.isArray(data?.items) ? data.items : [];
+    const cleaned = [];
+    const seen = new Set();
 
-    // De-dupe if GH index already includes same pdf path
-    const seenPdf = new Set(items.map(it => safeText(it.pdf).trim()).filter(Boolean));
-    const merged = items.slice();
-    for (const oi of outItems) {
-      const p = safeText(oi.pdf).trim();
-      if (p && seenPdf.has(p)) continue;
-      merged.push(oi);
+    for(const m of items){
+      if(!m || !m.id) continue;
+
+      const pdf = safeText(m.pdf);
+      if(!pdf) continue;
+
+      const mailboxRaw = safeText(m.mailbox).toLowerCase();
+      const mailbox = mailboxRaw === "sent" ? "sent" : "inbox";
+
+      const subject = safeText(m.subject) || "(No subject)";
+      const from = cleanName(m.from);
+      const to = cleanName(m.to);
+
+      const date = safeText(m.date);
+      const dateDisplay = safeText(m.dateDisplay);
+
+      const body = String(m.body || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
+
+      const snippet = safeText(m.snippet) || safeText(body).slice(0, 160);
+
+      const sig = [pdf, subject, from, to, date, mailbox].join("|");
+      if(seen.has(sig)) continue;
+      seen.add(sig);
+
+      cleaned.push({
+        id: String(m.id),
+        mailbox,
+        subject,
+        from: from || "Unknown",
+        to: to || "Unknown",
+        date,
+        dateDisplay,
+        snippet,
+        body,
+        pdf,
+        starred: state.starred.has(String(m.id)),
+        contactKey: "",
+        contactName: "",
+      });
     }
-    return merged;
-  }
 
-  // -------- Filtering --------
-  function isStarred(id) {
-    return starred.includes(id);
-  }
-
-  function mailboxFilter(items, mailbox) {
-    if (mailbox === "starred") return items.filter(it => isStarred(it.id));
-    return items.filter(it => (it.mailbox || "inbox") === mailbox);
-  }
-
-  function contactFilter(items, key) {
-    if (!key) return items;
-    const nk = normKey(key);
-    return items.filter(it => normKey(it.contactKey || it.contactName || it.from) === nk);
-  }
-
-  function queryFilter(items, q) {
-    const s = normKey(q);
-    if (!s) return items;
-    return items.filter(it => {
-      const hay = normKey([
-        it.subject, it.from, it.to, it.snippet, it.body,
-        ...(Array.isArray(it.thread) ? it.thread.map(p => [p.from,p.to,p.subject,p.body].join(" ")) : [])
-      ].join(" "));
-      return hay.includes(s);
+    cleaned.sort((a,b) => {
+      const da = Date.parse(a.date || "") || 0;
+      const db = Date.parse(b.date || "") || 0;
+      if(db !== da) return db - da;
+      return String(b.id).localeCompare(String(a.id));
     });
+
+    return cleaned;
   }
 
-  function applyFilters() {
-    let items = allItems.slice();
-    items = mailboxFilter(items, activeMailbox);
-    items = contactFilter(items, activeContactKey);
-    items = queryFilter(items, query);
-
-    // Sort newest first by date string if possible
-    items.sort((a,b) => (safeText(b.date) || "").localeCompare(safeText(a.date) || ""));
-    filteredItems = items;
-
-    renderCounts();
-    renderMailList();
-    renderContacts();
-    renderSubjects();
+  function otherPartyLabel(mailbox, from, to){
+    if(mailbox === "sent"){
+      return cleanName(to) || "Unknown";
+    }
+    return cleanName(from) || "Unknown";
   }
 
-  // -------- Rendering --------
-  function renderCounts() {
-    const inbox = mailboxFilter(allItems, "inbox").length;
-    const sent = mailboxFilter(allItems, "sent").length;
-    const star = mailboxFilter(allItems, "starred").length;
+  function computeContactForItem(m){
+    const from = String(m.from||"");
+    const to = String(m.to||"");
 
-    $inboxCount.textContent = String(inbox);
-    $sentCount.textContent = String(sent);
-    $starCount.textContent = String(star);
+    const standardName = otherPartyLabel(m.mailbox, from, to);
+    const sn = cleanName(standardName);
 
-    const title = (activeMailbox || "inbox").toUpperCase();
-    $listTitle.textContent = title;
-    $listCount.textContent = String(filteredItems.length);
+    const standardKey = slugify(sn);
 
-    // Contacts count
-    $contactsCount.textContent = String(buildContactsMap(allItems).size);
+    const inText = looksLikeJeff(from) || looksLikeJeff(to) || looksLikeJeff(m.subject) || looksLikeJeff(m.body);
+    const jeffKey = "jeffrey-epstein";
+    const jeffName = "Jeffrey Epstein";
 
-    // Subjects count
-    $subjectsCount.textContent = String((subjects || []).length);
+    return {
+      standardKey,
+      standardName: sn || "Unknown",
+      jeffInvolved: !!inText,
+      jeffKey,
+      jeffName
+    };
   }
 
-  function renderMailList() {
-    $mailList.innerHTML = "";
+  function rebuildContacts(){
+    const map = new Map(); // key -> {name,count}
+    let jeffCount = 0;
 
-    if (!filteredItems.length) {
+    for(const m of state.all){
+      const c = computeContactForItem(m);
+      m.contactKey = c.standardKey;
+      m.contactName = c.standardName;
+
+      if(c.standardName){
+        const key = c.standardKey || "unknown";
+        const cur = map.get(key) || { name: c.standardName, count: 0 };
+        cur.count += 1;
+        if(cur.name.length > c.standardName.length) cur.name = c.standardName;
+        map.set(key, cur);
+      }
+
+      if(c.jeffInvolved) jeffCount += 1;
+    }
+
+    if(jeffCount > 0){
+      map.set("jeffrey-epstein", { name: "Jeffrey Epstein", count: jeffCount });
+    }
+
+    const list = Array.from(map.entries()).map(([key, obj]) => ({ key, name: obj.name, count: obj.count }));
+    list.sort((a,b) => {
+      if(a.key === "jeffrey-epstein") return -1;
+      if(b.key === "jeffrey-epstein") return 1;
+      if(a.key === "unknown") return 1;
+      if(b.key === "unknown") return -1;
+      return a.name.localeCompare(b.name);
+    });
+
+    state.contacts = list;
+
+    if(el.contactsCount) el.contactsCount.textContent = String(list.length);
+
+    drawContacts();
+  }
+
+  function drawContacts(){
+    if(!el.contactsList) return;
+
+    const cur = state.contact || "all";
+    el.contactsList.innerHTML = "";
+
+    const allBtn = document.createElement("div");
+    allBtn.className = "cbtn ep-box" + (cur === "all" ? " active" : "");
+    allBtn.innerHTML = `${avatarHtmlForContact("All","all")}<div class="mid"><div class="nm">All contacts</div></div><div class="meta"><div class="ct">${state.all.length}</div></div>`;
+    allBtn.addEventListener("click", () => {
+      state.contact = "all";
+      saveContactFilter();
+      drawContacts();
+      draw();
+    });
+    el.contactsList.appendChild(allBtn);
+
+    for(const c of state.contacts){
+      const btn = document.createElement("div");
+      btn.className = "cbtn ep-box" + (cur === c.key ? " active" : "");
+      btn.innerHTML = `${avatarHtmlForContact(c.name,c.key)}<div class="mid"><div class="nm">${safeText(c.name)}</div></div><div class="meta"><div class="ct">${c.count}</div></div>`;
+      btn.addEventListener("click", () => {
+        state.contact = c.key;
+        saveContactFilter();
+        drawContacts();
+        draw();
+      });
+      el.contactsList.appendChild(btn);
+    }
+  }
+
+  function openReaderOverlay(){
+    if(!el.reader) return;
+    if(isNarrow()){
+      el.reader.classList.add("open");
+      document.body.classList.add("jm-lock");
+    }
+  }
+  function closeReaderOverlay(){
+    if(!el.reader) return;
+    el.reader.classList.remove("open");
+    document.body.classList.remove("jm-lock");
+  }
+
+  // Thread parsing (already in your file; kept as-is)
+  function safeHdrLine(s){
+    let t = String(s||"").replace(/\r/g,"").trim();
+    t = t.replace(/\s+/g," ").trim();
+    t = t.replace(/<mailto:[^>]+>/ig, "");
+    t = t.replace(/\bmailto:\S+/ig, "");
+    t = t.replace(/\b(gmail\.con|gmai\.com)\b/ig, "gmail.com");
+    return t;
+  }
+
+  function normalizeToFrom(s){
+    let t = safeHdrLine(s);
+    t = t.replace(/^from:\s*/i, "");
+    t = t.replace(/^to:\s*/i, "");
+    t = t.replace(/^sent:\s*/i, "");
+    t = t.replace(/^date:\s*/i, "");
+    t = t.replace(/^subject:\s*/i, "");
+    t = t.replace(/<[^>]*>/g, " ").trim();
+    t = t.replace(/\s+/g," ").trim();
+    if(!t) return "Unknown";
+    if(t.length > 140) return "Unknown";
+    return t;
+  }
+
+  function parseMiniHeaders(lines, startIdx){
+    const hdr = { from:"", to:"", when:"", subject:"" };
+    let i = startIdx;
+    let gotAny = false;
+    for(; i<lines.length && i<startIdx+18; i++){
+      const s = safeHdrLine(lines[i]);
+      if(!s) continue;
+      if(/^from:\s*/i.test(s)){ hdr.from = normalizeToFrom(s); gotAny = true; continue; }
+      if(/^to:\s*/i.test(s)){ hdr.to = normalizeToFrom(s); gotAny = true; continue; }
+      if(/^(sent|date):\s*/i.test(s)){ hdr.when = s.replace(/^(sent|date):\s*/i,"").trim(); gotAny = true; continue; }
+      if(/^subject:\s*/i.test(s)){ hdr.subject = s.replace(/^subject:\s*/i,"").trim(); gotAny = true; continue; }
+      if(gotAny && !/^(from|to|sent|date|subject):/i.test(s)) break;
+    }
+    return { hdr, next: i };
+  }
+
+  function splitThread(bodyText, fallbackMeta){
+    const raw = String(bodyText||"").replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
+    if(!raw){
+      return [{
+        from: fallbackMeta.from,
+        to: fallbackMeta.to,
+        subject: fallbackMeta.subject,
+        when: fallbackMeta.dateDisplay,
+        body: "Open the source PDF below to view the original record."
+      }];
+    }
+
+    const lines = raw.split("\n");
+    const msgs = [];
+    const begins = [];
+    for(let i=0; i<lines.length; i++){
+      const s = (lines[i]||"").trim();
+      if(/^Begin forwarded message\s*:?\s*$/i.test(s)) begins.push(i);
+      if(/^-----Original Message-----$/i.test(s)) begins.push(i);
+    }
+
+    const wroteIdx = [];
+    for(let i=0; i<lines.length; i++){
+      const s = (lines[i]||"").trim();
+      if(/^On\s.+\bwrote:\s*$/i.test(s)) wroteIdx.push(i);
+    }
+
+    const anchors = Array.from(new Set([...begins, ...wroteIdx])).sort((a,b)=>a-b);
+
+    if(anchors.length === 0){
+      return [{
+        from: fallbackMeta.from,
+        to: fallbackMeta.to,
+        subject: fallbackMeta.subject,
+        when: fallbackMeta.dateDisplay,
+        body: cleanBodyBlock(raw, fallbackMeta)
+      }];
+    }
+
+    let start = 0;
+    for(const a of anchors){
+      if(a > start){
+        const block = lines.slice(start, a).join("\n").trim();
+        if(block){
+          msgs.push({
+            from: fallbackMeta.from,
+            to: fallbackMeta.to,
+            subject: fallbackMeta.subject,
+            when: fallbackMeta.dateDisplay,
+            body: cleanBodyBlock(block, fallbackMeta)
+          });
+        }
+      }
+      start = a;
+    }
+    const lastBlock = lines.slice(start).join("\n").trim();
+    if(lastBlock){
+      const blockLines = lastBlock.split("\n");
+      let headerStart = 0;
+      while(headerStart < blockLines.length && !safeHdrLine(blockLines[headerStart])) headerStart++;
+      const parsed = parseMiniHeaders(blockLines, headerStart);
+      const hdr = parsed.hdr;
+      const body = blockLines.slice(parsed.next).join("\n").trim();
+
+      msgs.push({
+        from: hdr.from || fallbackMeta.from,
+        to: hdr.to || fallbackMeta.to,
+        subject: hdr.subject || fallbackMeta.subject,
+        when: hdr.when || fallbackMeta.dateDisplay,
+        body: cleanBodyBlock(body || lastBlock, fallbackMeta)
+      });
+    }
+
+    return msgs.filter(m => safeText(m.body));
+  }
+
+  function cleanBodyBlock(text, fallbackMeta){
+    let t = String(text||"").replace(/\r/g,"").trim();
+    t = t.replace(/\bmailto:\S+/ig, "");
+    t = t.replace(/<mailto:[^>]+>/ig, "");
+    t = t.replace(/\b(gmail\.con|gmai\.com)\b/ig, "gmail.com");
+
+    const topHdrs = [
+      `from: ${String(fallbackMeta.from||"").toLowerCase()}`,
+      `to: ${String(fallbackMeta.to||"").toLowerCase()}`,
+      `subject: ${String(fallbackMeta.subject||"").toLowerCase()}`
+    ];
+    const out = [];
+    for(const ln of t.split("\n")){
+      const s = safeHdrLine(ln);
+      const low = s.toLowerCase();
+      if(topHdrs.some(h => low === h)) continue;
+      if(/^from:\s*/i.test(s) && looksLikeJeff(s)) continue;
+      out.push(ln);
+    }
+    t = out.join("\n").trim();
+    return t;
+  }
+
+  function setActiveFolder(folder){
+    const f = (folder === "sent" || folder === "starred") ? folder : "inbox";
+    state.folder = f;
+    state.selectedId = null;
+    if(el.btnInbox) el.btnInbox.classList.toggle("active", f==="inbox");
+    if(el.btnSent) el.btnSent.classList.toggle("active", f==="sent");
+    if(el.btnStarred) el.btnStarred.classList.toggle("active", f==="starred");
+    if(el.folderTitle) el.folderTitle.textContent = f.toUpperCase();
+    draw();
+  }
+
+  function applyFilters(){
+    const q = safeText(state.q).toLowerCase();
+    const folder = state.folder;
+
+    let arr = state.all.slice();
+
+    if(folder === "starred"){
+      arr = arr.filter(m => state.starred.has(String(m.id)));
+    }else{
+      arr = arr.filter(m => m.mailbox === folder);
+    }
+
+    if(state.contact && state.contact !== "all"){
+      arr = arr.filter(m => (m.contactKey || "unknown") === state.contact);
+    }
+
+    if(q){
+      arr = arr.filter(m => {
+        const hay = [
+          m.subject, m.from, m.to, m.dateDisplay, m.body, m.snippet
+        ].map(x => safeText(x).toLowerCase()).join(" ");
+        return hay.includes(q);
+      });
+    }
+
+    state.view = arr;
+
+    if(el.folderCount) el.folderCount.textContent = String(arr.length);
+
+    if(el.found){
+      el.found.style.display = q || (state.contact && state.contact !== "all") || folder==="starred" ? "" : "none";
+      if(el.found.style.display !== "none"){
+        el.found.textContent = (arr.length ? `${arr.length} result(s)` : "No results") +
+          (q ? ` for “${state.q}”` : "") +
+          (state.contact && state.contact !== "all" ? ` • contact filter` : "") +
+          (folder==="starred" ? ` • starred` : "");
+      }
+    }
+  }
+
+  function drawList(){
+    if(!el.items) return;
+    el.items.innerHTML = "";
+
+    if(state.view.length === 0){
       const empty = document.createElement("div");
-      empty.className = "mailItem";
-      empty.innerHTML = `
-        <div class="miTop">
-          <div class="miFrom">No results</div>
-          <div class="miDate"></div>
-        </div>
-        <div class="miSub">Try clearing filters</div>
-        <div class="miSnip">Search, contact, or folder may be filtering everything.</div>
-      `;
-      $mailList.appendChild(empty);
+      empty.className = "legal";
+      empty.style.padding = "10px";
+      empty.textContent = "No results. Try clearing filters.";
+      el.items.appendChild(empty);
       return;
     }
 
-    for (const it of filteredItems) {
+    for(const m of state.view){
       const card = document.createElement("div");
-      card.className = "mailItem" + (it.id === activeId ? " active" : "");
-      const from = safeText(it.from || it.contactName || "Unknown");
-      const sub = safeText(it.subject || "(no subject)");
-      const snip = safeText(it.snippet || "").trim();
-      const dt = safeText(it.dateDisplay || it.date || "");
+      card.className = "itm";
+      if(state.selectedId === m.id) card.classList.add("active");
+
+      const who = (m.mailbox === "sent") ? (cleanName(m.to) || "Unknown") : (cleanName(m.from) || "Unknown");
+      const when = safeText(m.dateDisplay) || safeText(m.date) || "";
 
       card.innerHTML = `
-        <div class="miTop">
-          <div class="miFrom">${escapeHTML(from)}</div>
-          <div class="miDate">${escapeHTML(dt)}</div>
+        <div class="top">
+          <div class="who">${escapeHtml(who)}</div>
+          <div class="when">${escapeHtml(when)}</div>
         </div>
-        <div class="miSub">${escapeHTML(sub)}</div>
-        <div class="miSnip">${escapeHTML(snip || "—")}</div>
+        <div class="sub">${escapeHtml(m.subject)}</div>
+        <div class="snip">${escapeHtml(m.snippet || "")}</div>
       `;
 
       card.addEventListener("click", () => {
-        activeId = it.id;
-        saveJSON(UI_KEY, { mailbox: activeMailbox, contactKey: activeContactKey, query });
-        renderMailList();
-        renderReader(it);
-        openReaderOnMobile();
+        state.selectedId = m.id;
+        draw();
+        renderReader(m);
+        openReaderOverlay();
       });
 
-      $mailList.appendChild(card);
-    }
-
-    // If nothing selected yet, auto-select first
-    if (!activeId && filteredItems.length) {
-      activeId = filteredItems[0].id;
-      renderReader(filteredItems[0]);
+      el.items.appendChild(card);
     }
   }
 
-  function renderReader(item) {
-    if (!item) return;
+  function renderReader(m){
+    if(!m) return;
+    if(el.msgTitle) el.msgTitle.textContent = m.subject || "(No subject)";
 
-    const sub = safeText(item.subject || "MESSAGE");
-    $readerTitle.textContent = sub;
-
-    // Tags
-    $readerTags.innerHTML = "";
-    const tags = [];
-    tags.push(item.source ? String(item.source) : "released");
-    tags.push(item.pdf ? "pdf" : "note");
-    tags.push(activeMailbox);
-
-    if (item._pendingIndex) tags.push("pending");
-    if (isStarred(item.id)) tags.push("starred");
-
-    for (const t of tags) {
-      const span = document.createElement("span");
-      span.className = "tag";
-      span.textContent = t;
-      $readerTags.appendChild(span);
+    if(el.chips){
+      el.chips.innerHTML = "";
+      el.chips.appendChild(makeChip("Public Record Release"));
+      el.chips.appendChild(makeChip("PDF"));
+      el.chips.appendChild(makeChip(m.mailbox));
     }
 
-    // Body: thread cards
-    const thread = Array.isArray(item.thread) && item.thread.length ? item.thread : [
-      { from: item.from, to: item.to, date: item.date, subject: item.subject, body: item.body }
-    ];
+    if(el.readerHint) el.readerHint.style.display = "none";
 
-    $readerBody.innerHTML = "";
+    const fallbackMeta = {
+      from: m.from,
+      to: m.to,
+      subject: m.subject,
+      dateDisplay: safeText(m.dateDisplay) || safeText(m.date) || ""
+    };
+    const thread = splitThread(m.body, fallbackMeta);
 
-    for (const part of thread) {
-      const card = document.createElement("div");
-      card.className = "msgCard";
-
-      const from = safeText(part.from || item.from || "Unknown");
-      const to = safeText(part.to || item.to || "Unknown");
-      const dt = safeText(part.dateDisplay || part.date || item.dateDisplay || item.date || "");
-
-      const meta = document.createElement("div");
-      meta.className = "msgMeta";
-
-      const who = document.createElement("div");
-      who.className = "who";
-
-      const av = avatarNode(from, normKey(from));
-      av.classList.add("avatar");
-
-      const names = document.createElement("div");
-      names.className = "names";
-      names.innerHTML = `
-        <div class="from">${escapeHTML(from)}</div>
-        <div class="to">to ${escapeHTML(to)}</div>
-      `;
-
-      who.appendChild(av);
-      who.appendChild(names);
-
-      const when = document.createElement("div");
-      when.className = "when";
-      when.textContent = dt;
-
-      meta.appendChild(who);
-      meta.appendChild(when);
-
-      const body = document.createElement("div");
-      body.className = "bodyText";
-      body.textContent = safeText(part.body || "").trim() || "—";
-
-      card.appendChild(meta);
-      card.appendChild(body);
-
-      // Footer row: source PDF open + star toggle
-      const src = document.createElement("div");
-      src.className = "srcRow";
-
-      const left = document.createElement("div");
-      left.className = "srcName";
-
-      if (item.pdf) {
-        left.textContent = `Source PDF: ${item.pdf}`;
-      } else if (item._commitUrl) {
-        left.textContent = "Uploaded (pending index rebuild)";
-      } else {
-        left.textContent = "No source PDF";
+    if(el.thread){
+      el.thread.innerHTML = "";
+      for(const part of thread){
+        el.thread.appendChild(renderMessageCard(part));
       }
+    }
 
-      const right = document.createElement("div");
-      right.style.display = "flex";
-      right.style.gap = "10px";
-
-      const starBtn = document.createElement("button");
-      starBtn.className = "btn";
-      starBtn.textContent = isStarred(item.id) ? "Unstar" : "Star";
-      starBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        toggleStar(item.id);
-        renderReader(item);
-        applyFilters();
-      });
-
-      right.appendChild(starBtn);
-
-      if (item.pdf) {
-        const openBtn = document.createElement("button");
-        openBtn.className = "btn primary";
-        openBtn.textContent = "Open";
-        openBtn.addEventListener("click", () => {
-          // Use a robust URL; if pdf is already a relative filename, keep it in /pdfs/
-          const pdfHref = safeText(item.pdf).includes("/")
-            ? safeText(item.pdf)
-            : `/released/epstein/jeffs-mail/pdfs/${safeText(item.pdf)}`;
-          window.open(pdfHref, "_blank", "noopener");
-        });
-        right.appendChild(openBtn);
-      } else if (item._commitUrl) {
-        const viewCommit = document.createElement("button");
-        viewCommit.className = "btn primary";
-        viewCommit.textContent = "View commit";
-        viewCommit.addEventListener("click", () => window.open(item._commitUrl, "_blank", "noopener"));
-        right.appendChild(viewCommit);
+    if(el.sourceBox && el.sourceName && el.sourceLink){
+      const pdf = safeText(m.pdf);
+      if(pdf){
+        el.sourceBox.style.display = "";
+        el.sourceName.textContent = pdf;
+        el.sourceLink.href = "./pdfs/" + encodeURIComponent(pdf);
+      }else{
+        el.sourceBox.style.display = "none";
       }
+    }
 
-      src.appendChild(left);
-      src.appendChild(right);
-      card.appendChild(src);
-
-      $readerBody.appendChild(card);
+    if(el.closeReader){
+      el.closeReader.style.display = isNarrow() ? "" : "none";
     }
   }
 
-  function toggleStar(id) {
-    const i = starred.indexOf(id);
-    if (i >= 0) starred.splice(i, 1);
-    else starred.push(id);
-    saveJSON(STAR_KEY, starred);
+  function renderMessageCard(part){
+    const card = document.createElement("div");
+    card.className = "msgCard";
+
+    const fromName = cleanName(part.from);
+    const toName = cleanName(part.to);
+    const when = safeText(part.when || "");
+
+    const whoHtml = `
+      <div class="msgWho">
+        ${avatarHtmlForContact(fromName, slugify(fromName))}
+        <div style="min-width:0">
+          <div class="nm">${escapeHtml(fromName)}</div>
+          <div class="to">to ${escapeHtml(toName)} • ${escapeHtml(part.subject || "")}</div>
+        </div>
+      </div>
+    `;
+
+    card.innerHTML = `
+      <div class="msgTop">
+        ${whoHtml}
+        <div class="msgWhen">${escapeHtml(when)}</div>
+      </div>
+      <div class="msgBody">${escapeHtml(part.body || "")}</div>
+    `;
+    return card;
   }
 
-  // Contacts map: key -> {name,count}
-  function buildContactsMap(items) {
-    const map = new Map();
-
-    function add(name, key) {
-      const n = (name || "").trim() || "Unknown";
-      const k = normKey(key || name || n);
-      const prev = map.get(k);
-      if (!prev) map.set(k, { key: k, name: n, count: 1 });
-      else prev.count += 1;
-    }
-
-    for (const it of items) {
-      add(it.contactName || it.from || "Unknown", it.contactKey || it.from || it.contactName);
-    }
-
-    // Ensure Jeff is present as a contact even if parsing misses (helps UI)
-    add("Jeffrey Epstein", "jeffrey epstein");
-
-    return map;
+  function makeChip(text){
+    const d = document.createElement("span");
+    d.className = "chip";
+    d.textContent = text;
+    return d;
   }
 
-  function renderContacts() {
-    const map = buildContactsMap(allItems);
-    const contacts = Array.from(map.values())
-      .sort((a,b) => b.count - a.count || a.name.localeCompare(b.name));
-
-    $contactsList.innerHTML = "";
-
-    for (const c of contacts) {
-      const row = document.createElement("div");
-      row.className = "contactRow" + (normKey(activeContactKey) === c.key ? " active" : "");
-
-      const av = contactAvatarNode(c.name, c.key);
-      const meta = document.createElement("div");
-      meta.className = "cMeta";
-
-      const sub = (isJeffIdentity(c.name) || isJeffIdentity(c.key))
-        ? "Jeff identity"
-        : "Click to filter";
-
-      meta.innerHTML = `
-        <div class="cName">${escapeHTML(c.name)}</div>
-        <div class="cSub">${escapeHTML(sub)}</div>
-      `;
-
-      const count = document.createElement("div");
-      count.className = "cCount";
-      count.textContent = String(c.count);
-
-      row.appendChild(av);
-      row.appendChild(meta);
-      row.appendChild(count);
-
-      row.addEventListener("click", () => {
-        activeContactKey = (activeContactKey && normKey(activeContactKey) === c.key) ? "" : c.key;
-        saveJSON(UI_KEY, { mailbox: activeMailbox, contactKey: activeContactKey, query });
-        applyFilters();
-      });
-
-      $contactsList.appendChild(row);
-    }
-  }
-
-  // Subjects: [{label, query}]
-  function renderSubjects() {
-    $subjectsList.innerHTML = "";
-    const arr = Array.isArray(subjects) ? subjects : [];
-    $subjectsCount.textContent = String(arr.length);
-
-    if (!arr.length) {
-      const chip = document.createElement("div");
-      chip.className = "chip";
-      chip.style.opacity = ".75";
-      chip.style.cursor = "default";
-      chip.textContent = "No saved subjects yet";
-      $subjectsList.appendChild(chip);
-      return;
-    }
-
-    for (const s of arr) {
-      const q = safeText(s.query || "").trim();
-      const label = safeText(s.label || q || "Subject").trim();
-
-      const chip = document.createElement("div");
-      chip.className = "chip";
-      chip.innerHTML = `<span>${escapeHTML(label)}</span><span class="x">✕</span>`;
-
-      chip.addEventListener("click", (e) => {
-        // If clicked near the X, remove; otherwise apply
-        const target = e.target;
-        const wantsRemove = target && target.classList && target.classList.contains("x");
-        if (wantsRemove) {
-          subjects = subjects.filter(x => x !== s);
-          saveJSON(SUBJECTS_KEY, subjects);
-          renderSubjects();
-          return;
-        }
-        query = q;
-        $search.value = q;
-        saveJSON(UI_KEY, { mailbox: activeMailbox, contactKey: activeContactKey, query });
-        applyFilters();
-      });
-
-      $subjectsList.appendChild(chip);
-    }
-  }
-
-  // -------- Mobile overlay helpers --------
-  function openReaderOnMobile() {
-    if (window.matchMedia("(max-width: 980px)").matches) {
-      document.body.classList.add("readerOpen");
-      document.body.style.overflow = "hidden";
-    }
-  }
-  function closeReaderOnMobile() {
-    document.body.classList.remove("readerOpen");
-    document.body.style.overflow = "";
-  }
-
-  // -------- Compose modal --------
-  function openCompose() {
-    $composeStatus.innerHTML = "";
-    $composeModal.classList.add("open");
-    $composeModal.setAttribute("aria-hidden", "false");
-    document.body.style.overflow = "hidden";
-    $cSubject.focus();
-  }
-  function closeCompose() {
-    $composeModal.classList.remove("open");
-    $composeModal.setAttribute("aria-hidden", "true");
-    document.body.style.overflow = "";
-  }
-
-  function setComposeStatus(ok, msg) {
-    const cls = ok ? "ok" : "bad";
-    $composeStatus.innerHTML = `<span class="${cls}">${escapeHTML(msg)}</span>`;
-  }
-
-  function buildComposeText(from, to, subject, body) {
-    const now = new Date();
-    const stamp = now.toLocaleString();
-    // Keep it simple so your PDF parser (and humans) can read it
-    return [
-      `From: ${from}`,
-      `To: ${to}`,
-      `Date: ${stamp}`,
-      `Subject: ${subject || "(no subject)"}`,
-      "",
-      body || ""
-    ].join("\n");
-  }
-
-  function downloadBytes(bytes, filename) {
-    const blob = new Blob([bytes], { type: "application/pdf" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
-  }
-
-  async function uploadComposePdf({ pdfBase64, subject, fromName, toName, createdAtISO }) {
-    if (!WORKER_URL || !WORKER_KEY) {
-      throw new Error("Upload not configured. Check config.js JEFFS_MAIL_UPLOAD_URL and JEFFS_MAIL_UPLOAD_KEY.");
-    }
-
-    const r = await fetch(WORKER_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CT-Key": WORKER_KEY,
-      },
-      body: JSON.stringify({
-        subject,
-        fromName,
-        toName,
-        createdAtISO,
-        pdfBase64,
-      }),
-    });
-
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok || !j.ok) {
-      const detail = j && j.error ? j.error : `HTTP ${r.status}`;
-      throw new Error(`Upload failed: ${detail}`);
-    }
-    return j;
-  }
-
-  // -------- Events --------
-  $clear.addEventListener("click", () => {
-    query = "";
-    $search.value = "";
-    saveJSON(UI_KEY, { mailbox: activeMailbox, contactKey: activeContactKey, query });
-    applyFilters();
-  });
-
-  $search.addEventListener("input", () => {
-    query = $search.value || "";
-    saveJSON(UI_KEY, { mailbox: activeMailbox, contactKey: activeContactKey, query });
-    applyFilters();
-  });
-
-  for (const btn of [$inboxBtn, $sentBtn, $starBtn]) {
-    btn.addEventListener("click", () => {
-      activeMailbox = btn.getAttribute("data-mailbox") || "inbox";
-
-      // update active styles
-      [$inboxBtn, $sentBtn, $starBtn].forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-
-      saveJSON(UI_KEY, { mailbox: activeMailbox, contactKey: activeContactKey, query });
-      applyFilters();
-    });
-  }
-
-  $closeReaderBtn.addEventListener("click", closeReaderOnMobile);
-
-  // Close reader on ESC (mobile)
-  window.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
-      closeReaderOnMobile();
-      closeCompose();
-    }
-  });
-
-  // Compose
-  $composeBtn.addEventListener("click", openCompose);
-  $composeClose.addEventListener("click", closeCompose);
-  $composeModal.addEventListener("click", (e) => {
-    if (e.target === $composeModal) closeCompose();
-  });
-
-  $downloadCopyBtn.addEventListener("click", () => {
-    const from = safeText($cFrom.value).trim() || "Public Visitor";
-    const to = "Jeffrey Epstein";
-    const subject = safeText($cSubject.value).trim() || "(no subject)";
-    const body = safeText($cBody.value);
-
-    const txt = buildComposeText(from, to, subject, body);
-    const bytes = makeSimplePdfBytes(txt);
-    const dt = new Date();
-    const name = `compose_${dt.toISOString().replace(/[:.]/g, "-")}.pdf`;
-    downloadBytes(bytes, name);
-    setComposeStatus(true, "Downloaded a copy. (Send will upload to the public-record simulation.)");
-  });
-
-  $sendBtn.addEventListener("click", async () => {
-    try {
-      const from = safeText($cFrom.value).trim() || "Public Visitor";
-      const to = "Jeffrey Epstein";
-      const subject = safeText($cSubject.value).trim() || "(no subject)";
-      const body = safeText($cBody.value);
-
-      if (!subject && !body) {
-        setComposeStatus(false, "Please add a subject or message body.");
-        return;
-      }
-
-      $sendBtn.disabled = true;
-      $sendBtn.textContent = "Sending…";
-      setComposeStatus(true, "Generating PDF…");
-
-      const createdAtISO = new Date().toISOString();
-      const txt = buildComposeText(from, to, subject, body);
-      const pdfBytes = makeSimplePdfBytes(txt);
-      const pdfBase64 = bytesToBase64(pdfBytes);
-
-      setComposeStatus(true, "Uploading to CivicThreat public-record simulation…");
-      const res = await uploadComposePdf({
-        pdfBase64,
-        subject,
-        fromName: from,
-        toName: to,
-        createdAtISO
-      });
-
-      // Save outbox item locally so it appears immediately in Sent + Contacts
-      const outItem = {
-        id: `out_${Date.now()}`,
-        from,
-        to,
-        subject,
-        body,
-        createdAtISO,
-        dateDisplay: new Date(createdAtISO).toLocaleString(),
-        pendingIndex: true,
-        pdfPath: res.path || "",
-        commitUrl: res.html_url || "",
-        snippet: (body || "").trim().slice(0, 180)
-      };
-      outbox.unshift(outItem);
-      saveJSON(OUTBOX_KEY, outbox);
-
-      // Update local UI immediately
-      allItems = mergeOutbox((indexData?.items || []).slice());
-      activeMailbox = "sent";
-      [$inboxBtn, $sentBtn, $starBtn].forEach(b => b.classList.remove("active"));
-      $sentBtn.classList.add("active");
-
-      query = "";
-      $search.value = "";
-
-      applyFilters();
-
-      setComposeStatus(true, "Sent! It will appear in the main index after the automated rebuild completes (usually within ~1 minute).");
-      // Keep modal open briefly so user sees status; close after short delay
-      setTimeout(() => {
-        closeCompose();
-        // clear compose fields lightly
-        $cSubject.value = "";
-        $cBody.value = "";
-        $composeStatus.innerHTML = "";
-      }, 800);
-
-    } catch (err) {
-      setComposeStatus(false, err.message || String(err));
-    } finally {
-      $sendBtn.disabled = false;
-      $sendBtn.textContent = "Send";
-    }
-  });
-
-  // Subjects add/clear
-  $addSubjectBtn.addEventListener("click", () => {
-    const term = (prompt("Save a Subject keyword/phrase (used as a search filter):") || "").trim();
-    if (!term) return;
-    const label = term.length > 28 ? term.slice(0, 28) + "…" : term;
-    subjects = Array.isArray(subjects) ? subjects : [];
-    subjects.unshift({ label, query: term });
-    // De-dupe by query
-    const seen = new Set();
-    subjects = subjects.filter(s => {
-      const q = normKey(s.query);
-      if (!q || seen.has(q)) return false;
-      seen.add(q);
-      return true;
-    }).slice(0, 20);
-
-    saveJSON(SUBJECTS_KEY, subjects);
-    renderSubjects();
-  });
-
-  $clearSubjectsBtn.addEventListener("click", () => {
-    if (!confirm("Clear all saved Subjects on this device?")) return;
-    subjects = [];
-    saveJSON(SUBJECTS_KEY, subjects);
-    renderSubjects();
-  });
-
-  // -------- Utilities --------
-  function escapeHTML(s) {
-    return String(s || "")
+  function escapeHtml(s){
+    return String(s||"")
       .replace(/&/g,"&amp;")
       .replace(/</g,"&lt;")
       .replace(/>/g,"&gt;")
       .replace(/"/g,"&quot;")
-      .replace(/'/g,"&#039;");
+      .replace(/'/g,"&#39;");
   }
 
-  function showIndexError(err) {
-    $mailList.innerHTML = "";
-    const card = document.createElement("div");
-    card.className = "mailItem";
-    card.innerHTML = `
-      <div class="miTop">
-        <div class="miFrom">Failed to load index.json</div>
-        <div class="miDate"></div>
-      </div>
-      <div class="miSub">Check paths + GitHub Pages</div>
-      <div class="miSnip">${escapeHTML(String(err?.message || err))}</div>
-    `;
-    $mailList.appendChild(card);
+  function updateCounts(){
+    const inbox = state.all.filter(m => m.mailbox === "inbox").length;
+    const sent = state.all.filter(m => m.mailbox === "sent").length;
+    const star = Array.from(state.starred).length;
 
-    $readerBody.innerHTML = "";
-    const msg = document.createElement("div");
-    msg.className = "msgCard";
-    msg.innerHTML = `<div class="bodyText">Index load error. Make sure <strong>/released/epstein/jeffs-mail/index.json</strong> exists and is accessible.</div>`;
-    $readerBody.appendChild(msg);
+    if(el.inboxCount) el.inboxCount.textContent = String(inbox);
+    if(el.sentCount) el.sentCount.textContent = String(sent);
+    if(el.starCount) el.starCount.textContent = String(star);
   }
 
-  // -------- Init --------
-  async function init() {
-    // Restore UI state
-    activeMailbox = uiState.mailbox || "inbox";
-    activeContactKey = uiState.contactKey || "";
-    query = uiState.query || "";
-    $search.value = query;
+  function rebuildSubjectsUI(){
+    if(!el.subjectsCount || !el.subjectsList) return;
+    el.subjectsCount.textContent = String(state.subjects.length);
+    el.subjectsList.innerHTML = "";
 
-    [$inboxBtn, $sentBtn, $starBtn].forEach(b => b.classList.remove("active"));
-    if (activeMailbox === "sent") $sentBtn.classList.add("active");
-    else if (activeMailbox === "starred") $starBtn.classList.add("active");
-    else $inboxBtn.classList.add("active");
-
-    try {
-      indexData = await fetchIndex();
-      const baseItems = Array.isArray(indexData.items) ? indexData.items : [];
-      allItems = mergeOutbox(baseItems);
-
-      // If star ids include items no longer present, keep anyway (harmless)
-
-      applyFilters();
-
-    } catch (err) {
-      showIndexError(err);
+    for(const s of state.subjects){
+      const btn = document.createElement("div");
+      btn.className = "cbtn ep-box";
+      btn.innerHTML = `<div class="mid"><div class="nm">${escapeHtml(s.name || "Subject")}</div></div><div class="meta"><div class="ct">↩</div></div>`;
+      btn.addEventListener("click", () => {
+        state.q = String(s.q || "");
+        if(el.search) el.search.value = state.q;
+        draw();
+      });
+      el.subjectsList.appendChild(btn);
     }
   }
 
-  document.addEventListener("DOMContentLoaded", init);
+  function openSubjectModal(){
+    if(!el.subjectModal || !el.subjectName) return;
+    el.subjectName.value = "";
+    el.subjectModal.classList.add("open");
+    setTimeout(() => el.subjectName && el.subjectName.focus(), 30);
+  }
+  function closeSubjectModal(){
+    if(!el.subjectModal) return;
+    el.subjectModal.classList.remove("open");
+  }
+
+  function openComposeModal(){
+    if(!el.composeModal) return;
+    if(el.composeStatus) el.composeStatus.textContent = "";
+    if(el.composeFrom) el.composeFrom.value = el.composeFrom.value || "Public Visitor";
+    if(el.composeSubject) el.composeSubject.value = "";
+    if(el.composeBody) el.composeBody.value = "";
+    el.composeModal.classList.add("open");
+    setTimeout(() => el.composeSubject && el.composeSubject.focus(), 30);
+  }
+  function closeComposeModal(){
+    if(!el.composeModal) return;
+    el.composeModal.classList.remove("open");
+  }
+
+  async function sendCompose(){
+    const fromName = safeText(el.composeFrom ? el.composeFrom.value : "") || "Public Visitor";
+    const toName = "Jeffrey Epstein";
+    const subject = safeText(el.composeSubject ? el.composeSubject.value : "");
+    const body = String(el.composeBody ? el.composeBody.value : "").trim();
+
+    if(!subject){ alert("Please enter a subject."); return; }
+    if(!body){ alert("Please write a message."); return; }
+
+    const createdAtISO = new Date().toISOString();
+    const pdfBlob = buildSimplePdf({ fromName, toName, subject, body, createdAtISO });
+
+    const cfg = getUploadConfig();
+    if(!cfg.url){
+      alert("Upload URL is not configured. Add CT_CONFIG.JEFFS_MAIL_UPLOAD_URL in /config.js.");
+      return;
+    }
+    if(!cfg.key){
+      alert("Upload key is not configured. Add CT_CONFIG.JEFFS_MAIL_UPLOAD_KEY in /config.js (matches your Worker secret).");
+      return;
+    }
+
+    if(el.composeStatus) el.composeStatus.textContent = "Uploading…";
+    const pdfBase64 = await blobToBase64(pdfBlob);
+
+    const payload = { fromName, toName, subject, body, createdAtISO, pdfBase64 };
+
+    const r = await fetch(cfg.url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CT-Key": cfg.key
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if(!r.ok){
+      const txt = await r.text().catch(()=> "");
+      if(el.composeStatus) el.composeStatus.textContent = `Upload failed (${r.status}). ${txt}`.slice(0,200);
+      throw new Error(`Upload failed: HTTP ${r.status}`);
+    }
+
+    const res = await r.json().catch(()=> ({}));
+    if(el.composeStatus) el.composeStatus.textContent = "Sent (simulation). It will appear after ingest/rebuild.";
+
+    try{
+      const local = {
+        id: "local-"+Date.now(),
+        mailbox: "sent",
+        subject,
+        from: fromName,
+        to: toName,
+        date: createdAtISO,
+        dateDisplay: new Date(createdAtISO).toDateString(),
+        snippet: body.slice(0,160),
+        body,
+        pdf: (res && res.pdf) ? String(res.pdf) : "",
+      };
+      state.all.unshift(local);
+      updateCounts();
+      rebuildContacts();
+      draw();
+    }catch(_){}
+
+    setTimeout(closeComposeModal, 600);
+  }
+
+  function saveCurrentSearchAsSubject(name){
+    const nm = safeText(name);
+    const q = safeText(state.q || "");
+    if(!nm || !q) return;
+
+    const id = "sub_" + Date.now().toString(36);
+    state.subjects.unshift({ id, name: nm, q });
+
+    saveSubjects();
+    rebuildSubjectsUI();
+  }
+
+  function wireAccordions(){
+    const wire = (acc, head) => {
+      if(!acc || !head) return;
+      head.addEventListener("click", () => {
+        acc.classList.toggle("open");
+      });
+    };
+    wire(el.contactsAcc, el.contactsToggle);
+    wire(el.subjectsAcc, el.subjectsToggle);
+  }
+
+  function draw(){
+    applyFilters();
+    drawList();
+
+    if(state.selectedId){
+      const m = state.view.find(x => x.id === state.selectedId) || state.all.find(x => x.id === state.selectedId);
+      if(m) renderReader(m);
+    }else{
+      if(el.thread) el.thread.innerHTML = "";
+      if(el.msgTitle) el.msgTitle.textContent = "MESSAGE";
+      if(el.chips) el.chips.innerHTML = "";
+      if(el.sourceBox) el.sourceBox.style.display = "none";
+      if(el.readerHint) el.readerHint.style.display = "";
+    }
+  }
+
+  // Age gate
+  function hasConsent(){
+    try{ return localStorage.getItem(CONSENT_KEY) === "yes"; }catch(_){ return false; }
+  }
+  function setConsentYes(){
+    try{ localStorage.setItem(CONSENT_KEY, "yes"); }catch(_){}
+  }
+  function showGate(){
+    if(!el.gate) return;
+    el.gate.classList.add("open");
+  }
+  function hideGate(){
+    if(!el.gate) return;
+    el.gate.classList.remove("open");
+  }
+
+  // Boot
+  async function boot(){
+    // Header avatar
+    if(el.jeffAvatar && el.jeffFallback){
+      el.jeffAvatar.src = JEFF_AVATAR_URL;
+      el.jeffAvatar.addEventListener("error", () => {});
+    }
+
+    // 21+ gate
+    if(!hasConsent()){
+      showGate();
+      if(el.gateEnter){
+        el.gateEnter.addEventListener("click", () => {
+          if(!el.gateCheck || !el.gateCheck.checked){
+            alert("Please confirm you are 21+ to continue.");
+            return;
+          }
+          setConsentYes();
+          hideGate();
+        });
+      }
+      if(el.gateLeave){
+        el.gateLeave.addEventListener("click", () => {
+          window.location.href = "/";
+        });
+      }
+    }else{
+      hideGate();
+    }
+
+    loadStarred();
+    loadContactFilter();
+    loadSubjects();
+
+    const data = await fetchJsonStrict(INDEX_URL);
+    state.data = data;
+    state.all = normalizeItems(data);
+
+    rebuildContacts();
+    updateCounts();
+    rebuildSubjectsUI();
+    wireAccordions();
+
+    // Nav buttons
+    [el.btnInbox, el.btnSent, el.btnStarred].forEach(btn => {
+      if(!btn) return;
+      btn.addEventListener("click", () => {
+        setActiveFolder(btn.getAttribute("data-folder") || "inbox");
+        closeReaderOverlay();
+      });
+    });
+
+    // Search
+    if(el.search){
+      el.search.addEventListener("input", () => {
+        state.q = el.search.value || "";
+        draw();
+      });
+    }
+    if(el.clear){
+      el.clear.addEventListener("click", () => {
+        state.q = "";
+        if(el.search) el.search.value = "";
+        state.contact = "all";
+        saveContactFilter();
+        drawContacts();
+        draw();
+      });
+    }
+
+    // Reader close button
+    if(el.closeReader){
+      el.closeReader.addEventListener("click", closeReaderOverlay);
+    }
+    window.addEventListener("resize", () => {
+      if(!isNarrow()) closeReaderOverlay();
+      if(el.closeReader) el.closeReader.style.display = isNarrow() ? "" : "none";
+    });
+
+    // Subjects
+    if(el.btnAddSubject){
+      el.btnAddSubject.addEventListener("click", () => {
+        if(!safeText(state.q)){
+          alert("Type a search term first, then press + Add.");
+          return;
+        }
+        openSubjectModal();
+      });
+    }
+    if(el.subjectCancel) el.subjectCancel.addEventListener("click", closeSubjectModal);
+    if(el.subjectSave){
+      el.subjectSave.addEventListener("click", () => {
+        const nm = safeText(el.subjectName ? el.subjectName.value : "");
+        if(!nm){
+          alert("Please enter a short label for this subject.");
+          return;
+        }
+        if(!safeText(state.q)){
+          alert("Search term is empty.");
+          return;
+        }
+        saveCurrentSearchAsSubject(nm);
+        closeSubjectModal();
+      });
+    }
+    if(el.subjectModal){
+      el.subjectModal.addEventListener("click", (e) => {
+        if(e.target === el.subjectModal) closeSubjectModal();
+      });
+    }
+    if(el.btnClearSubjects){
+      el.btnClearSubjects.addEventListener("click", () => {
+        if(!confirm("Clear all saved Subjects for this browser?")) return;
+        state.subjects = [];
+        saveSubjects();
+        rebuildSubjectsUI();
+      });
+    }
+
+    // Compose
+    if(el.composeBtn){
+      el.composeBtn.addEventListener("click", () => {
+        openComposeModal();
+      });
+    }
+    if(el.composeCancel) el.composeCancel.addEventListener("click", closeComposeModal);
+    if(el.composeSend){
+      el.composeSend.addEventListener("click", () => {
+        setTimeout(() => {
+          sendCompose().catch(err => {
+            console.error(err);
+            alert("Compose upload failed. Check your upload key/worker logs.");
+          });
+        }, 0);
+      });
+    }
+    if(el.composeModal){
+      el.composeModal.addEventListener("click", (e) => {
+        if(e.target === el.composeModal) closeComposeModal();
+      });
+    }
+
+    // Default folder
+    setActiveFolder("inbox");
+    draw();
+  }
+
+  boot().catch(err => {
+    console.error(err);
+    if(el.items){
+      el.items.innerHTML = `<div class="legal" style="padding:10px">Index load error. Make sure <code>/released/epstein/jeffs-mail/index.json</code> exists and is accessible.</div>`;
+    }
+    if(el.thread){
+      el.thread.innerHTML = `<div class="legal" style="padding:10px">Index load error. Make sure <code>/released/epstein/jeffs-mail/index.json</code> exists and is accessible.</div>`;
+    }
+  });
+
 })();
