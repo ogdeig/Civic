@@ -19,5 +19,11 @@ window.CT_CONFIG = {
 
     // Optional: leave blank if you are NOT enforcing an API key in Apps Script
     apiKey: ""
-  }
+  },
+
+  // Jeffs Mail: Cloudflare Worker upload endpoint (Compose → Send)
+  // NOTE: This key is public in config.js, so it's a lightweight gate, not true security.
+  // If you want real abuse protection, we should add Cloudflare Turnstile next.
+  JEFFS_MAIL_UPLOAD_URL: "https://jeffs-mail-upload.clintondeig.workers.dev/upload",
+  JEFFS_MAIL_UPLOAD_KEY: "sgfjghkhguigiyt9///fjkgjddyutyu"
 };
