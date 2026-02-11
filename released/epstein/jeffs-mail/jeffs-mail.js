@@ -1,977 +1,1027 @@
-/* jeffs-mail.js — Jeffs Mail (v2)
-   - Thread rendering via index.json items[].thread[]
-   - Jeff identity normalization (OCR-safe)
-   - Contacts de-dupe + Jeff special handling
-   - Subjects saved filters (localStorage)
-   - Compose simulation (jsPDF download + outbox export)
-*/
-(function(){
+(() => {
   "use strict";
 
-  // ----------------------------
-  // Config
-  // ----------------------------
-  const INDEX_URL = "./index.json?v=14";
-  const JEFF_AVATAR_URL = "./assets/jeff.jpg";
+  // -------- Config / URLs --------
+  const CFG = window.CT_CONFIG || {};
+  const WORKER_URL = (CFG.JEFFS_MAIL_UPLOAD_URL || "").trim();
+  const WORKER_KEY = (CFG.JEFFS_MAIL_UPLOAD_KEY || "").trim();
 
-  const SUBJECTS_KEY = "ct_jeffs_mail_subjects_v1";
-  const OUTBOX_KEY = "ct_jeffs_mail_outbox_v1";
-  const STAR_KEY = "ct_jeffs_mail_starred_v1";
-
-  const JEFF_EMAILS = new Set([
-    "jeevacation@gmail.com",
-    "jeevacation@gmail.con",
-    "jeevacation@gmail.comailto",
-  ]);
-
-  const JEFF_TOKENS = [
-    "jeffrey epstein",
-    "jeff epstein",
-    "jeffrey e epstein",
-    "jeffrey e. epstein",
-    "jeffrey e stein",
-    "jeffrey stein",
-    "jeevacation",
-    "lsj"
+  // Robust base URL handling (works for .html and extensionless routes)
+  const href = window.location.href;
+  const INDEX_URLS = [
+    new URL("index.json", href).toString(),
+    "/released/epstein/jeffs-mail/index.json",
   ];
 
-  // ----------------------------
-  // DOM helpers
-  // ----------------------------
-  const $ = (sel, root=document) => root.querySelector(sel);
+  const JEFF_PFP_URL = "/released/epstein/jeffs-mail/assets/jeff.jpg";
 
-  const el = {
-    list: $("#jmList"),
-    readCard: $("#jmReadCard"),
-    readPane: $("#jmReadPane"),
-    readerShell: $("#jmReaderShell"),
-    readerBack: $("#jmReaderBack"),
-    readingMeta: $("#jmReadingMeta"),
+  // -------- LocalStorage keys --------
+  const STAR_KEY = "ct_jeffs_mail_starred_v3";
+  const SUBJECTS_KEY = "ct_jeffs_mail_subjects_v3";
+  const OUTBOX_KEY = "ct_jeffs_mail_outbox_v1";
+  const UI_KEY = "ct_jeffs_mail_ui_v3";
 
-    search: $("#jmSearch"),
-    btnClearSearch: $("#jmClearSearch"),
+  // -------- Identity rules --------
+  const JEFF_TOKENS = [
+    "jeevacation@gmail.com",
+    "jeevacation@gmail.con",
+    "jeevacation@gmail",
+    "jeevacation@gmail.comailto",
+    "mailto:jeevacation@gmail.com",
+    "jeffrey epstein",
+    "jeff epstein",
+    "jeffrey e stein",
+    "lsj",
+    "je",
+  ];
 
-    folderInbox: $("#jmFolderInbox"),
-    folderSent: $("#jmFolderSent"),
-    folderStarred: $("#jmFolderStarred"),
+  function isJeffIdentity(s) {
+    const t = (s || "").toString().toLowerCase();
+    if (!t) return false;
+    return JEFF_TOKENS.some(k => t.includes(k));
+  }
 
-    countInbox: $("#jmCountInbox"),
-    countSent: $("#jmCountSent"),
-    countStarred: $("#jmCountStarred"),
+  function normKey(s) {
+    return (s || "")
+      .toString()
+      .trim()
+      .replace(/\s+/g, " ")
+      .toLowerCase();
+  }
 
-    contactsList: $("#jmContactsList"),
-    contactsCount: $("#jmContactsCount"),
-    contactsHeader: $("#jmContactsHeader"),
-    contactsPanel: $("#jmContactsPanel"),
+  function safeText(s) {
+    return (s == null ? "" : String(s));
+  }
 
-    subjectsList: $("#jmSubjectsList"),
-    subjectsHeader: $("#jmSubjectsHeader"),
-    subjectsPanel: $("#jmSubjectsPanel"),
-    btnAddSubject: $("#jmAddSubject"),
-    btnClearSubjects: $("#jmClearSubjects"),
+  function escapePdfText(str) {
+    // Escape for PDF literal strings
+    return String(str)
+      .replace(/\\/g, "\\\\")
+      .replace(/\(/g, "\\(")
+      .replace(/\)/g, "\\)");
+  }
 
-    btnClearFilters: $("#jmClearFilters"),
+  // -------- Minimal PDF generator (no external libs) --------
+  // Produces a single-page PDF with Helvetica and wrapped text.
+  function makeSimplePdfBytes(text) {
+    const lines = wrapText(String(text), 92); // characters per line approx for 12pt @ letter width
+    const fontObj = "3 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n";
 
-    // Compose
-    composeBtn: $("#jmComposeBtn"),
-    composeModal: $("#jmComposeModal"),
-    composeFrom: $("#jmComposeFrom"),
-    composeTo: $("#jmComposeTo"),
-    composeSubject: $("#jmComposeSubject"),
-    composeBody: $("#jmComposeBody"),
-    composeCancel: $("#jmComposeCancel"),
-    composeSend: $("#jmComposeSend"),
-    composeExport: $("#jmComposeExport"),
-    composeHint: $("#jmComposeHint"),
-  };
+    // Content stream: 12pt font, start near top, line height 14
+    let y = 760;
+    const startX = 54;
+    const leading = 14;
 
-  // ----------------------------
-  // State
-  // ----------------------------
-  const state = {
-    all: [],
-    view: [],
-    folder: "inbox", // inbox|sent|starred
-    activeId: "",
-    activeContactKey: "",
-    activeSubject: "",
-    subjects: [],
-    starred: new Set(),
-    contacts: [], // {key,name,count}
-    loading: true,
-  };
+    const contentParts = [];
+    contentParts.push("BT");
+    contentParts.push(`/F1 12 Tf`);
+    contentParts.push(`${startX} ${y} Td`);
+    contentParts.push(`${leading} TL`);
 
-  // ----------------------------
-  // String helpers
-  // ----------------------------
-  function safeText(x){ return (x === null || x === undefined) ? "" : String(x); }
-  function esc(s){
-    return safeText(s)
+    for (const ln of lines) {
+      const t = escapePdfText(ln);
+      contentParts.push(`(${t}) Tj`);
+      contentParts.push("T*");
+    }
+    contentParts.push("ET");
+
+    const content = contentParts.join("\n") + "\n";
+    const contentBytes = new TextEncoder().encode(content);
+
+    // Objects
+    // 1: Catalog, 2: Pages, 4: Page, 5: Contents
+    const objects = [];
+    objects.push("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
+    objects.push("2 0 obj\n<< /Type /Pages /Kids [4 0 R] /Count 1 >>\nendobj\n");
+    objects.push(fontObj);
+
+    objects.push("4 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 5 0 R >>\nendobj\n");
+
+    objects.push(`5 0 obj\n<< /Length ${contentBytes.length} >>\nstream\n${content}endstream\nendobj\n`);
+
+    // Build PDF with xref
+    let pdf = "%PDF-1.4\n";
+    const offsets = [0];
+    for (const obj of objects) {
+      offsets.push(pdf.length);
+      pdf += obj;
+    }
+
+    const xrefStart = pdf.length;
+    pdf += "xref\n";
+    pdf += `0 ${objects.length + 1}\n`;
+    pdf += "0000000000 65535 f \n";
+    for (let i = 1; i <= objects.length; i++) {
+      const off = offsets[i];
+      pdf += `${String(off).padStart(10, "0")} 00000 n \n`;
+    }
+    pdf += "trailer\n";
+    pdf += `<< /Size ${objects.length + 1} /Root 1 0 R >>\n`;
+    pdf += "startxref\n";
+    pdf += `${xrefStart}\n`;
+    pdf += "%%EOF\n";
+
+    // Convert string + embed content bytes properly:
+    // Note: we already inserted content string directly; contentBytes used only for length.
+    // This is fine for ASCII/UTF-8 basic usage. Keep message text mostly ASCII for best rendering.
+    return new TextEncoder().encode(pdf);
+  }
+
+  function wrapText(text, maxLen) {
+    // Keep existing newlines, wrap each line
+    const rawLines = String(text).replace(/\r\n/g, "\n").split("\n");
+    const out = [];
+    for (const raw of rawLines) {
+      if (raw.length <= maxLen) {
+        out.push(raw);
+        continue;
+      }
+      const words = raw.split(/\s+/);
+      let line = "";
+      for (const w of words) {
+        const add = line ? (line + " " + w) : w;
+        if (add.length > maxLen) {
+          if (line) out.push(line);
+          line = w;
+        } else {
+          line = add;
+        }
+      }
+      if (line) out.push(line);
+    }
+    return out;
+  }
+
+  function bytesToBase64(bytes) {
+    let bin = "";
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+    }
+    return btoa(bin);
+  }
+
+  // -------- UI refs --------
+  const el = (id) => document.getElementById(id);
+
+  const $search = el("jmSearch");
+  const $clear = el("jmClear");
+  const $mailList = el("jmMailList");
+  const $listTitle = el("jmListTitle");
+  const $listCount = el("jmListCount");
+  const $readerTitle = el("jmReaderTitle");
+  const $readerTags = el("jmReaderTags");
+  const $readerBody = el("jmReaderBody");
+  const $reader = el("jmReader");
+  const $closeReaderBtn = el("jmCloseReaderBtn");
+
+  const $inboxBtn = el("jmInboxBtn");
+  const $sentBtn = el("jmSentBtn");
+  const $starBtn = el("jmStarBtn");
+  const $inboxCount = el("jmInboxCount");
+  const $sentCount = el("jmSentCount");
+  const $starCount = el("jmStarCount");
+
+  const $contactsList = el("jmContactsList");
+  const $contactsCount = el("jmContactsCount");
+
+  const $subjectsList = el("jmSubjectsList");
+  const $subjectsCount = el("jmSubjectsCount");
+  const $addSubjectBtn = el("jmAddSubjectBtn");
+  const $clearSubjectsBtn = el("jmClearSubjectsBtn");
+
+  // Compose modal
+  const $composeBtn = el("jmComposeBtn");
+  const $composeModal = el("jmComposeModal");
+  const $composeClose = el("jmComposeClose");
+  const $cFrom = el("jmCFrom");
+  const $cTo = el("jmCTo");
+  const $cSubject = el("jmCSubject");
+  const $cBody = el("jmCBody");
+  const $sendBtn = el("jmSendBtn");
+  const $downloadCopyBtn = el("jmDownloadCopyBtn");
+  const $composeStatus = el("jmComposeStatus");
+
+  // -------- State --------
+  let indexData = null;
+  let allItems = [];
+  let filteredItems = [];
+  let activeMailbox = "inbox"; // inbox|sent|starred
+  let activeContactKey = "";   // contact filter
+  let activeId = "";           // selected item id
+  let query = "";
+  let starred = loadJSON(STAR_KEY, []);
+  let subjects = loadJSON(SUBJECTS_KEY, []);
+  let outbox = loadJSON(OUTBOX_KEY, []);
+
+  // Persist small UI state (mailbox/contact/query)
+  const uiState = loadJSON(UI_KEY, { mailbox: "inbox", contactKey: "", query: "" });
+
+  // -------- Storage helpers --------
+  function loadJSON(key, fallback) {
+    try {
+      const s = localStorage.getItem(key);
+      if (!s) return fallback;
+      return JSON.parse(s);
+    } catch { return fallback; }
+  }
+  function saveJSON(key, v) {
+    try { localStorage.setItem(key, JSON.stringify(v)); } catch {}
+  }
+
+  // -------- Avatars --------
+  function hashHue(str) {
+    let h = 0;
+    for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+    return h % 360;
+  }
+  function avatarNode(name, key) {
+    const wrap = document.createElement("div");
+    wrap.className = "avatar";
+    const display = safeText(name).trim();
+
+    if (!display || display.toLowerCase() === "unknown") {
+      // Unknown red "no" icon
+      const no = document.createElement("span");
+      no.className = "noIcon";
+      wrap.appendChild(no);
+      return wrap;
+    }
+
+    if (isJeffIdentity(display) || isJeffIdentity(key)) {
+      const img = document.createElement("img");
+      img.alt = "Jeff";
+      img.src = JEFF_PFP_URL;
+      wrap.appendChild(img);
+      return wrap;
+    }
+
+    const letter = (display[0] || "?").toUpperCase();
+    const hue = hashHue(key || display);
+    wrap.style.background = `hsl(${hue} 60% 28% / .95)`;
+    wrap.style.borderColor = "rgba(255,255,255,.16)";
+    wrap.style.fontWeight = "950";
+    wrap.style.fontSize = "14px";
+    wrap.textContent = letter;
+    return wrap;
+  }
+
+  function contactAvatarNode(name, key) {
+    const a = document.createElement("div");
+    a.className = "cAvatar";
+
+    const display = safeText(name).trim();
+    if (!display || display.toLowerCase() === "unknown") {
+      const no = document.createElement("span");
+      no.className = "noIcon";
+      a.appendChild(no);
+      return a;
+    }
+
+    if (isJeffIdentity(display) || isJeffIdentity(key)) {
+      const img = document.createElement("img");
+      img.alt = "Jeff";
+      img.src = JEFF_PFP_URL;
+      a.appendChild(img);
+      return a;
+    }
+
+    const letter = (display[0] || "?").toUpperCase();
+    const hue = hashHue(key || display);
+    a.style.background = `hsl(${hue} 62% 28% / .95)`;
+    a.style.color = "rgba(232,235,243,.96)";
+    a.style.fontWeight = "950";
+    a.style.fontSize = "13px";
+    a.textContent = letter;
+    return a;
+  }
+
+  // -------- Index loading --------
+  async function fetchIndex() {
+    let lastErr = null;
+    for (const url of INDEX_URLS) {
+      try {
+        const r = await fetch(url, { cache: "no-store" });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const j = await r.json();
+        return j;
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    throw lastErr || new Error("Failed to load index.json");
+  }
+
+  function mergeOutbox(items) {
+    // Convert outbox records into items compatible with rendering
+    const outItems = (outbox || []).map((o) => {
+      const id = o.id || `out_${o.createdAt || Date.now()}`;
+      return {
+        id,
+        mailbox: "sent",
+        subject: o.subject || "(no subject)",
+        from: o.from || "Public Visitor",
+        to: o.to || "Jeffrey Epstein",
+        date: o.createdAtISO || new Date().toISOString(),
+        dateDisplay: o.dateDisplay || new Date(o.createdAtISO || Date.now()).toLocaleString(),
+        pdf: o.pdfPath || "",
+        snippet: o.snippet || (o.body || "").slice(0, 160),
+        body: o.body || "",
+        contactKey: normKey(o.from || "Public Visitor"),
+        contactName: o.from || "Public Visitor",
+        source: "compose",
+        thread: [
+          {
+            from: o.from || "Public Visitor",
+            to: o.to || "Jeffrey Epstein",
+            date: o.createdAtISO || new Date().toISOString(),
+            subject: o.subject || "(no subject)",
+            body: o.body || "",
+            snippet: o.snippet || (o.body || "").slice(0, 160),
+          }
+        ],
+        _pendingIndex: !!o.pendingIndex,
+        _commitUrl: o.commitUrl || "",
+      };
+    });
+
+    // De-dupe if GH index already includes same pdf path
+    const seenPdf = new Set(items.map(it => safeText(it.pdf).trim()).filter(Boolean));
+    const merged = items.slice();
+    for (const oi of outItems) {
+      const p = safeText(oi.pdf).trim();
+      if (p && seenPdf.has(p)) continue;
+      merged.push(oi);
+    }
+    return merged;
+  }
+
+  // -------- Filtering --------
+  function isStarred(id) {
+    return starred.includes(id);
+  }
+
+  function mailboxFilter(items, mailbox) {
+    if (mailbox === "starred") return items.filter(it => isStarred(it.id));
+    return items.filter(it => (it.mailbox || "inbox") === mailbox);
+  }
+
+  function contactFilter(items, key) {
+    if (!key) return items;
+    const nk = normKey(key);
+    return items.filter(it => normKey(it.contactKey || it.contactName || it.from) === nk);
+  }
+
+  function queryFilter(items, q) {
+    const s = normKey(q);
+    if (!s) return items;
+    return items.filter(it => {
+      const hay = normKey([
+        it.subject, it.from, it.to, it.snippet, it.body,
+        ...(Array.isArray(it.thread) ? it.thread.map(p => [p.from,p.to,p.subject,p.body].join(" ")) : [])
+      ].join(" "));
+      return hay.includes(s);
+    });
+  }
+
+  function applyFilters() {
+    let items = allItems.slice();
+    items = mailboxFilter(items, activeMailbox);
+    items = contactFilter(items, activeContactKey);
+    items = queryFilter(items, query);
+
+    // Sort newest first by date string if possible
+    items.sort((a,b) => (safeText(b.date) || "").localeCompare(safeText(a.date) || ""));
+    filteredItems = items;
+
+    renderCounts();
+    renderMailList();
+    renderContacts();
+    renderSubjects();
+  }
+
+  // -------- Rendering --------
+  function renderCounts() {
+    const inbox = mailboxFilter(allItems, "inbox").length;
+    const sent = mailboxFilter(allItems, "sent").length;
+    const star = mailboxFilter(allItems, "starred").length;
+
+    $inboxCount.textContent = String(inbox);
+    $sentCount.textContent = String(sent);
+    $starCount.textContent = String(star);
+
+    const title = (activeMailbox || "inbox").toUpperCase();
+    $listTitle.textContent = title;
+    $listCount.textContent = String(filteredItems.length);
+
+    // Contacts count
+    $contactsCount.textContent = String(buildContactsMap(allItems).size);
+
+    // Subjects count
+    $subjectsCount.textContent = String((subjects || []).length);
+  }
+
+  function renderMailList() {
+    $mailList.innerHTML = "";
+
+    if (!filteredItems.length) {
+      const empty = document.createElement("div");
+      empty.className = "mailItem";
+      empty.innerHTML = `
+        <div class="miTop">
+          <div class="miFrom">No results</div>
+          <div class="miDate"></div>
+        </div>
+        <div class="miSub">Try clearing filters</div>
+        <div class="miSnip">Search, contact, or folder may be filtering everything.</div>
+      `;
+      $mailList.appendChild(empty);
+      return;
+    }
+
+    for (const it of filteredItems) {
+      const card = document.createElement("div");
+      card.className = "mailItem" + (it.id === activeId ? " active" : "");
+      const from = safeText(it.from || it.contactName || "Unknown");
+      const sub = safeText(it.subject || "(no subject)");
+      const snip = safeText(it.snippet || "").trim();
+      const dt = safeText(it.dateDisplay || it.date || "");
+
+      card.innerHTML = `
+        <div class="miTop">
+          <div class="miFrom">${escapeHTML(from)}</div>
+          <div class="miDate">${escapeHTML(dt)}</div>
+        </div>
+        <div class="miSub">${escapeHTML(sub)}</div>
+        <div class="miSnip">${escapeHTML(snip || "—")}</div>
+      `;
+
+      card.addEventListener("click", () => {
+        activeId = it.id;
+        saveJSON(UI_KEY, { mailbox: activeMailbox, contactKey: activeContactKey, query });
+        renderMailList();
+        renderReader(it);
+        openReaderOnMobile();
+      });
+
+      $mailList.appendChild(card);
+    }
+
+    // If nothing selected yet, auto-select first
+    if (!activeId && filteredItems.length) {
+      activeId = filteredItems[0].id;
+      renderReader(filteredItems[0]);
+    }
+  }
+
+  function renderReader(item) {
+    if (!item) return;
+
+    const sub = safeText(item.subject || "MESSAGE");
+    $readerTitle.textContent = sub;
+
+    // Tags
+    $readerTags.innerHTML = "";
+    const tags = [];
+    tags.push(item.source ? String(item.source) : "released");
+    tags.push(item.pdf ? "pdf" : "note");
+    tags.push(activeMailbox);
+
+    if (item._pendingIndex) tags.push("pending");
+    if (isStarred(item.id)) tags.push("starred");
+
+    for (const t of tags) {
+      const span = document.createElement("span");
+      span.className = "tag";
+      span.textContent = t;
+      $readerTags.appendChild(span);
+    }
+
+    // Body: thread cards
+    const thread = Array.isArray(item.thread) && item.thread.length ? item.thread : [
+      { from: item.from, to: item.to, date: item.date, subject: item.subject, body: item.body }
+    ];
+
+    $readerBody.innerHTML = "";
+
+    for (const part of thread) {
+      const card = document.createElement("div");
+      card.className = "msgCard";
+
+      const from = safeText(part.from || item.from || "Unknown");
+      const to = safeText(part.to || item.to || "Unknown");
+      const dt = safeText(part.dateDisplay || part.date || item.dateDisplay || item.date || "");
+
+      const meta = document.createElement("div");
+      meta.className = "msgMeta";
+
+      const who = document.createElement("div");
+      who.className = "who";
+
+      const av = avatarNode(from, normKey(from));
+      av.classList.add("avatar");
+
+      const names = document.createElement("div");
+      names.className = "names";
+      names.innerHTML = `
+        <div class="from">${escapeHTML(from)}</div>
+        <div class="to">to ${escapeHTML(to)}</div>
+      `;
+
+      who.appendChild(av);
+      who.appendChild(names);
+
+      const when = document.createElement("div");
+      when.className = "when";
+      when.textContent = dt;
+
+      meta.appendChild(who);
+      meta.appendChild(when);
+
+      const body = document.createElement("div");
+      body.className = "bodyText";
+      body.textContent = safeText(part.body || "").trim() || "—";
+
+      card.appendChild(meta);
+      card.appendChild(body);
+
+      // Footer row: source PDF open + star toggle
+      const src = document.createElement("div");
+      src.className = "srcRow";
+
+      const left = document.createElement("div");
+      left.className = "srcName";
+
+      if (item.pdf) {
+        left.textContent = `Source PDF: ${item.pdf}`;
+      } else if (item._commitUrl) {
+        left.textContent = "Uploaded (pending index rebuild)";
+      } else {
+        left.textContent = "No source PDF";
+      }
+
+      const right = document.createElement("div");
+      right.style.display = "flex";
+      right.style.gap = "10px";
+
+      const starBtn = document.createElement("button");
+      starBtn.className = "btn";
+      starBtn.textContent = isStarred(item.id) ? "Unstar" : "Star";
+      starBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        toggleStar(item.id);
+        renderReader(item);
+        applyFilters();
+      });
+
+      right.appendChild(starBtn);
+
+      if (item.pdf) {
+        const openBtn = document.createElement("button");
+        openBtn.className = "btn primary";
+        openBtn.textContent = "Open";
+        openBtn.addEventListener("click", () => {
+          // Use a robust URL; if pdf is already a relative filename, keep it in /pdfs/
+          const pdfHref = safeText(item.pdf).includes("/")
+            ? safeText(item.pdf)
+            : `/released/epstein/jeffs-mail/pdfs/${safeText(item.pdf)}`;
+          window.open(pdfHref, "_blank", "noopener");
+        });
+        right.appendChild(openBtn);
+      } else if (item._commitUrl) {
+        const viewCommit = document.createElement("button");
+        viewCommit.className = "btn primary";
+        viewCommit.textContent = "View commit";
+        viewCommit.addEventListener("click", () => window.open(item._commitUrl, "_blank", "noopener"));
+        right.appendChild(viewCommit);
+      }
+
+      src.appendChild(left);
+      src.appendChild(right);
+      card.appendChild(src);
+
+      $readerBody.appendChild(card);
+    }
+  }
+
+  function toggleStar(id) {
+    const i = starred.indexOf(id);
+    if (i >= 0) starred.splice(i, 1);
+    else starred.push(id);
+    saveJSON(STAR_KEY, starred);
+  }
+
+  // Contacts map: key -> {name,count}
+  function buildContactsMap(items) {
+    const map = new Map();
+
+    function add(name, key) {
+      const n = (name || "").trim() || "Unknown";
+      const k = normKey(key || name || n);
+      const prev = map.get(k);
+      if (!prev) map.set(k, { key: k, name: n, count: 1 });
+      else prev.count += 1;
+    }
+
+    for (const it of items) {
+      add(it.contactName || it.from || "Unknown", it.contactKey || it.from || it.contactName);
+    }
+
+    // Ensure Jeff is present as a contact even if parsing misses (helps UI)
+    add("Jeffrey Epstein", "jeffrey epstein");
+
+    return map;
+  }
+
+  function renderContacts() {
+    const map = buildContactsMap(allItems);
+    const contacts = Array.from(map.values())
+      .sort((a,b) => b.count - a.count || a.name.localeCompare(b.name));
+
+    $contactsList.innerHTML = "";
+
+    for (const c of contacts) {
+      const row = document.createElement("div");
+      row.className = "contactRow" + (normKey(activeContactKey) === c.key ? " active" : "");
+
+      const av = contactAvatarNode(c.name, c.key);
+      const meta = document.createElement("div");
+      meta.className = "cMeta";
+
+      const sub = (isJeffIdentity(c.name) || isJeffIdentity(c.key))
+        ? "Jeff identity"
+        : "Click to filter";
+
+      meta.innerHTML = `
+        <div class="cName">${escapeHTML(c.name)}</div>
+        <div class="cSub">${escapeHTML(sub)}</div>
+      `;
+
+      const count = document.createElement("div");
+      count.className = "cCount";
+      count.textContent = String(c.count);
+
+      row.appendChild(av);
+      row.appendChild(meta);
+      row.appendChild(count);
+
+      row.addEventListener("click", () => {
+        activeContactKey = (activeContactKey && normKey(activeContactKey) === c.key) ? "" : c.key;
+        saveJSON(UI_KEY, { mailbox: activeMailbox, contactKey: activeContactKey, query });
+        applyFilters();
+      });
+
+      $contactsList.appendChild(row);
+    }
+  }
+
+  // Subjects: [{label, query}]
+  function renderSubjects() {
+    $subjectsList.innerHTML = "";
+    const arr = Array.isArray(subjects) ? subjects : [];
+    $subjectsCount.textContent = String(arr.length);
+
+    if (!arr.length) {
+      const chip = document.createElement("div");
+      chip.className = "chip";
+      chip.style.opacity = ".75";
+      chip.style.cursor = "default";
+      chip.textContent = "No saved subjects yet";
+      $subjectsList.appendChild(chip);
+      return;
+    }
+
+    for (const s of arr) {
+      const q = safeText(s.query || "").trim();
+      const label = safeText(s.label || q || "Subject").trim();
+
+      const chip = document.createElement("div");
+      chip.className = "chip";
+      chip.innerHTML = `<span>${escapeHTML(label)}</span><span class="x">✕</span>`;
+
+      chip.addEventListener("click", (e) => {
+        // If clicked near the X, remove; otherwise apply
+        const target = e.target;
+        const wantsRemove = target && target.classList && target.classList.contains("x");
+        if (wantsRemove) {
+          subjects = subjects.filter(x => x !== s);
+          saveJSON(SUBJECTS_KEY, subjects);
+          renderSubjects();
+          return;
+        }
+        query = q;
+        $search.value = q;
+        saveJSON(UI_KEY, { mailbox: activeMailbox, contactKey: activeContactKey, query });
+        applyFilters();
+      });
+
+      $subjectsList.appendChild(chip);
+    }
+  }
+
+  // -------- Mobile overlay helpers --------
+  function openReaderOnMobile() {
+    if (window.matchMedia("(max-width: 980px)").matches) {
+      document.body.classList.add("readerOpen");
+      document.body.style.overflow = "hidden";
+    }
+  }
+  function closeReaderOnMobile() {
+    document.body.classList.remove("readerOpen");
+    document.body.style.overflow = "";
+  }
+
+  // -------- Compose modal --------
+  function openCompose() {
+    $composeStatus.innerHTML = "";
+    $composeModal.classList.add("open");
+    $composeModal.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
+    $cSubject.focus();
+  }
+  function closeCompose() {
+    $composeModal.classList.remove("open");
+    $composeModal.setAttribute("aria-hidden", "true");
+    document.body.style.overflow = "";
+  }
+
+  function setComposeStatus(ok, msg) {
+    const cls = ok ? "ok" : "bad";
+    $composeStatus.innerHTML = `<span class="${cls}">${escapeHTML(msg)}</span>`;
+  }
+
+  function buildComposeText(from, to, subject, body) {
+    const now = new Date();
+    const stamp = now.toLocaleString();
+    // Keep it simple so your PDF parser (and humans) can read it
+    return [
+      `From: ${from}`,
+      `To: ${to}`,
+      `Date: ${stamp}`,
+      `Subject: ${subject || "(no subject)"}`,
+      "",
+      body || ""
+    ].join("\n");
+  }
+
+  function downloadBytes(bytes, filename) {
+    const blob = new Blob([bytes], { type: "application/pdf" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }
+
+  async function uploadComposePdf({ pdfBase64, subject, fromName, toName, createdAtISO }) {
+    if (!WORKER_URL || !WORKER_KEY) {
+      throw new Error("Upload not configured. Check config.js JEFFS_MAIL_UPLOAD_URL and JEFFS_MAIL_UPLOAD_KEY.");
+    }
+
+    const r = await fetch(WORKER_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CT-Key": WORKER_KEY,
+      },
+      body: JSON.stringify({
+        subject,
+        fromName,
+        toName,
+        createdAtISO,
+        pdfBase64,
+      }),
+    });
+
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.ok) {
+      const detail = j && j.error ? j.error : `HTTP ${r.status}`;
+      throw new Error(`Upload failed: ${detail}`);
+    }
+    return j;
+  }
+
+  // -------- Events --------
+  $clear.addEventListener("click", () => {
+    query = "";
+    $search.value = "";
+    saveJSON(UI_KEY, { mailbox: activeMailbox, contactKey: activeContactKey, query });
+    applyFilters();
+  });
+
+  $search.addEventListener("input", () => {
+    query = $search.value || "";
+    saveJSON(UI_KEY, { mailbox: activeMailbox, contactKey: activeContactKey, query });
+    applyFilters();
+  });
+
+  for (const btn of [$inboxBtn, $sentBtn, $starBtn]) {
+    btn.addEventListener("click", () => {
+      activeMailbox = btn.getAttribute("data-mailbox") || "inbox";
+
+      // update active styles
+      [$inboxBtn, $sentBtn, $starBtn].forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+
+      saveJSON(UI_KEY, { mailbox: activeMailbox, contactKey: activeContactKey, query });
+      applyFilters();
+    });
+  }
+
+  $closeReaderBtn.addEventListener("click", closeReaderOnMobile);
+
+  // Close reader on ESC (mobile)
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      closeReaderOnMobile();
+      closeCompose();
+    }
+  });
+
+  // Compose
+  $composeBtn.addEventListener("click", openCompose);
+  $composeClose.addEventListener("click", closeCompose);
+  $composeModal.addEventListener("click", (e) => {
+    if (e.target === $composeModal) closeCompose();
+  });
+
+  $downloadCopyBtn.addEventListener("click", () => {
+    const from = safeText($cFrom.value).trim() || "Public Visitor";
+    const to = "Jeffrey Epstein";
+    const subject = safeText($cSubject.value).trim() || "(no subject)";
+    const body = safeText($cBody.value);
+
+    const txt = buildComposeText(from, to, subject, body);
+    const bytes = makeSimplePdfBytes(txt);
+    const dt = new Date();
+    const name = `compose_${dt.toISOString().replace(/[:.]/g, "-")}.pdf`;
+    downloadBytes(bytes, name);
+    setComposeStatus(true, "Downloaded a copy. (Send will upload to the public-record simulation.)");
+  });
+
+  $sendBtn.addEventListener("click", async () => {
+    try {
+      const from = safeText($cFrom.value).trim() || "Public Visitor";
+      const to = "Jeffrey Epstein";
+      const subject = safeText($cSubject.value).trim() || "(no subject)";
+      const body = safeText($cBody.value);
+
+      if (!subject && !body) {
+        setComposeStatus(false, "Please add a subject or message body.");
+        return;
+      }
+
+      $sendBtn.disabled = true;
+      $sendBtn.textContent = "Sending…";
+      setComposeStatus(true, "Generating PDF…");
+
+      const createdAtISO = new Date().toISOString();
+      const txt = buildComposeText(from, to, subject, body);
+      const pdfBytes = makeSimplePdfBytes(txt);
+      const pdfBase64 = bytesToBase64(pdfBytes);
+
+      setComposeStatus(true, "Uploading to CivicThreat public-record simulation…");
+      const res = await uploadComposePdf({
+        pdfBase64,
+        subject,
+        fromName: from,
+        toName: to,
+        createdAtISO
+      });
+
+      // Save outbox item locally so it appears immediately in Sent + Contacts
+      const outItem = {
+        id: `out_${Date.now()}`,
+        from,
+        to,
+        subject,
+        body,
+        createdAtISO,
+        dateDisplay: new Date(createdAtISO).toLocaleString(),
+        pendingIndex: true,
+        pdfPath: res.path || "",
+        commitUrl: res.html_url || "",
+        snippet: (body || "").trim().slice(0, 180)
+      };
+      outbox.unshift(outItem);
+      saveJSON(OUTBOX_KEY, outbox);
+
+      // Update local UI immediately
+      allItems = mergeOutbox((indexData?.items || []).slice());
+      activeMailbox = "sent";
+      [$inboxBtn, $sentBtn, $starBtn].forEach(b => b.classList.remove("active"));
+      $sentBtn.classList.add("active");
+
+      query = "";
+      $search.value = "";
+
+      applyFilters();
+
+      setComposeStatus(true, "Sent! It will appear in the main index after the automated rebuild completes (usually within ~1 minute).");
+      // Keep modal open briefly so user sees status; close after short delay
+      setTimeout(() => {
+        closeCompose();
+        // clear compose fields lightly
+        $cSubject.value = "";
+        $cBody.value = "";
+        $composeStatus.innerHTML = "";
+      }, 800);
+
+    } catch (err) {
+      setComposeStatus(false, err.message || String(err));
+    } finally {
+      $sendBtn.disabled = false;
+      $sendBtn.textContent = "Send";
+    }
+  });
+
+  // Subjects add/clear
+  $addSubjectBtn.addEventListener("click", () => {
+    const term = (prompt("Save a Subject keyword/phrase (used as a search filter):") || "").trim();
+    if (!term) return;
+    const label = term.length > 28 ? term.slice(0, 28) + "…" : term;
+    subjects = Array.isArray(subjects) ? subjects : [];
+    subjects.unshift({ label, query: term });
+    // De-dupe by query
+    const seen = new Set();
+    subjects = subjects.filter(s => {
+      const q = normKey(s.query);
+      if (!q || seen.has(q)) return false;
+      seen.add(q);
+      return true;
+    }).slice(0, 20);
+
+    saveJSON(SUBJECTS_KEY, subjects);
+    renderSubjects();
+  });
+
+  $clearSubjectsBtn.addEventListener("click", () => {
+    if (!confirm("Clear all saved Subjects on this device?")) return;
+    subjects = [];
+    saveJSON(SUBJECTS_KEY, subjects);
+    renderSubjects();
+  });
+
+  // -------- Utilities --------
+  function escapeHTML(s) {
+    return String(s || "")
       .replace(/&/g,"&amp;")
       .replace(/</g,"&lt;")
       .replace(/>/g,"&gt;")
       .replace(/"/g,"&quot;")
-      .replace(/'/g,"&#39;");
-  }
-  function slugify(s){
-    const t = safeText(s).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
-    return t || "unknown";
+      .replace(/'/g,"&#039;");
   }
 
-  function normalizeEmailish(s){
-    let t = String(s||"").toLowerCase();
-    // De-obfuscations
-    t = t.replace(/©/g, "@");
-    t = t.replace(/\(at\)|\[at\]/g, "@");
-    t = t.replace(/\(dot\)|\[dot\]/g, ".");
-    // Kill mailto + common OCR variants (mailt9:, mailt0:, etc.)
-    t = t.replace(/\bmail(?:to|t0|t9|t)\s*:?\s*/gi, "");
-    t = t.replace(/mailto:[^\s>]+/gi, "");
-    t = t.replace(/<\s*mailto:[^>]+>/gi, "");
-    t = t.replace(/ailto/gi, "");
-    t = t.replace(/[\s,\];]+/g, "");
-    // Fix gmail.con -> gmail.com
-    t = t.replace(/@gmail\.con\b/gi, "@gmail.com");
-    return t;
-  }
-
-  function extractEmails(s){
-    const t = normalizeEmailish(s);
-    const m = t.match(/[\w.\-+%]+@[\w.\-]+\.[a-z]{2,}/gi);
-    return m ? m.map(x=>x.toLowerCase()) : [];
-  }
-
-  function looksLikeJeff(s){
-    const raw = String(s||"");
-    const low = normalizeEmailish(raw);
-    const blob = (" " + low.replace(/[^a-z0-9]+/g, " ") + " ").toLowerCase();
-
-    // Email based (robust: match evacation + gmail even if broken)
-    for(const em of extractEmails(raw)){
-      const em2 = normalizeEmailish(em);
-      if(JEFF_EMAILS.has(em2)) return true;
-      if(em2.includes("evacation") && em2.includes("@gmail.com")) return true;
-    }
-    // Token based
-    for(const tok of JEFF_TOKENS){
-      if(blob.includes(" " + tok + " ")) return true;
-      if(blob.includes(tok)) return true;
-    }
-    // Weak JE token: only if near epstein/evacation
-    if(/\bje\b/i.test(blob) && (blob.includes("epstein") || blob.includes("evacation"))) return true;
-
-    return false;
-  }
-
-  function cleanName(s){
-    let t = safeText(s);
-
-    // remove header prefixes
-    t = t.replace(/^(from|to|sent|date|subject|cc|bcc)\s*:\s*/i, "").trim();
-
-    // remove mailto noise
-    t = t.replace(/\bmail(?:to|t0|t9|t)\s*:?\\s*/gi, "");
-    t = t.replace(/mailto:[^\s>]+/gi, "");
-
-    // remove <...> if it doesn't contain an email; also handle broken "<Min"
-    t = t.replace(/\s*<\s*[a-z]{2,20}\s*$/i, ""); // broken tail fragment
-    t = t.replace(/<([^>]+)>/g, (m, inner) => {
-      inner = String(inner||"").trim();
-      return (/@/.test(inner) ? `<${inner}>` : "");
-    });
-
-    // strip any remaining angle bracket shells / punctuation
-    t = t.replace(/[<>]/g, "");
-    t = t.replace(/[\[\]\(\)]/g, " ").trim();
-    t = t.replace(/\s+/g, " ").trim();
-    t = t.replace(/[,;|•]+$/g, "").trim();
-
-    if(!t) return "Unknown";
-
-    // date garbage
-    if(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b/i.test(t) && /\b\d{1,2}\b/.test(t)){
-      if(t.toLowerCase().startsWith("date")) return "Unknown";
-    }
-    if(t.length > 140) return "Unknown";
-    return t;
-  }
-
-  function fmtDateShort(iso){
-    const d = new Date(iso);
-    if(isNaN(d.getTime())) return safeText(iso);
-    return d.toLocaleDateString(undefined, { year:"numeric", month:"short", day:"2-digit" });
-  }
-
-  function otherPartyLabel(mailbox, from, to){
-    const f = cleanName(from);
-    const t = cleanName(to);
-    if(mailbox === "sent") return t;
-    return f;
-  }
-
-  // ----------------------------
-  // Storage
-  // ----------------------------
-  function loadStarred(){
-    try{
-      const raw = localStorage.getItem(STAR_KEY);
-      const arr = raw ? JSON.parse(raw) : [];
-      if(Array.isArray(arr)) return new Set(arr.map(String));
-    }catch(_){}
-    return new Set();
-  }
-  function saveStarred(){
-    try{
-      localStorage.setItem(STAR_KEY, JSON.stringify(Array.from(state.starred)));
-    }catch(_){}
-  }
-
-  function loadSubjects(){
-    try{
-      const raw = localStorage.getItem(SUBJECTS_KEY);
-      const arr = raw ? JSON.parse(raw) : [];
-      return Array.isArray(arr) ? arr.filter(Boolean).map(String) : [];
-    }catch(_){}
-    return [];
-  }
-  function saveSubjects(){
-    try{
-      localStorage.setItem(SUBJECTS_KEY, JSON.stringify(state.subjects));
-    }catch(_){}
-  }
-
-  // ----------------------------
-  // Local Outbox (Compose simulation)
-  // ----------------------------
-  function loadOutbox(){
-    try{
-      const raw = localStorage.getItem(OUTBOX_KEY);
-      const obj = raw ? JSON.parse(raw) : { items: [] };
-      const items = Array.isArray(obj?.items) ? obj.items : (Array.isArray(obj) ? obj : []);
-      return { items };
-    }catch(_){
-      return { items: [] };
-    }
-  }
-  function saveOutbox(out){
-    try{ localStorage.setItem(OUTBOX_KEY, JSON.stringify(out)); }catch(_){}
-  }
-
-  function mergeLocalOutbox(){
-    const out = loadOutbox();
-    if(!out.items.length) return;
-
-    for(const oi of out.items){
-      if(!oi || !oi.id) continue;
-      const exists = state.all.some(m => String(m.id) === String(oi.id));
-      if(exists) continue;
-
-      const subject = safeText(oi.subject) || "(No subject)";
-      const from = cleanName(oi.from || "Public Visitor") || "Public Visitor";
-      const to = cleanName(oi.to || "Jeffrey Epstein") || "Jeffrey Epstein";
-      const date = safeText(oi.date) || new Date().toISOString();
-      const dateDisplay = safeText(oi.dateDisplay) || fmtDateShort(date);
-
-      const body = String(oi.body || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
-      const snippet = safeText(oi.snippet) || safeText(body).slice(0, 160);
-
-      state.all.push({
-        id: String(oi.id),
-        mailbox: "inbox",
-        subject,
-        from,
-        to,
-        date,
-        dateDisplay,
-        snippet,
-        body,
-        pdf: "",
-        source: "Local Simulation (Local)",
-        thread: [{
-          from, to, subject, date, dateDisplay, body, snippet
-        }],
-        jeffInvolved: true,
-        starred: state.starred.has(String(oi.id)),
-        contactKey: slugify(from),
-        contactName: from,
-        _local: true,
-        _pdfBlobUrl: safeText(oi._pdfBlobUrl || "")
-      });
-    }
-
-    state.all.sort((a,b) => (Date.parse(b.date||"")||0) - (Date.parse(a.date||"")||0));
-  }
-
-  function exportOutboxDownload(){
-    const out = loadOutbox();
-    const payload = {
-      generatedAt: Date.now(),
-      items: out.items.map(x => ({
-        id: x.id,
-        subject: x.subject,
-        body: x.body,
-        date: x.date,
-        dateDisplay: x.dateDisplay,
-        from: x.from || "Public Visitor",
-        to: x.to || "Jeffrey Epstein",
-        pdf: x.pdf || `pdfs/user__${x.id}.pdf`
-      }))
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "outbox.json";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1500);
-  }
-
-  // ----------------------------
-  // Fetch + normalize
-  // ----------------------------
-  async function fetchIndex(){
-    const res = await fetch(INDEX_URL, { cache: "no-store" });
-    if(!res.ok) throw new Error("Failed to load index.json");
-    return await res.json();
-  }
-
-  // ----------------------------
-  // Normalize index.json items
-  // ----------------------------
-  function normalizeItems(data){
-    const items = Array.isArray(data?.items) ? data.items : [];
-    const cleaned = [];
-    const seen = new Set();
-
-    for(const m of items){
-      if(!m || !m.id) continue;
-
-      const pdf = safeText(m.pdf);
-      const mailboxRaw = safeText(m.mailbox).toLowerCase();
-      const mailbox = mailboxRaw === "sent" ? "sent" : "inbox";
-
-      const subject = safeText(m.subject) || "(No subject)";
-      const from = cleanName(m.from || m.from_);
-      const to = cleanName(m.to);
-
-      const date = safeText(m.date);
-      const dateDisplay = safeText(m.dateDisplay);
-
-      const body = String(m.body || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
-      const snippet = safeText(m.snippet) || safeText(body).slice(0, 160);
-
-      const sig = [subject, from, to, date, mailbox].join("|");
-      if(seen.has(sig)) continue;
-      seen.add(sig);
-
-      cleaned.push({
-        id: String(m.id),
-        mailbox,
-        subject,
-        from: from || "Unknown",
-        to: to || "Unknown",
-        date,
-        dateDisplay,
-        snippet,
-        body,
-        pdf: pdf || "",
-        source: safeText(m.source) || "Released",
-        thread: Array.isArray(m.thread) ? m.thread : [],
-        jeffInvolved: !!m.jeffInvolved,
-
-        starred: state.starred.has(String(m.id)),
-        contactKey: safeText(m.contactKey) || "",
-        contactName: safeText(m.contactName) || "",
-      });
-    }
-
-    cleaned.sort((a,b) => {
-      const da = Date.parse(a.date || "") || 0;
-      const db = Date.parse(b.date || "") || 0;
-      if(db !== da) return db - da;
-      return String(b.id).localeCompare(String(a.id));
-    });
-
-    for(const m of cleaned){
-      if(!m.contactKey || !m.contactName){
-        const other = otherPartyLabel(m.mailbox, m.from, m.to) || "Unknown";
-        m.contactName = other;
-        m.contactKey = slugify(other);
-      }
-    }
-
-    return cleaned;
-  }
-
-  // ----------------------------
-  // Contact logic
-  // ----------------------------
-  function rebuildContacts(){
-    const map = new Map();
-
-    for(const m of state.all){
-      const key = safeText(m.contactKey) || slugify(m.contactName || "Unknown");
-      const name = cleanName(m.contactName || "Unknown");
-      if(!map.has(key)) map.set(key, { key, name, count: 0 });
-      map.get(key).count++;
-    }
-
-    // Ensure Jeffrey always exists as a contact grouping
-    const jeffKey = "jeffrey-epstein";
-    if(!map.has(jeffKey)){
-      map.set(jeffKey, { key: jeffKey, name: "Jeffrey Epstein", count: 0 });
-    }
-    // Count items involving Jeff for that contact
-    for(const m of state.all){
-      const involved = !!m.jeffInvolved || looksLikeJeff(m.from) || looksLikeJeff(m.to) || looksLikeJeff(m.subject);
-      if(involved){
-        map.get(jeffKey).count++;
-      }
-    }
-
-    const list = Array.from(map.values())
-      .filter(x => x.count > 0 || x.key === jeffKey)
-      .sort((a,b) => (b.count - a.count) || a.name.localeCompare(b.name));
-
-    state.contacts = list;
-
-    if(el.contactsCount) el.contactsCount.textContent = String(list.length);
-
-    if(el.contactsList){
-      el.contactsList.innerHTML = list.map(c => `
-        <button class="contact ${state.activeContactKey === c.key ? "active":""}" data-ck="${esc(c.key)}" type="button">
-          ${renderAvatarHTML(c.name)}
-          <div class="cmeta">
-            <div class="cname">${esc(c.name)}</div>
-            <div class="ccount">${esc(String(c.count))}</div>
-          </div>
-        </button>
-      `).join("");
-
-      el.contactsList.querySelectorAll("button.contact").forEach(btn => {
-        btn.addEventListener("click", () => {
-          state.activeContactKey = btn.getAttribute("data-ck") || "";
-          draw();
-        });
-      });
-    }
-  }
-
-  function togglePanel(headerEl, panelEl){
-    if(!headerEl || !panelEl) return;
-    headerEl.addEventListener("click", () => {
-      const open = panelEl.classList.toggle("open");
-      headerEl.classList.toggle("open", open);
-    });
-  }
-
-  // ----------------------------
-  // Subjects UI
-  // ----------------------------
-  function drawSubjects(){
-    if(!el.subjectsList) return;
-    el.subjectsList.innerHTML = state.subjects.map(s => `
-      <button class="subjbtn ${state.activeSubject === s ? "active":""}" data-subj="${esc(s)}" type="button">
-        🔎 ${esc(s)}
-      </button>
-    `).join("");
-
-    el.subjectsList.querySelectorAll("button.subjbtn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const term = btn.getAttribute("data-subj") || "";
-        state.activeSubject = term;
-        if(el.search) el.search.value = term;
-        applySearch();
-      });
-    });
-  }
-
-  function saveCurrentSearchAsSubject(){
-    const term = safeText(el.search?.value || "").trim();
-    if(!term) return;
-    if(!state.subjects.includes(term)){
-      state.subjects.unshift(term);
-      state.subjects = state.subjects.slice(0, 50);
-      saveSubjects();
-      drawSubjects();
-    }
-  }
-
-  // ----------------------------
-  // Compose (simulation) helpers
-  // ----------------------------
-  function openComposeModal(){
-    if(!el.composeModal) return;
-    if(el.composeFrom) el.composeFrom.value = "Public Visitor";
-    if(el.composeTo) el.composeTo.value = "Jeffrey Epstein";
-    if(el.composeSubject) el.composeSubject.value = "";
-    if(el.composeBody) el.composeBody.value = "";
-    if(el.composeHint) el.composeHint.textContent = "This is a simulation. Nothing is sent to any real inbox.";
-    el.composeModal.classList.add("open");
-    setTimeout(() => el.composeSubject && el.composeSubject.focus(), 30);
-  }
-  function closeComposeModal(){
-    if(!el.composeModal) return;
-    el.composeModal.classList.remove("open");
-  }
-
-  function wrapTextLines(text, maxLen){
-    const words = String(text||"").replace(/\r\n/g,"\n").replace(/\r/g,"\n").split(/\s+/);
-    const lines = [];
-    let cur = "";
-    for(const w of words){
-      if(!w) continue;
-      if((cur + " " + w).trim().length > maxLen){
-        if(cur) lines.push(cur.trim());
-        cur = w;
-      }else{
-        cur = (cur + " " + w).trim();
-      }
-    }
-    if(cur) lines.push(cur.trim());
-    return lines;
-  }
-
-  async function sendCompose(){
-    const subj = safeText(el.composeSubject ? el.composeSubject.value : "");
-    const body = String(el.composeBody ? el.composeBody.value : "").trim();
-    if(!subj){ alert("Subject is required."); return; }
-    if(!body){ alert("Body is required."); return; }
-
-    const now = new Date();
-    const iso = now.toISOString();
-    const dateDisplay = fmtDateShort(iso) + " " + now.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
-    const id = "user_" + Math.random().toString(16).slice(2) + "_" + now.getTime().toString(16);
-
-    let blobUrl = "";
-    try{
-      const jsPDF = window.jspdf?.jsPDF;
-      if(!jsPDF) throw new Error("jsPDF not loaded");
-      const doc = new jsPDF({ unit: "pt", format: "letter" });
-
-      const margin = 48;
-      let y = 54;
-
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(14);
-      doc.text("JEFFS MAIL — SIMULATED PUBLIC VISITOR EMAIL", margin, y);
-      y += 22;
-
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(11);
-      const headerLines = [
-        `From: Public Visitor`,
-        `To: Jeffrey Epstein`,
-        `Date: ${now.toLocaleString()}`,
-        `Subject: ${subj}`,
-        "",
-      ];
-      for(const ln of headerLines){
-        doc.text(ln, margin, y);
-        y += 16;
-      }
-
-      doc.setFontSize(11);
-      const lines = wrapTextLines(body, 95);
-      for(const ln of lines){
-        if(y > 720){
-          doc.addPage();
-          y = 54;
-        }
-        doc.text(ln, margin, y);
-        y += 14;
-      }
-
-      const pdfBlob = doc.output("blob");
-      blobUrl = URL.createObjectURL(pdfBlob);
-
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = `user__${id}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-
-      if(el.composeHint){
-        el.composeHint.textContent = `Downloaded PDF: user__${id}.pdf — to include it in the public index on next rebuild, commit the PDF to released/epstein/jeffs-mail/pdfs/ and commit an outbox.json (use “Export Outbox”).`;
-      }
-    }catch(err){
-      console.warn("PDF generation skipped:", err);
-      if(el.composeHint){
-        el.composeHint.textContent = "PDF generation library wasn't available. Your message was saved locally, but no PDF was created.";
-      }
-    }
-
-    const out = loadOutbox();
-    out.items.unshift({
-      id,
-      from: "Public Visitor",
-      to: "Jeffrey Epstein",
-      subject: subj,
-      body,
-      snippet: body.replace(/\s+/g," ").slice(0, 160),
-      date: iso,
-      dateDisplay,
-      pdf: `pdfs/user__${id}.pdf`,
-      _pdfBlobUrl: blobUrl
-    });
-    out.items = out.items.slice(0, 200);
-    saveOutbox(out);
-
-    mergeLocalOutbox();
-    rebuildContacts();
-    updateCounts();
-    draw();
-  }
-
-  // ----------------------------
-  // Filters / visibility
-  // ----------------------------
-  function matchesFolder(m){
-    if(state.folder === "starred") return !!m.starred;
-    return m.mailbox === state.folder;
-  }
-
-  function matchesSearch(m, q){
-    if(!q) return true;
-    const hay = [
-      m.subject, m.from, m.to, m.snippet, m.body,
-      ...((m.thread||[]).map(p => `${p.from||""} ${p.to||""} ${p.subject||""} ${p.body||""}`))
-    ].join(" ").toLowerCase();
-    return hay.includes(q);
-  }
-
-  function matchesContact(m){
-    if(!state.activeContactKey) return true;
-    if(state.activeContactKey === "jeffrey-epstein"){
-      return !!m.jeffInvolved || looksLikeJeff(m.from) || looksLikeJeff(m.to) || looksLikeJeff(m.subject);
-    }
-    return safeText(m.contactKey) === state.activeContactKey;
-  }
-
-  function applySearch(){
-    const q = safeText(el.search?.value || "").trim().toLowerCase();
-    state.view = state.all.filter(m => matchesFolder(m) && matchesContact(m) && matchesSearch(m, q));
-    drawList();
-  }
-
-  // ----------------------------
-  // Mobile overlay behavior
-  // ----------------------------
-  function openReaderOverlay(){
-    if(!el.readerShell) return;
-    el.readerShell.classList.add("open");
-    document.body.classList.add("jm-lock");
-  }
-  function closeReaderOverlay(){
-    if(!el.readerShell) return;
-    el.readerShell.classList.remove("open");
-    document.body.classList.remove("jm-lock");
-  }
-
-  // ----------------------------
-  // Avatar rendering:
-  // - Jeffrey -> image
-  // - Unknown -> red “no” icon
-  // - Others -> initial letter with deterministic color
-  // ----------------------------
-  function hash32(str){
-    let h = 2166136261;
-    const s = String(str||"");
-    for(let i=0;i<s.length;i++){
-      h ^= s.charCodeAt(i);
-      h = Math.imul(h, 16777619);
-    }
-    return h >>> 0;
-  }
-  function avatarBg(name){
-    const h = hash32(String(name||"").toLowerCase());
-    const hue = h % 360;
-    const sat = 62 + (h % 18);
-    const lum = 34 + (h % 10);
-    return `hsl(${hue} ${sat}% ${lum}%)`;
-  }
-
-  function renderAvatarHTML(name){
-    const n = cleanName(name);
-    if(n === "Unknown"){
-      return `
-        <div class="av" title="Unknown" style="background:rgba(255,0,80,.12);border-color:rgba(255,0,80,.35);">
-          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="12" cy="12" r="9" fill="none" stroke="rgba(255,0,80,.95)" stroke-width="2"></circle>
-            <line x1="7.2" y1="16.8" x2="16.8" y2="7.2" stroke="rgba(255,0,80,.95)" stroke-width="2"></line>
-          </svg>
-        </div>
-      `;
-    }
-    if(looksLikeJeff(n)){
-      return `
-        <div class="av" title="Jeffrey Epstein">
-          <img src="${esc(JEFF_AVATAR_URL)}" alt="Jeff" onerror="this.remove()" />
-          <span style="font-weight:1000;">JE</span>
-        </div>
-      `;
-    }
-    const ch = (n || "?").trim()[0]?.toUpperCase() || "?";
-    const bg = avatarBg(n);
-    return `<div class="av" title="${esc(n)}" style="background:${esc(bg)};"><span style="font-weight:1000;">${esc(ch)}</span></div>`;
-  }
-
-  // ----------------------------
-  // Reader rendering
-  // ----------------------------
-  function formatBodyHTML(text){
-    const t = safeText(text||"");
-    return esc(t).replace(/\n/g, "<br>");
-  }
-
-  function threadFromItem(m){
-    if(Array.isArray(m.thread) && m.thread.length){
-      return m.thread.map((p, idx) => ({
-        idx,
-        from: cleanName(p.from || m.from || "Unknown"),
-        to: cleanName(p.to || m.to || "Unknown"),
-        subject: safeText(p.subject || m.subject || ""),
-        when: safeText(p.dateDisplay || "") || (p.date ? fmtDateShort(p.date) : ""),
-        body: safeText(p.body || "")
-      }));
-    }
-    const dateShort = m.date ? fmtDateShort(m.date) : (m.dateDisplay || "");
-    return [{
-      idx: 0,
-      from: m.from || "Unknown",
-      to: m.to || "Unknown",
-      subject: m.subject || "(No subject)",
-      when: dateShort || (m.dateDisplay || ""),
-      body: m.body || ""
-    }];
-  }
-
-  function setReading(m){
-    state.activeId = m?.id || "";
-    if(!el.readCard || !m) return;
-
-    const mailbox = m.mailbox || "inbox";
-    const dateShort = m.date ? fmtDateShort(m.date) : (m.dateDisplay || "");
-    const thread = threadFromItem(m);
-
-    const pdfName = ((m.pdf || "").split("/").pop() || "").trim() || "document.pdf";
-
-    const isLocal = !!m._local;
-    const pdfOpenHref = isLocal ? (m._pdfBlobUrl || "") : (m.pdf || "");
-
-    el.readCard.innerHTML = `
-      <div class="jm-h1">${esc(m.subject || "(No subject)")}</div>
-
-      <div class="jm-badges">
-        <span class="jm-badge">${esc(m.source || "Released")}</span>
-        <span class="jm-badge">PDF</span>
-        <span class="jm-badge">${esc(mailbox)}</span>
-        ${m.starred ? `<span class="jm-badge">★ Starred</span>` : ``}
+  function showIndexError(err) {
+    $mailList.innerHTML = "";
+    const card = document.createElement("div");
+    card.className = "mailItem";
+    card.innerHTML = `
+      <div class="miTop">
+        <div class="miFrom">Failed to load index.json</div>
+        <div class="miDate"></div>
       </div>
-
-      <div class="thread">
-        ${thread.map(msg => `
-          <div class="msg ep-box">
-            <div class="msg-head">
-              ${renderAvatarHTML(msg.from)}
-              <div class="meta">
-                <div class="line1">
-                  <div class="who">${esc(cleanName(msg.from))}</div>
-                  <div class="when">${esc(safeText(msg.when) || "")}</div>
-                </div>
-                <div class="line2">to <span style="font-weight:900">${esc(cleanName(msg.to))}</span></div>
-                ${msg.subject ? `<div class="subj">${esc(msg.subject)}</div>` : ``}
-              </div>
-            </div>
-            <div class="msg-body">${formatBodyHTML(msg.body)}</div>
-          </div>
-        `).join("")}
-      </div>
-
-      <div class="jm-attach">
-        <strong>Source PDF</strong>
-        <div class="jm-attachrow">
-          <div style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-            📄 ${esc(pdfName)}
-          </div>
-          ${pdfOpenHref ? `<a class="btn" href="${esc(pdfOpenHref)}" target="_blank" rel="noopener">${isLocal ? "Download" : "Open"}</a>` : `<span class="legal" style="opacity:.85">No PDF attached yet.</span>`}
-        </div>
-        ${isLocal ? `<div class="legal" style="margin-top:6px">This is a local simulation message (not real email). Use “Export Outbox” in Compose to create a file you can commit into the repo on the next rebuild.</div>` : ``}
-      </div>
+      <div class="miSub">Check paths + GitHub Pages</div>
+      <div class="miSnip">${escapeHTML(String(err?.message || err))}</div>
     `;
+    $mailList.appendChild(card);
 
-    if(el.readingMeta){
-      el.readingMeta.textContent = dateShort || "";
-    }
-
-    document.querySelectorAll(".jm-item").forEach(row => row.classList.remove("active"));
-    const active = document.querySelector(`.jm-item[data-id="${CSS.escape(m.id)}"]`);
-    if(active) active.classList.add("active");
-
-    openReaderOverlay();
+    $readerBody.innerHTML = "";
+    const msg = document.createElement("div");
+    msg.className = "msgCard";
+    msg.innerHTML = `<div class="bodyText">Index load error. Make sure <strong>/released/epstein/jeffs-mail/index.json</strong> exists and is accessible.</div>`;
+    $readerBody.appendChild(msg);
   }
 
-  // ----------------------------
-  // List rendering
-  // ----------------------------
-  function drawList(){
-    if(!el.list) return;
-    state.view = state.all.filter(m => matchesFolder(m) && matchesContact(m) && matchesSearch(m, safeText(el.search?.value||"").trim().toLowerCase()));
+  // -------- Init --------
+  async function init() {
+    // Restore UI state
+    activeMailbox = uiState.mailbox || "inbox";
+    activeContactKey = uiState.contactKey || "";
+    query = uiState.query || "";
+    $search.value = query;
 
-    if(!state.view.length){
-      el.list.innerHTML = `<div class="empty">No messages found.</div>`;
-      return;
+    [$inboxBtn, $sentBtn, $starBtn].forEach(b => b.classList.remove("active"));
+    if (activeMailbox === "sent") $sentBtn.classList.add("active");
+    else if (activeMailbox === "starred") $starBtn.classList.add("active");
+    else $inboxBtn.classList.add("active");
+
+    try {
+      indexData = await fetchIndex();
+      const baseItems = Array.isArray(indexData.items) ? indexData.items : [];
+      allItems = mergeOutbox(baseItems);
+
+      // If star ids include items no longer present, keep anyway (harmless)
+
+      applyFilters();
+
+    } catch (err) {
+      showIndexError(err);
     }
-
-    el.list.innerHTML = state.view.map(m => `
-      <div class="jm-item ${m.id===state.activeId?"active":""}" data-id="${esc(m.id)}">
-        ${renderAvatarHTML(otherPartyLabel(m.mailbox, m.from, m.to))}
-        <div class="jm-item-meta">
-          <div class="jm-item-top">
-            <div class="jm-item-name">${esc(otherPartyLabel(m.mailbox, m.from, m.to))}</div>
-            <div class="jm-item-date">${esc(m.dateDisplay || (m.date ? fmtDateShort(m.date) : ""))}</div>
-          </div>
-          <div class="jm-item-subj">${esc(m.subject || "(No subject)")}</div>
-          <div class="jm-item-snippet">${esc(m.snippet || "")}</div>
-        </div>
-      </div>
-    `).join("");
-
-    el.list.querySelectorAll(".jm-item").forEach(row => {
-      row.addEventListener("click", () => {
-        const id = row.getAttribute("data-id") || "";
-        const msg = state.view.find(x => x.id === id) || state.all.find(x => x.id === id);
-        if(msg) setReading(msg);
-      });
-    });
   }
 
-  // ----------------------------
-  // Counts
-  // ----------------------------
-  function updateCounts(){
-    const inbox = state.all.filter(x => x.mailbox === "inbox").length;
-    const sent = state.all.filter(x => x.mailbox === "sent").length;
-    const starred = state.all.filter(x => !!x.starred).length;
-
-    if(el.countInbox) el.countInbox.textContent = String(inbox);
-    if(el.countSent) el.countSent.textContent = String(sent);
-    if(el.countStarred) el.countStarred.textContent = String(starred);
-  }
-
-  // ----------------------------
-  // Folder / UI wiring
-  // ----------------------------
-  function setActiveFolder(folder){
-    state.folder = folder;
-    state.activeContactKey = "";
-    draw();
-  }
-
-  function draw(){
-    rebuildContacts();
-    drawSubjects();
-    updateCounts();
-    applySearch();
-  }
-
-  // ----------------------------
-  // Boot
-  // ----------------------------
-  async function boot(){
-    state.starred = loadStarred();
-    state.subjects = loadSubjects();
-
-    togglePanel(el.contactsHeader, el.contactsPanel);
-    togglePanel(el.subjectsHeader, el.subjectsPanel);
-
-    if(el.btnAddSubject){
-      el.btnAddSubject.addEventListener("click", () => saveCurrentSearchAsSubject());
-    }
-    if(el.btnClearSubjects){
-      el.btnClearSubjects.addEventListener("click", () => {
-        state.subjects = [];
-        saveSubjects();
-        drawSubjects();
-      });
-    }
-
-    if(el.folderInbox) el.folderInbox.addEventListener("click", () => setActiveFolder("inbox"));
-    if(el.folderSent) el.folderSent.addEventListener("click", () => setActiveFolder("sent"));
-    if(el.folderStarred) el.folderStarred.addEventListener("click", () => setActiveFolder("starred"));
-
-    if(el.search){
-      el.search.addEventListener("input", () => applySearch());
-    }
-    if(el.btnClearSearch){
-      el.btnClearSearch.addEventListener("click", () => {
-        if(el.search) el.search.value = "";
-        state.activeSubject = "";
-        applySearch();
-      });
-    }
-
-    if(el.btnClearFilters){
-      el.btnClearFilters.addEventListener("click", () => {
-        state.activeContactKey = "";
-        state.activeSubject = "";
-        if(el.search) el.search.value = "";
-        applySearch();
-      });
-    }
-
-    if(el.readerBack){
-      el.readerBack.addEventListener("click", () => closeReaderOverlay());
-    }
-    if(el.readerShell){
-      el.readerShell.addEventListener("click", (e) => {
-        if(e.target === el.readerShell) closeReaderOverlay();
-      });
-    }
-    window.addEventListener("keydown", (e) => {
-      if(e.key === "Escape") closeReaderOverlay();
-    });
-
-    // Compose modal wiring
-    if(el.composeBtn){
-      el.composeBtn.addEventListener("click", () => openComposeModal());
-    }
-    if(el.composeCancel) el.composeCancel.addEventListener("click", closeComposeModal);
-    if(el.composeModal){
-      el.composeModal.addEventListener("click", (e) => {
-        if(e.target === el.composeModal) closeComposeModal();
-      });
-    }
-    if(el.composeExport){
-      el.composeExport.addEventListener("click", () => exportOutboxDownload());
-    }
-    if(el.composeSend){
-      el.composeSend.addEventListener("click", () => {
-        sendCompose().catch(err => {
-          console.error(err);
-          alert(err?.message || String(err));
-        });
-      });
-    }
-
-    const data = await fetchIndex();
-    state.all = normalizeItems(data);
-    mergeLocalOutbox();
-    setActiveFolder("inbox");
-
-    // default select first item (desktop)
-    const first = state.all[0];
-    if(first) setReading(first);
-
-    draw();
-  }
-
-  boot().catch(err => {
-    console.error(err);
-    if(el.list) el.list.innerHTML = `<div class="empty">Failed to load index.</div>`;
-  });
-
+  document.addEventListener("DOMContentLoaded", init);
 })();
