@@ -1,29 +1,10 @@
-// /config.js — CivicThreat.us site config
-// NOTE: This file is public on GitHub Pages. Do not put real secrets here.
-
 window.CT_CONFIG = {
   SITE_NAME: "CIVIC THREAT",
-  SITE_TAGLINE: "Debate & Discuss",
-
-  // Cooldown per browser for reactions
+  SITE_TAGLINE: "Debate & Discover",
   REACTION_COOLDOWN_MS: 5000,
+  API_URL: "https://script.google.com/macros/s/....../exec",
+  REMOTE_DB: { enabled: true, appsScriptUrl: "...", apiKey: "" },
 
-  // ✅ REQUIRED by data-api.js (your JSONP client)
-  // Put your Apps Script Web App "exec" URL here:
-  API_URL: "https://script.google.com/macros/s/AKfycbxvjktr3A_FCZEgRNtkWBb9qGJTjdwa0oaS2ofAzQDQGngka0vLe8MwJrgUqy5KUOl6lA/exec",
-
-  // ✅ Kept for compatibility with admin pages that check REMOTE_DB
-  REMOTE_DB: {
-    enabled: true,
-    appsScriptUrl: "https://script.google.com/macros/s/AKfycbxvjktr3A_FCZEgRNtkWBb9qGJTjdwa0oaS2ofAzQDQGngka0vLe8MwJrgUqy5KUOl6lA/exec",
-
-    // Optional: leave blank if you are NOT enforcing an API key in Apps Script
-    apiKey: ""
-  },
-
-  // Jeffs Mail: Cloudflare Worker upload endpoint (Compose → Send)
-  // NOTE: This key is public in config.js, so it's a lightweight gate, not true security.
-  // If you want real abuse protection, we should add Cloudflare Turnstile next.
   JEFFS_MAIL_UPLOAD_URL: "https://jeffs-mail-upload.clintondeig.workers.dev/upload",
-  JEFFS_MAIL_UPLOAD_KEY: "sgfjghkhguigiyt9///fjkgjddyutyu"
+  JEFFS_MAIL_UPLOAD_KEY: "PASTE_YOUR_UPLOAD_KEY_SECRET_HERE"
 };
