@@ -3,15 +3,27 @@
 
   const INDEX_URL = "./index.json";
   const CONSENT_KEY = "ct_jeffs_mail_21_gate_v1";
-  const STAR_KEY = "ct_jeffs_mail_starred_v1";
-  const CONTACT_KEY = "ct_jeffs_mail_contact_filter_v1";
-  const SUBJECTS_KEY = "ct_jeffs_mail_saved_subjects_v1";
+  const STAR_KEY = "ct_jeffs_mail_starred_v2";
+  const CONTACT_KEY = "ct_jeffs_mail_contact_filter_v2";
+  const SUBJECTS_KEY = "ct_jeffs_mail_subjects_v1";
+  const SUBJECT_ACTIVE_KEY = "ct_jeffs_mail_subject_active_v1";
+
+  // Optional config hooks:
+  // window.CT_CONFIG.JEFF_AVATAR_URL = "/assets/jeff-epstein.jpg"
+  // window.CT_CONFIG.JEFF_DISPLAY_NAME = "Jeffrey Epstein"
+  const CFG = window.CT_CONFIG || {};
+  const JEFF_DISPLAY_NAME = String(CFG.JEFF_DISPLAY_NAME || "Jeffrey Epstein");
+  const JEFF_AVATAR_URL = String(CFG.JEFF_AVATAR_URL || "");
 
   const $ = (sel, root=document) => root.querySelector(sel);
 
   const el = {
+    jeffAvatar: $("#jmJeffAvatar"),
+
     search: $("#jmSearch"),
+    clear: $("#jmClear"),
     items: $("#jmItems"),
+    found: $("#jmFound"),
 
     folderTitle: $("#jmFolderTitle"),
     folderCount: $("#jmCount"),
@@ -27,15 +39,6 @@
     readCard: $("#jmReadCard"),
     readingMeta: $("#jmReadingMeta"),
 
-    // Contacts (left collapsible list)
-    contactsList: $("#jmContactsList"),
-    contactsToggle: $("#jmContactsToggle"),
-
-    // Subjects (left collapsible list)
-    subjectsToggle: $("#jmSubjectsToggle"),
-    subjectsList: $("#jmSubjectsList"),
-    subjectAddBtn: $("#jmSubjectAddBtn"),
-
     reader: $("#jmReader"),
     btnReaderBack: $("#jmReaderBack"),
 
@@ -44,11 +47,15 @@
     gateEnter: $("#gateEnter"),
     gateLeave: $("#gateLeave"),
 
-    // Modal for adding subjects
-    subjectModal: $("#jmSubjectModal"),
-    subjectModalInput: $("#jmSubjectInput"),
-    subjectModalSave: $("#jmSubjectSave"),
-    subjectModalCancel: $("#jmSubjectCancel"),
+    contactsFold: $("#jmContactsFold"),
+    contactsToggle: $("#jmContactsToggle"),
+    contactsList: $("#jmContactsList"),
+
+    subjectsFold: $("#jmSubjectsFold"),
+    subjectsToggle: $("#jmSubjectsToggle"),
+    subjectsList: $("#jmSubjectsList"),
+    addSubject: $("#jmAddSubject"),
+    clearSubject: $("#jmClearSubject"),
   };
 
   const state = {
@@ -58,17 +65,19 @@
     activeId: "",
     contact: "all",
     starred: new Set(),
-    contacts: [],
-    savedSubjects: [],   // {id,name,query}
-    activeSubjectId: "all",
+    contacts: [], // { key, name, count }
+    subjects: [], // { id, label, query }
+    activeSubjectId: "",
   };
 
   function esc(s){
     return String(s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   }
+
   function safeText(s){
     return String(s || "").replace(/\s+/g, " ").trim();
   }
+
   function isObj(v){
     return v && typeof v === "object" && !Array.isArray(v);
   }
@@ -89,37 +98,6 @@
       if(isNaN(d.getTime())) return "";
       return d.toLocaleDateString(undefined, { year:"numeric", month:"short", day:"2-digit" });
     }catch(_){ return ""; }
-  }
-
-  function slugify(s){
-    return safeText(s).toLowerCase()
-      .replace(/[^\w\s\-]+/g, "")
-      .replace(/\s+/g, "-")
-      .replace(/\-+/g, "-")
-      .replace(/^\-+|\-+$/g, "") || "unknown";
-  }
-
-  function looksDateish(s){
-    const t = safeText(s).toLowerCase();
-    if(!t) return false;
-    return /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b/.test(t) ||
-      /\b(mon|tue|wed|thu|fri|sat|sun)\b/.test(t) ||
-      /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/.test(t) ||
-      /\b\d{4}-\d{2}-\d{2}\b/.test(t) ||
-      /\b\d{1,2}:\d{2}(:\d{2})?\b/.test(t);
-  }
-
-  function cleanContact(s){
-    let t = safeText(s);
-    t = t.replace(/^(from|to|sent|subject|date|cc|bcc)\s*:\s*/i, "").trim();
-    t = t.replace(/^\s*[:\-]\s*/, "").trim();
-    t = t.replace(/[\[\]\(\)]/g, "").trim();
-    t = t.replace(/\s+/g, " ").trim();
-    t = t.replace(/[,;|•]+$/g, "").trim();
-    if(!t) return "Unknown";
-    if(looksDateish(t)) return "Unknown";
-    if(t.length > 140) return "Unknown";
-    return t;
   }
 
   function hasConsent(){
@@ -177,6 +155,7 @@
       state.starred = new Set();
     }
   }
+
   function saveStarred(){
     try{
       localStorage.setItem(STAR_KEY, JSON.stringify(Array.from(state.starred)));
@@ -195,19 +174,27 @@
     try{ localStorage.setItem(CONTACT_KEY, state.contact || "all"); }catch(_){}
   }
 
-  function loadSavedSubjects(){
+  function loadSubjects(){
     try{
       const raw = localStorage.getItem(SUBJECTS_KEY);
       const arr = raw ? JSON.parse(raw) : [];
-      state.savedSubjects = Array.isArray(arr) ? arr : [];
+      state.subjects = Array.isArray(arr) ? arr.filter(x => x && x.id && x.query) : [];
     }catch(_){
-      state.savedSubjects = [];
+      state.subjects = [];
+    }
+
+    try{
+      state.activeSubjectId = localStorage.getItem(SUBJECT_ACTIVE_KEY) || "";
+    }catch(_){
+      state.activeSubjectId = "";
     }
   }
-  function saveSavedSubjects(){
-    try{
-      localStorage.setItem(SUBJECTS_KEY, JSON.stringify(state.savedSubjects || []));
-    }catch(_){}
+  function saveSubjects(){
+    try{ localStorage.setItem(SUBJECTS_KEY, JSON.stringify(state.subjects)); }catch(_){}
+  }
+  function setActiveSubject(id){
+    state.activeSubjectId = id || "";
+    try{ localStorage.setItem(SUBJECT_ACTIVE_KEY, state.activeSubjectId); }catch(_){}
   }
 
   async function fetchJsonStrict(url){
@@ -218,10 +205,46 @@
     return r.json();
   }
 
-  function otherParty(mailbox, from, to){
-    const f = cleanContact(from);
-    const t = cleanContact(to);
-    return mailbox === "sent" ? (t || "Unknown") : (f || "Unknown");
+  function isNarrow(){
+    return window.matchMedia && window.matchMedia("(max-width: 980px)").matches;
+  }
+  function openReaderOverlay(){
+    if(!el.reader) return;
+    if(isNarrow()){
+      el.reader.classList.add("open");
+      document.body.classList.add("jm-lock");
+    }
+  }
+  function closeReaderOverlay(){
+    if(!el.reader) return;
+    el.reader.classList.remove("open");
+    document.body.classList.remove("jm-lock");
+  }
+
+  function buildAvatarHTML(name, isJeff){
+    const n = safeText(name);
+    if(isJeff && JEFF_AVATAR_URL){
+      return `<div class="jm-avatar" aria-label="Jeff"><img src="${esc(JEFF_AVATAR_URL)}" alt="${esc(JEFF_DISPLAY_NAME)}"></div>`;
+    }
+    if(isJeff){
+      return `<div class="jm-avatar" aria-label="Jeff">JE</div>`;
+    }
+    if(!n || n === "Unknown"){
+      return `<div class="jm-avatar unknown" aria-label="Unknown"></div>`;
+    }
+    const letter = (n[0] || "?").toUpperCase();
+    return `<div class="jm-avatar" aria-label="${esc(n)}">${esc(letter)}</div>`;
+  }
+
+  function isJeffName(s){
+    const t = safeText(s).toLowerCase();
+    if(!t) return false;
+    if(t.includes("jeevacation@gmail.com")) return true;
+    if(t.includes("beevacation@gmail.com")) return true;
+    if(t.includes("jeffrey epstein")) return true;
+    if(t === "lsj") return true;
+    if(t.includes(" lsj")) return true;
+    return false;
   }
 
   function normalizeItems(data){
@@ -231,7 +254,6 @@
 
     for(const m of items){
       if(!m || !m.id) continue;
-
       const pdf = safeText(m.pdf);
       if(!pdf) continue;
 
@@ -239,21 +261,19 @@
       const mailbox = mailboxRaw === "sent" ? "sent" : "inbox";
 
       const subject = safeText(m.subject) || "(No subject)";
-      const from = cleanContact(pickName(m.from));
-      const to = cleanContact(pickName(m.to));
+      const from = safeText(pickName(m.from)) || "Unknown";
+      const to = safeText(pickName(m.to)) || "Unknown";
 
       const date = safeText(m.date);
       const dateDisplay = safeText(m.dateDisplay);
 
       const body = String(m.body || "");
-      const snippet = safeText(m.snippet) || (body ? safeText(body).slice(0, 160) : "");
+      const snippet = safeText(m.snippet) || safeText(body).slice(0, 200);
 
-      let contactName = cleanContact(pickName(m.contactName)) || otherParty(mailbox, from, to);
-      if(looksDateish(contactName)) contactName = otherParty(mailbox, from, to);
-      if(looksDateish(contactName)) contactName = "Unknown";
+      const contactName = safeText(m.contactName) || "Unknown";
+      const contactKey = safeText(m.contactKey) || "unknown";
 
-      let contactKey = safeText(m.contactKey) || slugify(contactName);
-      if(contactKey === "unknown" && contactName !== "Unknown") contactKey = slugify(contactName);
+      const thread = Array.isArray(m.thread) ? m.thread : null;
 
       const id = String(m.id);
 
@@ -265,15 +285,16 @@
         id,
         mailbox,
         subject,
-        from: from || "Unknown",
-        to: to || "Unknown",
+        from,
+        to,
         date,
         dateDisplay,
         snippet,
         body,
         pdf,
-        contactKey: contactKey || "unknown",
-        contactName: contactName || "Unknown",
+        contactKey,
+        contactName,
+        thread,
         starred: state.starred.has(id),
       });
     }
@@ -289,43 +310,88 @@
   }
 
   function rebuildContacts(){
-    const map = new Map();
+    // We include:
+    // - "All contacts"
+    // - A special "Jeffrey Epstein" contact bucket (everything where Jeff is involved)
+    // - Normal "other party" contacts from index.json
+    const map = new Map(); // key -> {name,count}
+
+    // Always include Jeff bucket:
+    map.set("jeffrey-epstein", { name: JEFF_DISPLAY_NAME, count: 0 });
+
     for(const m of state.all){
+      // Count Jeff involvement:
+      const involved = isJeffName(m.from) || isJeffName(m.to) || isJeffName(m.contactName);
+      if(involved){
+        map.get("jeffrey-epstein").count += 1;
+      }
+
       const k = safeText(m.contactKey) || "unknown";
-      const n = cleanContact(m.contactName) || "Unknown";
-      if(n === "Unknown") continue;
-      if(!map.has(k)) map.set(k, n);
+      const n = safeText(m.contactName) || "Unknown";
+      if(!k || k === "unknown") continue;
+      if(!n || n === "Unknown") continue;
+
+      if(!map.has(k)) map.set(k, { name: n, count: 0 });
+      map.get(k).count += 1;
     }
 
-    const list = Array.from(map.entries()).map(([key, name]) => ({ key, name }));
-    list.sort((a,b) => a.name.localeCompare(b.name));
+    const list = Array.from(map.entries())
+      .map(([key, obj]) => ({ key, name: obj.name, count: obj.count }))
+      .sort((a,b) => a.name.localeCompare(b.name));
 
     state.contacts = list;
 
-    // render left contact list
-    if(el.contactsList){
-      el.contactsList.innerHTML = `
-        <button class="jm-sideitem ${state.contact==="all"?"active":""}" data-contact="all" type="button">
-          <span>All contacts</span>
-          <span class="jm-sidecount">${state.all.length}</span>
-        </button>
-        ${list.map(c => `
-          <button class="jm-sideitem ${state.contact===c.key?"active":""}" data-contact="${esc(c.key)}" type="button">
-            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.name)}</span>
-            <span class="jm-sidecount">${state.all.filter(x=>x.contactKey===c.key).length}</span>
-          </button>
-        `).join("")}
-      `;
-
-      el.contactsList.querySelectorAll("[data-contact]").forEach(btn=>{
-        btn.addEventListener("click", ()=>{
-          state.contact = btn.getAttribute("data-contact") || "all";
-          saveContactFilter();
-          state.activeId = "";
-          draw();
-        });
-      });
+    // Validate stored filter
+    const validKeys = new Set(list.map(x => x.key));
+    if(state.contact !== "all" && !validKeys.has(state.contact)){
+      state.contact = "all";
+      saveContactFilter();
     }
+
+    drawContacts();
+  }
+
+  function drawContacts(){
+    if(!el.contactsList) return;
+
+    const cur = state.contact || "all";
+    const rows = [];
+
+    rows.push(`
+      <div class="pickrow ${cur === "all" ? "active" : ""}" data-k="all" role="button" tabindex="0">
+        <div class="l">
+          <div class="jm-avatar" aria-hidden="true">∞</div>
+          <div class="nm">All contacts</div>
+        </div>
+        <div class="ct">${state.all.length}</div>
+      </div>
+    `);
+
+    for(const c of state.contacts){
+      rows.push(`
+        <div class="pickrow ${cur === c.key ? "active" : ""}" data-k="${esc(c.key)}" role="button" tabindex="0">
+          <div class="l">
+            ${c.key === "jeffrey-epstein" ? buildAvatarHTML(JEFF_DISPLAY_NAME, true) : buildAvatarHTML(c.name, false)}
+            <div class="nm">${esc(c.name)}</div>
+          </div>
+          <div class="ct">${esc(String(c.count))}</div>
+        </div>
+      `);
+    }
+
+    el.contactsList.innerHTML = rows.join("");
+
+    el.contactsList.querySelectorAll(".pickrow").forEach(row => {
+      const k = row.getAttribute("data-k") || "all";
+      row.addEventListener("click", () => {
+        state.contact = k;
+        saveContactFilter();
+        state.activeId = "";
+        drawContacts();
+        draw();
+        closeReaderOverlay();
+      });
+    });
   }
 
   function updateCounts(){
@@ -358,44 +424,6 @@
     draw();
   }
 
-  function matchesQuery(m, q){
-    if(!q) return true;
-    const hay = [
-      m.subject, m.from, m.to, m.snippet, safeText(m.body||""), m.contactName
-    ].join(" ").toLowerCase();
-    return hay.includes(q);
-  }
-
-  function matchesContact(m){
-    const c = state.contact || "all";
-    if(c === "all") return true;
-    return (m.contactKey || "") === c;
-  }
-
-  function matchesSubjectFilter(m){
-    const id = state.activeSubjectId || "all";
-    if(id === "all") return true;
-    const entry = (state.savedSubjects || []).find(x=>String(x.id)===String(id));
-    if(!entry || !entry.query) return true;
-    return matchesQuery(m, String(entry.query).toLowerCase());
-  }
-
-  function getVisible(){
-    const q = (state.q || "").trim().toLowerCase();
-    let list = state.all;
-
-    if(state.folder === "starred"){
-      list = list.filter(x => x.starred);
-    }else{
-      list = list.filter(x => (x.mailbox || "inbox") === state.folder);
-    }
-
-    list = list.filter(matchesContact);
-    list = list.filter(matchesSubjectFilter);
-    if(q) list = list.filter(m => matchesQuery(m, q));
-    return list;
-  }
-
   function setActiveFolder(folder){
     state.folder = folder;
 
@@ -410,185 +438,54 @@
     draw();
   }
 
-  function isNarrow(){
-    return window.matchMedia && window.matchMedia("(max-width: 980px)").matches;
-  }
-  function openReaderOverlay(){
-    if(!el.reader) return;
-    if(isNarrow()){
-      el.reader.classList.add("open");
-      document.body.classList.add("jm-lock");
-    }
-  }
-  function closeReaderOverlay(){
-    if(!el.reader) return;
-    el.reader.classList.remove("open");
-    document.body.classList.remove("jm-lock");
+  function matchesQuery(m, q){
+    if(!q) return true;
+    const hay = [
+      m.subject, m.from, m.to, m.snippet, safeText(m.body || ""), m.contactName
+    ].join(" ").toLowerCase();
+    return hay.includes(q);
   }
 
-  // ----------------------------
-  // Thread parsing (Gmail-style)
-  // ----------------------------
+  function matchesContact(m){
+    const c = state.contact || "all";
+    if(c === "all") return true;
 
-  const THREAD_BREAK_RE = /\n\s*(?:-----Original Message-----|Begin forwarded message:|From:\s)/i;
-
-  function cleanBodyArtifacts(text){
-    let t = String(text || "");
-    t = t.replace(/<=div>/gi, "\n");
-    t = t.replace(/<\/?div[^>]*>/gi, "\n");
-    t = t.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-    t = t.replace(/\n{3,}/g, "\n\n");
-    return t.trim();
-  }
-
-  function parseMiniHeaders(block){
-    // Parse "From:", "To:", "Sent:", "Date:", "Subject:" inside a forwarded block header area
-    const lines = block.split("\n");
-    const hdr = { from:"", to:"", date:"", subject:"" };
-    let i=0;
-    let scanned=0;
-
-    function isKeyLine(s){
-      return /^(from|to|cc|bcc|subject|date|sent)\s*:?/i.test(s.trim());
+    // Special Jeff bucket:
+    if(c === "jeffrey-epstein"){
+      return isJeffName(m.from) || isJeffName(m.to) || isJeffName(m.contactName);
     }
 
-    while(i < lines.length && scanned < 30){
-      const s = lines[i].trim();
-      if(!s){ i++; scanned++; continue; }
+    return (m.contactKey || "") === c;
+  }
 
-      // stop header parse on obvious start of message content
-      if(scanned >= 4 && !isKeyLine(s) && !/^[>]/.test(s)){
-        break;
+  function getVisible(){
+    const q = (state.q || "").trim().toLowerCase();
+    let list = state.all;
+
+    if(state.folder === "starred"){
+      list = list.filter(x => x.starred);
+    }else{
+      list = list.filter(x => (x.mailbox || "inbox") === state.folder);
+    }
+
+    list = list.filter(matchesContact);
+
+    // Optional "subject saved search" overrides query
+    if(state.activeSubjectId){
+      const subj = state.subjects.find(s => s.id === state.activeSubjectId);
+      if(subj && subj.query){
+        const q2 = safeText(subj.query).toLowerCase();
+        if(q2) list = list.filter(m => matchesQuery(m, q2));
       }
-
-      const m = s.match(/^(from|to|subject|date|sent)\s*:?\s*(.*)$/i);
-      if(m){
-        const key = m[1].toLowerCase();
-        const val = (m[2]||"").trim();
-
-        if(key === "sent" || key === "date"){
-          hdr.date = hdr.date || val;
-          // If date is blank, sometimes next line is the actual date
-          if(!hdr.date && i+1<lines.length){
-            const nxt = lines[i+1].trim();
-            if(nxt && !isKeyLine(nxt)) hdr.date = nxt;
-          }
-        }else if(key === "from"){
-          hdr.from = hdr.from || val;
-          if(!hdr.from && i+1<lines.length){
-            const nxt = lines[i+1].trim();
-            if(nxt && !isKeyLine(nxt)) hdr.from = nxt;
-          }
-        }else if(key === "to"){
-          hdr.to = hdr.to || val;
-          if(!hdr.to && i+1<lines.length){
-            const nxt = lines[i+1].trim();
-            if(nxt && !isKeyLine(nxt)) hdr.to = nxt;
-          }
-        }else if(key === "subject"){
-          hdr.subject = hdr.subject || val;
-        }
-      }
-
-      i++;
-      scanned++;
+    }else if(q){
+      list = list.filter(m => matchesQuery(m, q));
     }
 
-    const rest = lines.slice(i).join("\n").trim();
-    return { hdr, rest };
+    return list;
   }
 
-  function splitThread(body, topFrom, topTo, topSubject, topDate){
-    const t = cleanBodyArtifacts(body || "");
-    if(!t) return [{
-      from: topFrom || "Unknown",
-      to: topTo || "Unknown",
-      date: topDate || "",
-      subject: topSubject || "",
-      text: ""
-    }];
-
-    // If there are no forwarded markers, single message
-    if(!THREAD_BREAK_RE.test("\n"+t)){
-      return [{
-        from: topFrom || "Unknown",
-        to: topTo || "Unknown",
-        date: topDate || "",
-        subject: topSubject || "",
-        text: t
-      }];
-    }
-
-    // We will try to carve out:
-    // 1) top message text until first "Begin forwarded" / "-----Original" / "\nFrom:"
-    // 2) then forwarded blocks starting with "Begin forwarded message:" or "-----Original Message-----" or "From:"
-    const out = [];
-
-    const firstBreak = (("\n"+t).search(THREAD_BREAK_RE));
-    let head = t;
-    let tail = "";
-    if(firstBreak >= 0){
-      head = t.slice(0, Math.max(0, firstBreak-1)).trim();
-      tail = t.slice(Math.max(0, firstBreak-1)).trim();
-    }
-
-    out.push({
-      from: topFrom || "Unknown",
-      to: topTo || "Unknown",
-      date: topDate || "",
-      subject: topSubject || "",
-      text: head
-    });
-
-    // Now parse subsequent blocks
-    let cursor = tail;
-    // Split by major block starters while keeping content
-    const parts = cursor.split(/\n(?=(?:-----Original Message-----|Begin forwarded message:|From:\s))/i);
-
-    for(const p of parts){
-      const part = p.trim();
-      if(!part) continue;
-
-      // remove leading marker line if present
-      let blk = part.replace(/^-----Original Message-----\s*/i, "").replace(/^Begin forwarded message:\s*/i, "").trim();
-
-      // Some blocks start with "From:" directly; parse mini headers
-      const { hdr, rest } = parseMiniHeaders(blk);
-
-      out.push({
-        from: cleanContact(hdr.from) || "Unknown",
-        to: cleanContact(hdr.to) || "Unknown",
-        date: safeText(hdr.date || ""),
-        subject: safeText(hdr.subject || ""),
-        text: rest.trim()
-      });
-    }
-
-    // Remove empty trailing messages
-    return out.filter(m => (m.text || m.subject || m.date || m.from || m.to));
-  }
-
-  function avatarHtml(name, isJeff){
-    if(isJeff){
-      // You said you’ll provide the image — set it here:
-      // Put the file at: released/epstein/jeffs-mail/assets/jeff.jpg (or png)
-      return `<span class="jm-avatar jm-avatar-img"><img src="./assets/jeff.jpg" alt="Jeff" loading="lazy"></span>`;
-    }
-    const n = cleanContact(name || "");
-    if(n === "Unknown"){
-      return `<span class="jm-avatar jm-avatar-unk" title="Unknown">⛔</span>`;
-    }
-    const letter = esc(n.slice(0,1).toUpperCase());
-    return `<span class="jm-avatar jm-avatar-letter" aria-hidden="true">${letter}</span>`;
-  }
-
-  function isJeffIdentity(nameOrEmail){
-    const s = String(nameOrEmail||"").toLowerCase();
-    return s.includes("jeffrey epstein") ||
-      s.includes("jeff epstein") ||
-      s.includes("jeevacation") ||
-      s.includes("beevacation") ||
-      s.includes("lsj");
+  function otherParty(mailbox, from, to){
+    return mailbox === "sent" ? (safeText(to) || "Unknown") : (safeText(from) || "Unknown");
   }
 
   function setReading(m){
@@ -598,52 +495,84 @@
     const mailbox = m.mailbox || "inbox";
     const pdfHref = esc(m.pdf);
 
-    const topFrom = m.from || "Unknown";
-    const topTo = m.to || "Unknown";
-    const topDate = m.date ? fmtDateShort(m.date) : (m.dateDisplay || "");
-    const topSubject = m.subject || "(No subject)";
+    // Reader header (subject + from/to + avatar + badges)
+    const fromLabel = safeText(m.from) || "Unknown";
+    const toLabel = safeText(m.to) || "Unknown";
 
-    const thread = splitThread(m.body || "", topFrom, topTo, topSubject, topDate);
+    const headAvatarIsJeff = isJeffName(fromLabel);
+    const headAvatar = buildAvatarHTML(headAvatarIsJeff ? JEFF_DISPLAY_NAME : fromLabel, headAvatarIsJeff);
+
+    const badges = [
+      `<span class="jm-badge">Released</span>`,
+      `<span class="jm-badge">PDF</span>`,
+      m.starred ? `<span class="jm-badge">★ Starred</span>` : ``
+    ].join("");
+
+    // Thread rendering: if builder produced thread[] use it; else show single “body”
+    let threadHtml = "";
+
+    if(Array.isArray(m.thread) && m.thread.length){
+      const msgs = m.thread.map(msg => {
+        const mf = safeText(msg.from || "Unknown");
+        const mt = safeText(msg.to || "Unknown");
+        const md = safeText(msg.dateDisplay || msg.date || "");
+        const mb = String(msg.body || "");
+
+        const isJ = isJeffName(mf);
+        const av = buildAvatarHTML(isJ ? JEFF_DISPLAY_NAME : mf, isJ);
+
+        return `
+          <div class="jm-msg ep-box">
+            <div class="jm-msg-top">
+              ${av}
+              <div class="jm-msg-meta">
+                <div class="who">${esc(mf)}</div>
+                <div class="to">to ${esc(mt || "Unknown")}</div>
+                <div class="dt">${esc(md)}</div>
+              </div>
+            </div>
+            <div class="jm-bodytext">${esc(mb || "")}</div>
+          </div>
+        `;
+      }).join("");
+
+      threadHtml = `<div class="jm-thread">${msgs}</div>`;
+    }else{
+      // fallback
+      const bodyText = safeText(m.body || "");
+      threadHtml = `
+        <div class="jm-thread">
+          <div class="jm-msg ep-box">
+            <div class="jm-msg-top">
+              ${headAvatar}
+              <div class="jm-msg-meta">
+                <div class="who">${esc(fromLabel)}</div>
+                <div class="to">to ${esc(toLabel)}</div>
+                <div class="dt">${esc(m.date ? fmtDateShort(m.date) : (m.dateDisplay || ""))}</div>
+              </div>
+            </div>
+            <div class="jm-bodytext">${esc(bodyText || m.snippet || "")}</div>
+          </div>
+        </div>
+      `;
+    }
 
     el.readCard.innerHTML = `
-      <div class="jm-readhead">
-        <div class="jm-h1">${esc(topSubject)}</div>
-        <div class="jm-badges">
-          <span class="jm-badge">Released</span>
-          <span class="jm-badge">PDF</span>
-          ${m.starred ? `<span class="jm-badge">★ Starred</span>` : ``}
-          <span class="jm-badge">${esc(String(mailbox))}</span>
+      <div class="jm-h1">${esc(m.subject || "(No subject)")}</div>
+
+      <div class="jm-badges">${badges}</div>
+
+      <div class="jm-headrow">
+        ${headAvatar}
+        <div class="jm-headmeta">
+          <b>From</b><div>${esc(fromLabel)}</div>
+          <b>To</b><div>${esc(toLabel)}</div>
+          <b>Date</b><div>${esc(m.date ? fmtDateShort(m.date) : (m.dateDisplay || "Unknown"))}</div>
+          <b>Mailbox</b><div>${esc(String(mailbox))}</div>
         </div>
       </div>
 
-      <div class="jm-thread">
-        ${thread.map(msg=>{
-          const fromIsJeff = isJeffIdentity(msg.from);
-          const toIsJeff = isJeffIdentity(msg.to);
-          const showFrom = msg.from || "Unknown";
-          const showTo = msg.to || "Unknown";
-          const showDate = msg.date || "";
-          const showSub = msg.subject || "";
-          const text = cleanBodyArtifacts(msg.text || "");
-
-          return `
-            <div class="jm-msg">
-              ${avatarHtml(showFrom, fromIsJeff)}
-              <div class="jm-msgbox">
-                <div class="jm-msgmeta">
-                  <div class="jm-msgfrom">${esc(showFrom)}</div>
-                  <div class="jm-msgright">
-                    ${showDate ? `<span class="jm-msgdate">${esc(showDate)}</span>` : ``}
-                  </div>
-                </div>
-                <div class="jm-msgto">to <span>${esc(showTo)}</span></div>
-                ${showSub ? `<div class="jm-msgsubj">${esc(showSub)}</div>` : ``}
-                <div class="jm-msgtext">${esc(text || "Open the source PDF below to view the original record.").replace(/\n/g,"<br>")}</div>
-              </div>
-            </div>
-          `;
-        }).join("")}
-      </div>
+      ${threadHtml}
 
       <div class="jm-attach">
         <strong>Source PDF</strong>
@@ -657,7 +586,7 @@
     `;
 
     if(el.readingMeta){
-      el.readingMeta.textContent = topDate || "";
+      el.readingMeta.textContent = m.date ? fmtDateShort(m.date) : (m.dateDisplay || "");
     }
 
     document.querySelectorAll(".jm-item").forEach(row => row.classList.remove("active"));
@@ -672,10 +601,17 @@
 
     const list = getVisible();
 
+    if(el.found) el.found.textContent = String(list.length);
     if(el.folderCount) el.folderCount.textContent = String(list.length);
 
     if(!list.length){
       el.items.innerHTML = `<div style="padding:12px;opacity:.85;">No messages found.</div>`;
+      if(el.readCard){
+        el.readCard.innerHTML = `
+          <div class="jm-h1">No messages</div>
+          <div class="legal">Change filters, contact, subject, or search to view emails.</div>
+        `;
+      }
       return;
     }
 
@@ -683,6 +619,7 @@
     for(const m of list){
       const dateShort = m.date ? fmtDateShort(m.date) : (m.dateDisplay || "");
       const fromLabel = otherParty(m.mailbox, m.from, m.to) || "Unknown";
+      const isJ = isJeffName(fromLabel);
 
       const row = document.createElement("div");
       row.className = "jm-item";
@@ -693,7 +630,10 @@
           ${m.starred ? "★" : "☆"}
         </button>
         <div class="main">
-          <div class="jm-from">${esc(fromLabel)}</div>
+          <div class="jm-from">
+            ${buildAvatarHTML(isJ ? JEFF_DISPLAY_NAME : fromLabel, isJ)}
+            <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(fromLabel)}</span>
+          </div>
           <div class="jm-subj">${esc(m.subject || "(No subject)")}</div>
           <div class="jm-snippet">${esc(m.snippet || "")}</div>
         </div>
@@ -722,86 +662,102 @@
     }
   }
 
-  // ----------------------------
-  // Subjects (saved searches)
-  // ----------------------------
+  function toggleFold(node, caretNode){
+    if(!node) return;
+    node.classList.toggle("open");
+    if(caretNode){
+      caretNode.textContent = node.classList.contains("open") ? "▾" : "▸";
+    }
+  }
 
-  function renderSubjects(){
+  function drawSubjects(){
     if(!el.subjectsList) return;
-    const cur = String(state.activeSubjectId || "all");
 
-    el.subjectsList.innerHTML = `
-      <button class="jm-sideitem ${cur==="all"?"active":""}" data-subject="all" type="button">
-        <span>All subjects</span>
-        <span class="jm-sidecount">∞</span>
-      </button>
-      ${(state.savedSubjects||[]).map(s=>{
-        return `
-          <button class="jm-sideitem ${cur===String(s.id)?"active":""}" data-subject="${esc(String(s.id))}" type="button">
-            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(String(s.name||"Subject"))}</span>
-            <span class="jm-sidecount">🔎</span>
-          </button>
-        `;
-      }).join("")}
-    `;
+    const active = state.activeSubjectId || "";
+    if(!state.subjects.length){
+      el.subjectsList.innerHTML = `<div style="padding:10px;opacity:.75;font-size:12px;">No saved subjects yet.</div>`;
+      return;
+    }
 
-    el.subjectsList.querySelectorAll("[data-subject]").forEach(btn=>{
-      btn.addEventListener("click", ()=>{
-        state.activeSubjectId = btn.getAttribute("data-subject") || "all";
-        state.activeId = "";
-        // Clear search bar so it doesn't fight saved subject
-        if(el.search) el.search.value = "";
+    el.subjectsList.innerHTML = state.subjects.map(s => `
+      <div class="pickrow ${active === s.id ? "active" : ""}" data-sid="${esc(s.id)}" role="button" tabindex="0">
+        <div class="l">
+          <div class="jm-avatar" aria-hidden="true">#</div>
+          <div class="nm">${esc(s.label || s.query)}</div>
+        </div>
+        <div class="ct">•</div>
+      </div>
+    `).join("");
+
+    el.subjectsList.querySelectorAll(".pickrow").forEach(row => {
+      row.addEventListener("click", () => {
+        const sid = row.getAttribute("data-sid") || "";
+        setActiveSubject(sid);
         state.q = "";
+        if(el.search) el.search.value = "";
+        drawSubjects();
         draw();
+        closeReaderOverlay();
       });
     });
   }
 
-  function openSubjectModal(){
-    if(!el.subjectModal) return;
-    el.subjectModal.style.display = "flex";
-    if(el.subjectModalInput){
-      el.subjectModalInput.value = "";
-      el.subjectModalInput.focus();
-    }
-  }
-  function closeSubjectModal(){
-    if(!el.subjectModal) return;
-    el.subjectModal.style.display = "none";
-  }
+  function addSubjectPrompt(){
+    const term = prompt("Create a Subject from a search term (1–2 words recommended):");
+    const q = safeText(term || "");
+    if(!q) return;
 
-  function addSubjectFromQuery(q){
-    const query = safeText(q || "");
-    if(!query) return;
+    const id = "sub_" + Math.random().toString(16).slice(2) + "_" + Date.now();
+    const label = q.length > 36 ? q.slice(0, 36).trim() + "…" : q;
 
-    const id = "sub_" + Date.now().toString(36);
-    const name = query.length > 28 ? query.slice(0,28) + "…" : query;
+    state.subjects.unshift({ id, label, query: q });
+    saveSubjects();
+    setActiveSubject(id);
 
-    state.savedSubjects = [{ id, name, query }, ...(state.savedSubjects||[])];
-    saveSavedSubjects();
-    renderSubjects();
+    // clear typed search
+    state.q = "";
+    if(el.search) el.search.value = "";
 
-    state.activeSubjectId = id;
-    state.activeId = "";
+    drawSubjects();
     draw();
   }
 
-  // ----------------------------
-  // Boot
-  // ----------------------------
+  function clearAllFilters(){
+    state.q = "";
+    state.activeId = "";
+    if(el.search) el.search.value = "";
+
+    // keep folder + contact as-is, but clear saved subject selection
+    setActiveSubject("");
+    drawSubjects();
+
+    drawContacts();
+    draw();
+  }
 
   async function boot(){
+    // Jeff avatar in top bar
+    if(el.jeffAvatar){
+      if(JEFF_AVATAR_URL){
+        el.jeffAvatar.innerHTML = `<img src="${esc(JEFF_AVATAR_URL)}" alt="${esc(JEFF_DISPLAY_NAME)}">`;
+      }else{
+        el.jeffAvatar.textContent = "JE";
+      }
+      el.jeffAvatar.title = JEFF_DISPLAY_NAME;
+    }
+
     loadStarred();
     loadContactFilter();
-    loadSavedSubjects();
+    loadSubjects();
 
     const data = await fetchJsonStrict(INDEX_URL);
     state.all = normalizeItems(data);
 
     rebuildContacts();
     updateCounts();
-    renderSubjects();
+    drawSubjects();
 
+    // wire mailbox buttons
     [el.btnInbox, el.btnSent, el.btnStarred].forEach(btn => {
       if(!btn) return;
       btn.addEventListener("click", () => {
@@ -810,56 +766,50 @@
       });
     });
 
+    // search typing (only if no saved subject selected)
     if(el.search){
       el.search.addEventListener("input", () => {
         state.q = el.search.value || "";
         state.activeId = "";
+        if(state.activeSubjectId){
+          setActiveSubject("");
+          drawSubjects();
+        }
         draw();
       });
     }
 
+    if(el.clear){
+      el.clear.addEventListener("click", clearAllFilters);
+    }
+
+    // reader overlay back
     if(el.btnReaderBack){
       el.btnReaderBack.addEventListener("click", closeReaderOverlay);
     }
-
     document.addEventListener("keydown", (e) => {
       if(e.key === "Escape") closeReaderOverlay();
     });
-
     window.addEventListener("resize", () => {
       if(!isNarrow()) closeReaderOverlay();
     });
 
-    // Collapsible toggles
-    if(el.contactsToggle && el.contactsList){
-      el.contactsToggle.addEventListener("click", ()=>{
-        el.contactsList.classList.toggle("open");
-        el.contactsToggle.classList.toggle("open");
-      });
+    // folds
+    if(el.contactsToggle && el.contactsFold){
+      el.contactsToggle.addEventListener("click", () => toggleFold(el.contactsFold, el.contactsToggle.querySelector(".r")));
     }
-    if(el.subjectsToggle && el.subjectsList){
-      el.subjectsToggle.addEventListener("click", ()=>{
-        el.subjectsList.classList.toggle("open");
-        el.subjectsToggle.classList.toggle("open");
-      });
+    if(el.subjectsToggle && el.subjectsFold){
+      el.subjectsToggle.addEventListener("click", () => toggleFold(el.subjectsFold, el.subjectsToggle.querySelector(".r")));
     }
 
-    // Subject add modal
-    if(el.subjectAddBtn){
-      el.subjectAddBtn.addEventListener("click", openSubjectModal);
+    if(el.addSubject){
+      el.addSubject.addEventListener("click", addSubjectPrompt);
     }
-    if(el.subjectModalCancel){
-      el.subjectModalCancel.addEventListener("click", closeSubjectModal);
-    }
-    if(el.subjectModalSave){
-      el.subjectModalSave.addEventListener("click", ()=>{
-        addSubjectFromQuery(el.subjectModalInput ? el.subjectModalInput.value : "");
-        closeSubjectModal();
-      });
-    }
-    if(el.subjectModal){
-      el.subjectModal.addEventListener("click", (e)=>{
-        if(e.target === el.subjectModal) closeSubjectModal();
+    if(el.clearSubject){
+      el.clearSubject.addEventListener("click", () => {
+        setActiveSubject("");
+        drawSubjects();
+        draw();
       });
     }
 
@@ -870,10 +820,12 @@
     wireGate(() => {
       boot().catch(err => {
         console.error(err);
-        if(el.items) el.items.innerHTML =
-          `<div style="padding:12px;opacity:.85;line-height:1.5;">
-            Failed to load <strong>index.json</strong>.<br><br>${esc(err.message || String(err))}
-           </div>`;
+        if(el.items){
+          el.items.innerHTML =
+            `<div style="padding:12px;opacity:.85;line-height:1.5;">
+              Failed to load <strong>index.json</strong>.<br><br>${esc(err.message || String(err))}
+             </div>`;
+        }
       });
     });
   }
