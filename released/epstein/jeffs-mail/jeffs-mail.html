@@ -4,675 +4,560 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Jeffs Mail • Epstein Files | Civic Threat</title>
-
-  <meta name="description" content="Simulated dark-mode inbox for navigating publicly released documents (21+). Public records only — not a hacked inbox." />
+  <meta name="description" content="Simulated dark-mode inbox UI for navigating publicly released documents (21+). Public records only — not a hacked inbox." />
   <meta name="robots" content="index,follow" />
 
-  <style>
-    :root{
-      --bg:#05060a;
-      --panel:#0a0c12;
-      --panel2:#0e1018;
-      --line:rgba(255,255,255,.09);
-      --line2:rgba(255,255,255,.14);
-      --txt:#e8ebf3;
-      --muted:rgba(232,235,243,.68);
-      --muted2:rgba(232,235,243,.52);
-      --accent:#ff0050;
-      --aqua:#00f2ea;
-      --warn:#ffcc00;
-      --bad:#ff3b3b;
-      --good:#2bd576;
+  <!-- Keep your existing site shell -->
+  <link rel="stylesheet" href="/styles/site.css?v=21" />
 
-      --sidebarW: 320px;
-      --gutter: 14px;
-      --radius: 12px;
-      --shadow: 0 18px 50px rgba(0,0,0,.55);
+  <style>
+    /* Your original styles (unchanged) */
+    :root{
+      --bg0:#05070a;
+      --bg1:#0a0f15;
+      --panel: rgba(10,12,18,.62);
+      --panel2: rgba(14,18,28,.66);
+      --line: rgba(255,255,255,.09);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.62);
+      --red: #ff0050;
+      --cyan:#00f2ea;
+      --chip: rgba(255,255,255,.08);
+      --chip2: rgba(255,255,255,.12);
+      --shadow: 0 12px 50px rgba(0,0,0,.45);
+      --radius: 16px;
+      --radius2: 14px;
       --font: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
     }
 
-    *{box-sizing:border-box}
-    html,body{height:100%}
+    html,body{ height:100%; }
     body{
       margin:0;
-      font-family:var(--font);
-      color:var(--txt);
+      font-family: var(--font);
+      color: var(--text);
       background:
-        radial-gradient(900px 600px at 25% 18%, rgba(255,0,80,.18), transparent 70%),
-        radial-gradient(900px 600px at 75% 20%, rgba(0,242,234,.14), transparent 70%),
-        linear-gradient(180deg, #02030a, #05060a 25%, #05060a);
+        radial-gradient(1000px 700px at 35% 30%, rgba(255,0,80,.35), transparent 60%),
+        radial-gradient(900px 700px at 65% 35%, rgba(0,242,234,.18), transparent 55%),
+        radial-gradient(900px 900px at 45% 80%, rgba(255,255,255,.04), transparent 55%),
+        linear-gradient(180deg, var(--bg0), var(--bg1));
       overflow-x:hidden;
     }
 
-    /* Top bar */
+    /* Utility */
+    .ep-box{
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+    .row{ display:flex; gap:14px; }
+    .col{ display:flex; flex-direction:column; gap:14px; }
+    .btn{
+      appearance:none; border:1px solid var(--line);
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 12px;
+      cursor:pointer;
+      font-weight: 700;
+    }
+    .btn:hover{ background: rgba(255,255,255,.085); }
+    .btn.blue{ border-color: rgba(0,242,234,.25); }
+    .btn.blue:hover{ background: rgba(0,242,234,.12); }
+    .btn.danger{ border-color: rgba(255,0,80,.25); }
+    .btn.danger:hover{ background: rgba(255,0,80,.12); }
+
+    /* Header */
     .topbar{
-      position:sticky; top:0; z-index:50;
+      position: sticky; top:0; z-index: 50;
+      padding: 12px 14px;
+    }
+    .topbar .inner{
       display:flex; align-items:center; gap:14px;
-      padding:10px 14px;
-      background: linear-gradient(180deg, rgba(10,12,18,.96), rgba(10,12,18,.84));
-      border-bottom:1px solid var(--line);
-      backdrop-filter: blur(12px);
+      max-width: 1400px;
+      margin: 0 auto;
     }
     .brand{
       display:flex; align-items:center; gap:10px;
-      min-width: 220px;
+      min-width: 280px;
     }
-    .brand .pfp{
-      width:36px; height:36px;
-      border-radius:999px;
-      border:1px solid var(--line2);
-      box-shadow: 0 10px 26px rgba(0,0,0,.55);
-      object-fit:cover;
-      display:block;
-      flex:0 0 auto;
+    .avatar{
+      width: 34px; height:34px;
+      border-radius: 999px;
+      overflow:hidden;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      display:grid; place-items:center;
+      flex: 0 0 auto;
     }
-    .brand .titlewrap{line-height:1.05}
-    .brand .title{
-      font-weight:900; letter-spacing:.8px;
-      font-size:13px;
-      text-transform:uppercase;
+    .avatar img{ width:100%; height:100%; object-fit:cover; display:block; }
+    .brand h1{
+      font-size: 14px; letter-spacing: .5px;
+      margin:0;
     }
     .brand .desc{
-      font-size:11px;
-      color:var(--muted);
-      margin-top:2px;
-      max-width: 340px;
+      font-size: 11px; color: var(--muted);
+      margin-top: 2px;
+      line-height: 1.2;
     }
-
-    .searchbar{
-      flex:1;
-      display:flex; align-items:center; gap:10px;
-      max-width: 980px;
+    .searchWrap{
+      flex: 1 1 auto;
+      display:flex; gap:10px; align-items:center;
     }
-    .searchbar .input{
-      flex:1;
-      display:flex; align-items:center; gap:10px;
-      border:1px solid var(--line);
-      background: rgba(0,0,0,.35);
-      border-radius: 999px;
-      padding: 10px 14px;
-    }
-    .searchbar .input span{opacity:.75}
-    .searchbar input{
-      width:100%;
-      background:transparent;
-      border:0; outline:0;
-      color:var(--txt);
-      font-size:14px;
-    }
-    .btn{
+    .search{
+      flex:1 1 auto;
       border:1px solid var(--line);
       background: rgba(0,0,0,.25);
-      color:var(--txt);
-      padding:9px 12px;
-      border-radius: 10px;
-      cursor:pointer;
-      font-weight:700;
-    }
-    .btn:hover{border-color: rgba(255,255,255,.22)}
-    .btn:active{transform: translateY(1px)}
-    .btn.primary{
-      background: rgba(255,0,80,.16);
-      border-color: rgba(255,0,80,.35);
+      border-radius: 999px;
+      padding: 10px 14px;
+      color: var(--text);
+      outline:none;
+      min-width: 220px;
     }
 
     /* Layout */
-    .wrap{
-      display:grid;
-      grid-template-columns: var(--sidebarW) 1fr;
-      min-height: calc(100vh - 58px);
+    main{
+      max-width: 1400px;
+      margin: 14px auto 0;
+      padding: 0 14px 20px;
     }
-    .sidebar{
-      border-right: 1px solid var(--line);
-      padding: var(--gutter);
-    }
-    .main{
+    .grid{
       display:grid;
-      grid-template-columns: 420px 1fr;
-      gap: 0;
-      min-width:0;
+      grid-template-columns: 300px 360px 1fr;
+      gap: 14px;
+      min-height: calc(100vh - 170px);
     }
 
-    /* Sidebar sections */
-    .box{
-      border:1px solid var(--line);
-      background: rgba(0,0,0,.22);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      overflow:hidden;
+    /* Sidebar */
+    .side{ padding: 12px; }
+    .sectionTitle{
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 900;
+      letter-spacing: .14em;
+      margin: 10px 0 8px;
     }
-    .box + .box{margin-top:12px}
-    .box .hdr{
-      display:flex; align-items:center; justify-content:space-between;
-      padding: 10px 12px;
-      border-bottom:1px solid var(--line);
-      background: rgba(255,255,255,.02);
-      font-weight:900;
-      letter-spacing:.4px;
-      font-size:12px;
-      text-transform:uppercase;
-    }
-    .navbtn{
-      width:100%;
-      display:flex; align-items:center; justify-content:space-between;
-      padding: 10px 12px;
-      border:0;
-      background: transparent;
-      color: var(--txt);
-      cursor:pointer;
-      font-weight:800;
-    }
-    .navbtn:hover{background: rgba(255,255,255,.03)}
-    .navbtn.active{
-      background: rgba(0,242,234,.10);
-      outline: 1px solid rgba(0,242,234,.22);
-    }
-    .badge{
-      font-size:12px;
-      color:var(--muted);
-      font-weight:800;
-    }
-    .composeBtn{
+
+    .compose{
       width:100%;
       display:flex; align-items:center; justify-content:center;
       gap:10px;
       padding: 12px 12px;
-      font-weight:900;
-      border-radius: 12px;
+      font-weight: 900;
+      cursor:pointer;
     }
+    .compose .lock{ opacity:.9; }
+
+    .navbtn{
+      display:flex; align-items:center; justify-content:space-between;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.05);
+      cursor:pointer;
+      user-select:none;
+    }
+    .navbtn:hover{ background: rgba(255,255,255,.08); }
+    .navbtn.active{
+      border-color: rgba(0,242,234,.28);
+      background: rgba(0,242,234,.10);
+    }
+    .navbtn .left{ display:flex; align-items:center; gap:10px; }
+    .badge{
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(0,0,0,.22);
+      color: var(--muted);
+      font-weight: 900;
+    }
+
+    /* Accordion */
+    .acc{ margin-top: 12px; overflow:hidden; }
+    .accHead{
+      display:flex; align-items:center; justify-content:space-between;
+      padding: 10px 12px;
+      cursor:pointer;
+      user-select:none;
+    }
+    .accBody{
+      padding: 10px 12px 12px;
+      border-top:1px solid var(--line);
+      display:none;
+    }
+    .acc.open .accBody{ display:block; }
 
     /* Contacts list */
-    .list{
-      max-height: 320px;
-      overflow:auto;
-      padding: 10px;
-    }
-    .contactRow{
-      display:flex; align-items:center; gap:10px;
-      width:100%;
-      padding: 10px 10px;
-      border:1px solid var(--line);
-      border-radius: 12px;
-      background: rgba(0,0,0,.22);
-      cursor:pointer;
-      margin-bottom:10px;
-    }
-    .contactRow:hover{border-color: rgba(255,255,255,.22)}
-    .contactRow.active{
-      border-color: rgba(0,242,234,.35);
-      background: rgba(0,242,234,.10);
-    }
-    .cAvatar{
-      width:34px; height:34px; border-radius:999px;
-      display:flex; align-items:center; justify-content:center;
-      border:1px solid var(--line2);
-      overflow:hidden;
-      flex:0 0 auto;
-    }
-    .cAvatar img{width:100%; height:100%; object-fit:cover; display:block}
-    .cMeta{min-width:0; flex:1}
-    .cName{
-      font-weight:900;
-      font-size:13px;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-    .cSub{
-      font-size:11px;
-      color:var(--muted);
-      margin-top:2px;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-    .cCount{
-      font-weight:900;
-      color: var(--muted);
-      font-size:12px;
-      padding-left:6px;
-    }
-
-    /* Subjects */
-    .subjectRow{
-      display:flex; gap:8px;
-      padding:10px;
-      flex-wrap:wrap;
-    }
-    .chip{
-      display:inline-flex; align-items:center; gap:8px;
-      padding:7px 10px;
-      border-radius:999px;
-      border:1px solid var(--line);
-      background: rgba(0,0,0,.22);
-      cursor:pointer;
-      font-weight:800;
-      font-size:12px;
-    }
-    .chip:hover{border-color: rgba(255,255,255,.22)}
-    .chip .x{
-      opacity:.7;
-      font-weight:900;
-      margin-left:2px;
-    }
-    .subjectActions{
-      display:flex; gap:10px;
-      padding: 10px;
-      border-top:1px solid var(--line);
-    }
-    .subjectActions .btn{flex:1}
-
-    /* Mail list */
-    .listPane{
-      border-right: 1px solid var(--line);
-      min-width:0;
-      display:flex;
-      flex-direction:column;
-    }
-    .listHdr{
-      padding: 12px 14px;
-      border-bottom:1px solid var(--line);
+    .cList{ display:flex; flex-direction:column; gap:8px; }
+    .cbtn{
       display:flex; align-items:center; justify-content:space-between;
-      background: rgba(255,255,255,.02);
-      font-weight:900;
-      text-transform:uppercase;
-      letter-spacing:.45px;
-      font-size:12px;
-    }
-    .mailList{
-      overflow:auto;
-      padding: 10px;
-      min-height:0;
-    }
-    .mailItem{
-      border:1px solid var(--line);
-      background: rgba(0,0,0,.20);
-      border-radius: 12px;
+      gap:10px;
       padding: 10px 10px;
+      border-radius: 12px;
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.05);
       cursor:pointer;
-      margin-bottom:10px;
+      user-select:none;
     }
-    .mailItem:hover{border-color: rgba(255,255,255,.22)}
-    .mailItem.active{
-      border-color: rgba(0,242,234,.35);
+    .cbtn:hover{ background: rgba(255,255,255,.08); }
+    .cbtn.active{
+      border-color: rgba(255,0,80,.26);
+      background: rgba(255,0,80,.12);
+    }
+    .cbtn .nm{ font-weight: 900; font-size: 13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .ct{
+      min-width: 32px; text-align:right;
+      font-weight: 900;
+      color: rgba(255,255,255,.75);
+    }
+
+    /* Items list */
+    .list{ padding: 12px; }
+    .listHead{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:10px;
+      padding: 8px 10px;
+      margin-bottom: 8px;
+      border-radius: 12px;
+      border:1px solid var(--line);
+      background: rgba(0,0,0,.25);
+    }
+    .listHead .ttl{
+      font-weight: 900;
+      letter-spacing:.08em;
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .itm{
+      display:flex; flex-direction:column; gap:6px;
+      padding: 10px 10px;
+      border-radius: 12px;
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.045);
+      cursor:pointer;
+      user-select:none;
+      margin-bottom: 8px;
+    }
+    .itm:hover{ background: rgba(255,255,255,.075); }
+    .itm.active{
+      border-color: rgba(0,242,234,.28);
       background: rgba(0,242,234,.10);
     }
-    .miTop{display:flex; align-items:center; justify-content:space-between; gap:10px}
-    .miFrom{
-      font-weight:900;
-      font-size:13px;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      max-width: 280px;
+    .itm .top{
+      display:flex; justify-content:space-between; gap:8px;
+      align-items:center;
     }
-    .miDate{font-size:11px; color:var(--muted); font-weight:800}
-    .miSub{margin-top:4px; color:var(--muted); font-size:12px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-    .miSnip{margin-top:6px; color:var(--muted2); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+    .itm .who{ font-weight: 900; font-size: 13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .itm .when{ font-size: 11px; color: var(--muted); white-space:nowrap; }
+    .itm .sub{ font-size: 12px; color: rgba(255,255,255,.82); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .itm .snip{ font-size: 11px; color: var(--muted); overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
 
     /* Reader */
-    .reader{
-      min-width:0;
-      display:flex;
-      flex-direction:column;
-    }
-    .readerHdr{
-      padding: 12px 14px;
-      border-bottom:1px solid var(--line);
-      background: rgba(255,255,255,.02);
-      display:flex; align-items:center; justify-content:space-between;
-      gap: 10px;
-    }
-    .readerHdr .title{
-      font-weight:950;
-      font-size:16px;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      max-width: 66vw;
-    }
-    .tags{display:flex; gap:8px; flex-wrap:wrap}
-    .tag{
-      border:1px solid var(--line);
-      background: rgba(0,0,0,.20);
-      padding: 5px 9px;
-      border-radius: 10px;
-      font-size:11px;
-      color:var(--muted);
-      font-weight:900;
-      text-transform:uppercase;
-      letter-spacing:.35px;
-    }
-    .readerBody{
-      overflow:auto;
-      padding: 12px 14px 18px;
-      min-height:0;
-    }
-    .msgCard{
-      border:1px solid var(--line);
-      background: rgba(0,0,0,.22);
-      border-radius: 14px;
-      padding: 12px;
-      margin-bottom:12px;
-    }
-    .msgMeta{
-      display:flex; align-items:center; justify-content:space-between; gap:10px;
-      border-bottom:1px solid var(--line);
-      padding-bottom:10px;
-      margin-bottom:10px;
-    }
-    .who{
-      display:flex; align-items:center; gap:10px;
-      min-width:0;
-    }
-    .who .avatar{
-      width:38px; height:38px;
-      border-radius:999px;
-      border:1px solid var(--line2);
-      overflow:hidden;
-      display:flex; align-items:center; justify-content:center;
-      flex:0 0 auto;
-    }
-    .avatar img{width:100%; height:100%; object-fit:cover; display:block}
-    .who .names{min-width:0}
-    .who .from{
-      font-weight:950;
-      font-size:13px;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      max-width: 46vw;
-    }
-    .who .to{
-      font-size:11px;
-      color:var(--muted);
-      font-weight:800;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      max-width: 46vw;
-    }
-    .when{
-      font-size:11px;
-      color:var(--muted);
-      font-weight:850;
-      white-space:nowrap;
-    }
-    .bodyText{
-      white-space:pre-wrap;
-      word-break:break-word;
-      font-size:13px;
-      line-height:1.55;
-      color: rgba(232,235,243,.92);
-    }
-    .srcRow{
-      display:flex; align-items:center; justify-content:space-between; gap:10px;
-      margin-top: 10px;
-      padding-top:10px;
-      border-top:1px solid var(--line);
-    }
-    .srcRow .srcName{font-size:12px; color:var(--muted); font-weight:900}
-    .srcRow .btn{padding:8px 10px}
-
-    /* Mobile reader overlay */
-    .mobileOnly{display:none}
-    @media (max-width: 980px){
-      :root{ --sidebarW: 290px; }
-      .main{ grid-template-columns: 1fr; }
-      .listPane{ border-right:0; }
-      .reader{
-        position:fixed;
-        inset:0;
-        background: linear-gradient(180deg, rgba(5,6,10,.98), rgba(5,6,10,.98));
-        z-index: 80;
-        transform: translateX(105%);
-        transition: transform .22s ease;
-        box-shadow: var(--shadow);
-      }
-      body.readerOpen .reader{ transform: translateX(0%); }
-      .mobileOnly{display:inline-flex}
-      .readerHdr .title{max-width: 78vw}
-    }
-    @media (max-width: 760px){
-      .wrap{ grid-template-columns: 1fr; }
-      .sidebar{ border-right:0; border-bottom:1px solid var(--line); }
-      .brand{ min-width: 160px; }
-      .brand .desc{display:none}
-      .searchbar .btn{display:none}
-    }
-
-    /* Modal */
-    .modalWrap{
-      position:fixed;
-      inset:0;
-      z-index: 120;
-      display:none;
-      align-items:center;
-      justify-content:center;
-      padding: 16px;
-      background: rgba(0,0,0,.55);
-      backdrop-filter: blur(10px);
-    }
-    .modalWrap.open{display:flex}
-    .modal{
-      width:min(720px, 96vw);
-      border:1px solid var(--line2);
-      border-radius: 16px;
-      background: rgba(10,12,18,.96);
-      box-shadow: var(--shadow);
-      overflow:hidden;
-    }
-    .modalHdr{
-      display:flex; align-items:center; justify-content:space-between;
-      padding: 12px 14px;
-      border-bottom:1px solid var(--line);
-      font-weight:950;
-    }
-    .modalBody{padding: 12px 14px}
-    .field{display:flex; flex-direction:column; gap:6px; margin-bottom:10px}
-    .field label{font-size:12px; color:var(--muted); font-weight:900}
-    .field input, .field textarea{
-      width:100%;
+    .reader{ padding: 12px; position:relative; }
+    .readerHead{
+      display:flex; align-items:flex-start; justify-content:space-between;
+      gap: 12px;
       padding: 10px 10px;
       border-radius: 12px;
       border:1px solid var(--line);
-      background: rgba(0,0,0,.22);
-      color: var(--txt);
-      outline: none;
-      font-size:14px;
+      background: rgba(0,0,0,.25);
+      margin-bottom: 10px;
     }
-    .field textarea{min-height: 170px; resize: vertical}
-    .modalActions{
-      display:flex; gap:10px;
-      padding: 12px 14px;
-      border-top:1px solid var(--line);
-      background: rgba(255,255,255,.02);
-    }
-    .modalActions .btn{flex:1}
-    .statusLine{
-      font-size:12px;
-      color:var(--muted);
-      margin-top: 8px;
-      font-weight:800;
-    }
-    .statusLine .ok{color:var(--good)}
-    .statusLine .bad{color:var(--bad)}
-    .footnote{
-      padding: 12px 14px;
-      color: var(--muted);
+    .readerHead .ttl{ font-weight: 900; font-size: 16px; }
+    .chips{ display:flex; gap:8px; flex-wrap:wrap; margin-top: 8px; }
+    .chip{
       font-size: 11px;
-      border-top: 1px solid var(--line);
-      background: rgba(0,0,0,.18);
+      padding: 5px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.06);
+      color: var(--muted);
+      font-weight: 900;
+      letter-spacing: .04em;
     }
 
-    /* Small disclosure at bottom left */
-    .disclaimer{
-      margin-top: 12px;
-      padding: 10px 12px;
-      color: var(--muted);
-      font-size: 11px;
-      border:1px solid var(--line);
+    .msgCard{
       border-radius: 12px;
-      background: rgba(0,0,0,.20);
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.045);
+      padding: 10px 10px;
+      margin-bottom: 10px;
+    }
+    .msgTop{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:10px;
+      margin-bottom: 8px;
+    }
+    .msgWho{
+      display:flex; align-items:center; gap:10px;
+      min-width:0;
+    }
+    .msgWho .nm{ font-weight: 900; font-size: 13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .msgWho .to{ font-size: 11px; color: var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .msgWhen{ font-size: 11px; color: var(--muted); white-space:nowrap; }
+    .msgBody{
+      font-size: 12px;
+      line-height: 1.45;
+      color: rgba(255,255,255,.86);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .src{
+      margin-top: 14px;
+      padding: 10px 10px;
+      border-radius: 12px;
+      border:1px solid var(--line);
+      background: rgba(0,0,0,.25);
+    }
+    .srcRow{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .src a{ color: var(--cyan); text-decoration:none; font-weight: 900; }
+    .src a:hover{ text-decoration: underline; }
+
+    /* Modals */
+    .modal{
+      position:fixed; inset:0;
+      display:none;
+      place-items:center;
+      background: rgba(0,0,0,.55);
+      z-index: 80;
+      padding: 14px;
+    }
+    .modal.open{ display:grid; }
+    .modal .card{
+      width: min(720px, 96vw);
+      padding: 14px;
+    }
+    .modal input, .modal textarea{
+      width: 100%;
+      box-sizing:border-box;
+      border:1px solid var(--line);
+      background: rgba(0,0,0,.22);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 10px 12px;
+      outline:none;
+    }
+    .modal textarea{ resize: vertical; }
+    .modal .actions{
+      display:flex;
+      justify-content:flex-end;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .legal{ font-size: 11px; color: var(--muted); margin-top: 10px; }
+
+    /* Mobile overlay */
+    @media (max-width: 980px){
+      .grid{ grid-template-columns: 1fr; }
+      .list{ order:2; }
+      .reader{
+        position:fixed;
+        inset: 70px 10px 10px 10px;
+        z-index: 60;
+        display:none;
+      }
+      .reader.open{ display:block; }
+      body.jm-lock{ overflow:hidden; }
     }
 
-    /* No icon for Unknown */
-    .noIcon{
-      width:18px; height:18px;
-      border-radius:999px;
-      border:2px solid var(--bad);
-      position:relative;
-      display:inline-block;
-    }
-    .noIcon:after{
-      content:"";
-      position:absolute;
-      left:3px; right:3px; top:8px;
-      height:2px; background: var(--bad);
-      transform: rotate(-18deg);
-    }
+    /* --- Jeffs Mail enhancements (minimal, keep original look) --- */
+    .lbl{ display:block; margin-top: 10px; margin-bottom: 6px; font-size:12px; opacity:.85; }
+    .cbtn .av{ width:22px; height:22px; border-radius:999px; overflow:hidden; flex:0 0 auto; display:grid; place-items:center; font-weight:900; font-size:11px; border:1px solid rgba(255,255,255,.16); background: rgba(0,0,0,.22); }
+    .cbtn .av img{ width:100%; height:100%; object-fit:cover; display:block; }
+    .cbtn .mid{ min-width:0; display:flex; flex-direction:column; gap:2px; flex:1 1 auto; }
+    .cbtn .meta{ display:flex; align-items:center; gap:8px; flex:0 0 auto; }
+    .unknown-ico{ width:22px; height:22px; border-radius:999px; border:1px solid rgba(255,0,80,.5); display:grid; place-items:center; }
   </style>
+
+  <script src="/config.js?v=21"></script>
 </head>
-
 <body>
-  <div class="topbar">
-    <div class="brand">
-      <img class="pfp" id="jmJeffPfp" alt="Jeff profile" src="/released/epstein/jeffs-mail/assets/jeff.jpg" />
-      <div class="titlewrap">
-        <div class="title">JEFFS MAIL</div>
-        <div class="desc">Simulated dark-mode inbox for navigating publicly released documents (21+). Public records only — not a hacked inbox.</div>
-      </div>
-    </div>
 
-    <div class="searchbar">
-      <div class="input">
-        <span>🔎</span>
-        <input id="jmSearch" type="search" placeholder="Search (subject, sender, keywords…)" autocomplete="off" />
-      </div>
-      <button class="btn" id="jmClear">Clear</button>
-    </div>
-  </div>
-
-  <div class="wrap">
-    <aside class="sidebar">
-      <div class="box">
-        <div class="hdr">Actions</div>
-        <button class="btn primary composeBtn" id="jmComposeBtn">✉️ Compose</button>
-      </div>
-
-      <div class="box">
-        <div class="hdr">Folders</div>
-        <button class="navbtn active" data-mailbox="inbox" id="jmInboxBtn">
-          <span>📥 Inbox</span> <span class="badge" id="jmInboxCount">0</span>
-        </button>
-        <button class="navbtn" data-mailbox="sent" id="jmSentBtn">
-          <span>📤 Sent</span> <span class="badge" id="jmSentCount">0</span>
-        </button>
-        <button class="navbtn" data-mailbox="starred" id="jmStarBtn">
-          <span>⭐ Starred</span> <span class="badge" id="jmStarCount">0</span>
-        </button>
-      </div>
-
-      <div class="box">
-        <div class="hdr">Contacts <span class="badge" id="jmContactsCount">0</span></div>
-        <div class="list" id="jmContactsList"></div>
-      </div>
-
-      <div class="box">
-        <div class="hdr">Subjects <span class="badge" id="jmSubjectsCount">0</span></div>
-        <div class="subjectRow" id="jmSubjectsList"></div>
-        <div class="subjectActions">
-          <button class="btn" id="jmAddSubjectBtn">+ Add</button>
-          <button class="btn" id="jmClearSubjectsBtn">Clear</button>
+  <header class="topbar ep-box">
+    <div class="inner">
+      <div class="brand">
+        <div class="avatar" aria-hidden="true">
+          <img id="jmJeffAvatar" alt="Jeff" />
+          <span id="jmJeffFallback" style="display:none;font-weight:900">J</span>
+        </div>
+        <div>
+          <h1>JEFFS MAIL</h1>
+          <div class="desc">
+            Simulated dark-mode inbox for navigating publicly released documents (21+).<br />
+            Public records only — not a hacked inbox.
+          </div>
         </div>
       </div>
 
-      <div class="disclaimer">
-        <strong>Disclosure:</strong> This page is an email-style organizational interface for public records.
-        It does not claim to be a real private inbox or hacked account.
+      <div class="searchWrap">
+        <input id="jmSearch" class="search" type="search" placeholder="Search (subject, sender, keywords...)" autocomplete="off" />
+        <button class="btn" id="jmClear" type="button">Clear</button>
       </div>
-    </aside>
+    </div>
+  </header>
 
-    <main class="main">
-      <section class="listPane">
-        <div class="listHdr">
-          <span id="jmListTitle">INBOX</span>
-          <span class="badge" id="jmListCount">0</span>
+  <main>
+    <div class="grid">
+      <!-- Sidebar -->
+      <aside class="side ep-box">
+        <div class="sectionTitle">ACTIONS</div>
+
+        <button class="compose ep-box" id="jmComposeBtn" type="button" title="Compose (simulation)">
+          <span class="lock" aria-hidden="true">✉️</span> Compose
+        </button>
+
+        <div class="sectionTitle">FOLDERS</div>
+        <div class="col">
+          <div class="navbtn" id="jmInboxBtn" data-folder="inbox">
+            <div class="left"><span>📥</span><strong>Inbox</strong></div>
+            <span class="badge" id="jmInboxCount">0</span>
+          </div>
+          <div class="navbtn" id="jmSentBtn" data-folder="sent">
+            <div class="left"><span>📤</span><strong>Sent</strong></div>
+            <span class="badge" id="jmSentCount">0</span>
+          </div>
+          <div class="navbtn" id="jmStarBtn" data-folder="starred">
+            <div class="left"><span>⭐</span><strong>Starred</strong></div>
+            <span class="badge" id="jmStarCount">0</span>
+          </div>
         </div>
-        <div class="mailList" id="jmMailList">
-          <div class="mailItem">
-            <div class="miTop">
-              <div class="miFrom">Loading mail…</div>
-              <div class="miDate"></div>
+
+        <!-- Contacts -->
+        <div class="acc ep-box open" id="jmContactsAcc">
+          <div class="accHead" id="jmContactsToggle">
+            <div class="sectionTitle" style="margin:0">CONTACTS</div>
+            <span class="badge" id="jmContactsCount">0</span>
+          </div>
+          <div class="accBody">
+            <div class="cList" id="jmContactsList"></div>
+          </div>
+        </div>
+
+        <!-- Subjects -->
+        <div class="acc ep-box" id="jmSubjectsAcc">
+          <div class="accHead" id="jmSubjectsToggle">
+            <div class="sectionTitle" style="margin:0">SUBJECTS</div>
+            <span class="badge" id="jmSubjectsCount">0</span>
+          </div>
+          <div class="accBody">
+            <div class="cList" id="jmSubjectsList"></div>
+            <div class="row" style="margin-top:10px">
+              <button class="btn" id="jmAddSubject" type="button">+ Add</button>
+              <button class="btn danger" id="jmClearSubjects" type="button">Clear</button>
             </div>
-            <div class="miSub">Please wait</div>
-            <div class="miSnip">Fetching index.json…</div>
           </div>
         </div>
+
+        <div class="legal" style="margin-top:12px">
+          <strong>Disclosure:</strong> This page is an email-style organizational interface for public records. It does not claim to be a real private inbox or hacked account.
+        </div>
+      </aside>
+
+      <!-- List -->
+      <section class="list ep-box">
+        <div class="listHead">
+          <div class="ttl" id="jmFolderTitle">INBOX</div>
+          <div class="ttl"><span id="jmCount">0</span></div>
+        </div>
+
+        <div class="legal" id="jmFound" style="margin-bottom:10px; display:none"></div>
+        <div id="jmItems"></div>
       </section>
 
-      <section class="reader" id="jmReader">
-        <div class="readerHdr">
-          <div>
-            <div class="title" id="jmReaderTitle">MESSAGE</div>
-            <div class="tags" id="jmReaderTags"></div>
+      <!-- Reader -->
+      <section class="reader ep-box" id="jmReader">
+        <div class="readerHead">
+          <div style="min-width:0">
+            <div class="ttl" id="jmMsgTitle">MESSAGE</div>
+            <div class="chips" id="jmChips"></div>
           </div>
-          <button class="btn mobileOnly" id="jmCloseReaderBtn">Close</button>
+          <button class="btn" id="jmCloseReader" type="button" style="display:none">Close</button>
         </div>
 
-        <div class="readerBody" id="jmReaderBody">
-          <div class="msgCard">
-            <div class="bodyText">Select a message from the list.</div>
+        <div id="jmThread"></div>
+
+        <div class="src" id="jmSourceBox" style="display:none">
+          <div class="srcRow">
+            <div>
+              <div style="font-weight:900; margin-bottom:4px">Source PDF</div>
+              <div class="legal" id="jmSourceName"></div>
+            </div>
+            <a id="jmSourceLink" href="#" target="_blank" rel="noopener">Open</a>
+          </div>
+          <div class="legal" style="margin-top:10px">
+            Content notice: Entries may contain allegations or explicit descriptions. Always consult the full source PDF for context.
           </div>
         </div>
+
+        <div class="legal" id="jmReaderHint">Select a message to view.</div>
       </section>
-    </main>
-  </div>
+    </div>
 
-  <!-- Compose Modal -->
-  <div class="modalWrap" id="jmComposeModal" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true">
-      <div class="modalHdr">
-        <span>Compose (Simulation)</span>
-        <button class="btn" id="jmComposeClose">Close</button>
-      </div>
+    <div id="siteFooter"></div>
 
-      <div class="modalBody">
-        <div class="field">
-          <label>From</label>
-          <input id="jmCFrom" value="Public Visitor" />
-        </div>
-        <div class="field">
-          <label>To</label>
-          <input id="jmCTo" value="Jeffrey Epstein" readonly />
-        </div>
-        <div class="field">
-          <label>Subject</label>
-          <input id="jmCSubject" placeholder="Subject…" />
-        </div>
-        <div class="field">
-          <label>Body</label>
-          <textarea id="jmCBody" placeholder="Write your message…"></textarea>
+    <!-- Compose modal (simulation) -->
+    <div class="modal" id="jmComposeModal" role="dialog" aria-modal="true" aria-labelledby="jmComposeTitle">
+      <div class="card ep-box">
+        <h3 id="jmComposeTitle">Compose to Jeffrey (Simulation)</h3>
+        <p>This does <strong>not</strong> send real email. It creates a public-record style PDF and submits it for review/ingest.</p>
+
+        <label class="lbl">From</label>
+        <input id="jmComposeFrom" type="text" value="Public Visitor" maxlength="64" />
+
+        <label class="lbl">To</label>
+        <input id="jmComposeTo" type="text" value="Jeffrey Epstein" disabled />
+
+        <label class="lbl">Subject</label>
+        <input id="jmComposeSubject" type="text" placeholder="Subject..." maxlength="120" />
+
+        <label class="lbl">Body</label>
+        <textarea id="jmComposeBody" rows="9" placeholder="Write your message..." maxlength="5000"></textarea>
+
+        <div class="actions">
+          <button class="btn" id="jmComposeCancel" type="button">Cancel</button>
+          <button class="btn blue" id="jmComposeSend" type="button">Send</button>
         </div>
 
-        <div class="statusLine" id="jmComposeStatus"></div>
-      </div>
-
-      <div class="modalActions">
-        <button class="btn" id="jmDownloadCopyBtn">Download copy</button>
-        <button class="btn primary" id="jmSendBtn">Send</button>
-      </div>
-
-      <div class="footnote">
-        <strong>Note:</strong> This does not send real email. On Send, a PDF is generated and uploaded to CivicThreat’s public-record simulation system.
-        It will appear after the next automated index rebuild.
+        <div class="legal" id="jmComposeStatus" style="min-height:18px"></div>
       </div>
     </div>
-  </div>
 
-  <!-- Add Subject Modal (lightweight prompt uses built-in prompt in JS) -->
+    <!-- Subject creation modal -->
+    <div class="modal" id="jmSubjectModal" role="dialog" aria-modal="true" aria-labelledby="jmSubjectTitle">
+      <div class="card ep-box">
+        <h3 id="jmSubjectTitle">Create a Subject Filter</h3>
+        <p>Enter a short label (shown in the list) and it will save the current search terms as a reusable subject.</p>
+        <input id="jmSubjectName" type="text" placeholder="Example: Elon" maxlength="36" />
+        <div class="actions">
+          <button class="btn" id="jmSubjectCancel" type="button">Cancel</button>
+          <button class="btn blue" id="jmSubjectSave" type="button">Save</button>
+        </div>
+        <div class="legal">
+          Tip: subjects are stored in <code>localStorage</code> (per browser).
+        </div>
+      </div>
+    </div>
 
-  <script src="/config.js?v=20"></script>
-  <script src="./jeffs-mail.js?v=20"></script>
+    <!-- 21+ gate -->
+    <div class="modal" id="jmGate" role="dialog" aria-modal="true" aria-labelledby="jmGateTitle">
+      <div class="card ep-box">
+        <h3 id="jmGateTitle">Adults 21+ only</h3>
+        <p>This section includes public records that may contain explicit allegations or descriptions. Confirm you are 21+ to continue.</p>
+        <label style="display:flex; gap:10px; align-items:center; margin:10px 0 0">
+          <input type="checkbox" id="jmGateCheck" />
+          <span>I am 21 years or older.</span>
+        </label>
+        <div class="actions">
+          <button class="btn danger" id="jmGateLeave" type="button">Leave</button>
+          <button class="btn blue" id="jmGateEnter" type="button">Enter</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/app.js?v=21"></script>
+  <script src="./jeffs-mail.js?v=21"></script>
 </body>
 </html>
