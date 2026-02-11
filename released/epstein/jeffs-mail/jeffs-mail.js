@@ -1,214 +1,212 @@
+/* jeffs-mail.js — Jeffs Mail (v2)
+   - Thread rendering via index.json items[].thread[]
+   - Jeff identity normalization (OCR-safe)
+   - Contacts de-dupe + Jeff special handling
+   - Subjects saved filters (localStorage)
+   - Compose simulation (jsPDF download + outbox export)
+*/
 (function(){
   "use strict";
 
-  const INDEX_URL = "./index.json";
-
-  // LocalStorage keys
-  const CONSENT_KEY = "ct_jeffs_mail_21_gate_v1";
-  const STAR_KEY = "ct_jeffs_mail_starred_v2";
-  const CONTACT_KEY = "ct_jeffs_mail_contact_filter_v2";
-  const SUBJECTS_KEY = "ct_jeffs_mail_subjects_v1";
-
-  // Jeff avatar (put file here)
+  // ----------------------------
+  // Config
+  // ----------------------------
+  const INDEX_URL = "./index.json?v=14";
   const JEFF_AVATAR_URL = "./assets/jeff.jpg";
 
-  // Jeff identity detection
+  const SUBJECTS_KEY = "ct_jeffs_mail_subjects_v1";
+  const OUTBOX_KEY = "ct_jeffs_mail_outbox_v1";
+  const STAR_KEY = "ct_jeffs_mail_starred_v1";
+
   const JEFF_EMAILS = new Set([
     "jeevacation@gmail.com",
-    "jeevacation@gmai.com", // OCR-ish variants sometimes appear
+    "jeevacation@gmail.con",
+    "jeevacation@gmail.comailto",
   ]);
+
   const JEFF_TOKENS = [
     "jeffrey epstein",
     "jeff epstein",
+    "jeffrey e epstein",
     "jeffrey e. epstein",
-    "jeffrey e stein",     // OCR-ish
-    "jeffre e.stein",      // OCR-ish from EFTA01894511 style
-    "je",                  // shorthand used in these chains
-    "lsj",                 // you confirmed LSJ is Jeff
+    "jeffrey e stein",
+    "jeffrey stein",
+    "jeevacation",
+    "lsj"
   ];
 
+  // ----------------------------
+  // DOM helpers
+  // ----------------------------
   const $ = (sel, root=document) => root.querySelector(sel);
 
   const el = {
-    search: $("#jmSearch"),
-    items: $("#jmItems"),
-    found: $("#jmFound"),
-
-    folderTitle: $("#jmFolderTitle"),
-    folderCount: $("#jmCount"),
-
-    btnInbox: $("#btnInbox"),
-    btnSent: $("#btnSent"),
-    btnStarred: $("#btnStarred"),
-
-    countInbox: $("#countInbox"),
-    countSent: $("#countSent"),
-    countStarred: $("#countStarred"),
-
+    list: $("#jmList"),
     readCard: $("#jmReadCard"),
+    readPane: $("#jmReadPane"),
+    readerShell: $("#jmReaderShell"),
+    readerBack: $("#jmReaderBack"),
     readingMeta: $("#jmReadingMeta"),
 
-    reader: $("#jmReader"),
-    btnReaderBack: $("#jmReaderBack"),
+    search: $("#jmSearch"),
+    btnClearSearch: $("#jmClearSearch"),
 
-    gate: $("#ageGate"),
-    gateCheck: $("#gateCheck"),
-    gateEnter: $("#gateEnter"),
-    gateLeave: $("#gateLeave"),
+    folderInbox: $("#jmFolderInbox"),
+    folderSent: $("#jmFolderSent"),
+    folderStarred: $("#jmFolderStarred"),
 
-    // Sidebar accordions
-    contactsAcc: $("#jmContactsAcc"),
-    contactsToggle: $("#jmContactsToggle"),
+    countInbox: $("#jmCountInbox"),
+    countSent: $("#jmCountSent"),
+    countStarred: $("#jmCountStarred"),
+
     contactsList: $("#jmContactsList"),
     contactsCount: $("#jmContactsCount"),
+    contactsHeader: $("#jmContactsHeader"),
+    contactsPanel: $("#jmContactsPanel"),
 
-    subjectsAcc: $("#jmSubjectsAcc"),
-    subjectsToggle: $("#jmSubjectsToggle"),
     subjectsList: $("#jmSubjectsList"),
-    subjectsCount: $("#jmSubjectsCount"),
+    subjectsHeader: $("#jmSubjectsHeader"),
+    subjectsPanel: $("#jmSubjectsPanel"),
     btnAddSubject: $("#jmAddSubject"),
     btnClearSubjects: $("#jmClearSubjects"),
 
-    // Subject modal
-    subjectModal: $("#jmSubjectModal"),
-    subjectName: $("#jmSubjectName"),
-    subjectCancel: $("#jmSubjectCancel"),
-    subjectSave: $("#jmSubjectSave"),
-
-    // Header avatar
-    jeffAvatar: $("#jmJeffAvatar"),
-    jeffFallback: $("#jmJeffFallback"),
-
-    // Clear
     btnClearFilters: $("#jmClearFilters"),
+
+    // Compose
+    composeBtn: $("#jmComposeBtn"),
+    composeModal: $("#jmComposeModal"),
+    composeFrom: $("#jmComposeFrom"),
+    composeTo: $("#jmComposeTo"),
+    composeSubject: $("#jmComposeSubject"),
+    composeBody: $("#jmComposeBody"),
+    composeCancel: $("#jmComposeCancel"),
+    composeSend: $("#jmComposeSend"),
+    composeExport: $("#jmComposeExport"),
+    composeHint: $("#jmComposeHint"),
   };
 
+  // ----------------------------
+  // State
+  // ----------------------------
   const state = {
-    data: null,
     all: [],
-    folder: "inbox",
-    q: "",
+    view: [],
+    folder: "inbox", // inbox|sent|starred
     activeId: "",
-    contact: "all",
+    activeContactKey: "",
+    activeSubject: "",
+    subjects: [],
     starred: new Set(),
-    contacts: [],        // [{key,name,count}]
-    subjects: [],        // [{id,name,query}]
-    activeSubjectId: "",
+    contacts: [], // {key,name,count}
+    loading: true,
   };
 
+  // ----------------------------
+  // String helpers
+  // ----------------------------
+  function safeText(x){ return (x === null || x === undefined) ? "" : String(x); }
   function esc(s){
-    return String(s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    return safeText(s)
+      .replace(/&/g,"&amp;")
+      .replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;")
+      .replace(/"/g,"&quot;")
+      .replace(/'/g,"&#39;");
   }
-
-  function safeText(s){
-    return String(s || "").replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
+  function slugify(s){
+    const t = safeText(s).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
+    return t || "unknown";
   }
 
   function normalizeEmailish(s){
     let t = String(s||"").toLowerCase();
-    t = t.replace(/\s+/g, "");
+    // De-obfuscations
     t = t.replace(/©/g, "@");
     t = t.replace(/\(at\)|\[at\]/g, "@");
     t = t.replace(/\(dot\)|\[dot\]/g, ".");
-    t = t.replace(/[,\];]/g, "");
+    // Kill mailto + common OCR variants (mailt9:, mailt0:, etc.)
+    t = t.replace(/\bmail(?:to|t0|t9|t)\s*:?\s*/gi, "");
+    t = t.replace(/mailto:[^\s>]+/gi, "");
+    t = t.replace(/<\s*mailto:[^>]+>/gi, "");
+    t = t.replace(/ailto/gi, "");
+    t = t.replace(/[\s,\];]+/g, "");
+    // Fix gmail.con -> gmail.com
+    t = t.replace(/@gmail\.con\b/gi, "@gmail.com");
     return t;
   }
 
   function extractEmails(s){
     const t = normalizeEmailish(s);
     const m = t.match(/[\w.\-+%]+@[\w.\-]+\.[a-z]{2,}/gi);
-    return m ? m : [];
+    return m ? m.map(x=>x.toLowerCase()) : [];
   }
 
   function looksLikeJeff(s){
-    const t = String(s||"");
-    const low = t.toLowerCase();
-    for(const em of extractEmails(t)){
-      if(JEFF_EMAILS.has(em)) return true;
+    const raw = String(s||"");
+    const low = normalizeEmailish(raw);
+    const blob = (" " + low.replace(/[^a-z0-9]+/g, " ") + " ").toLowerCase();
+
+    // Email based (robust: match evacation + gmail even if broken)
+    for(const em of extractEmails(raw)){
+      const em2 = normalizeEmailish(em);
+      if(JEFF_EMAILS.has(em2)) return true;
+      if(em2.includes("evacation") && em2.includes("@gmail.com")) return true;
     }
+    // Token based
     for(const tok of JEFF_TOKENS){
-      if(low.includes(tok)) return true;
+      if(blob.includes(" " + tok + " ")) return true;
+      if(blob.includes(tok)) return true;
     }
+    // Weak JE token: only if near epstein/evacation
+    if(/\bje\b/i.test(blob) && (blob.includes("epstein") || blob.includes("evacation"))) return true;
+
     return false;
-  }
-
-  function fmtDateShort(iso){
-    if(!iso) return "";
-    try{
-      const d = new Date(iso);
-      if(isNaN(d.getTime())) return "";
-      return d.toLocaleDateString(undefined, { year:"numeric", month:"short", day:"2-digit" });
-    }catch(_){ return ""; }
-  }
-
-  function slugify(s){
-    return safeText(s).toLowerCase()
-      .replace(/[^\w\s\-]+/g, "")
-      .replace(/\s+/g, "-")
-      .replace(/\-+/g, "-")
-      .replace(/^\-+|\-+$/g, "") || "unknown";
   }
 
   function cleanName(s){
     let t = safeText(s);
-    t = t.replace(/^(from|to|sent|date|subject)\s*:\s*/i, "").trim();
-    t = t.replace(/[\[\]\(\)]/g, "").trim();
+
+    // remove header prefixes
+    t = t.replace(/^(from|to|sent|date|subject|cc|bcc)\s*:\s*/i, "").trim();
+
+    // remove mailto noise
+    t = t.replace(/\bmail(?:to|t0|t9|t)\s*:?\\s*/gi, "");
+    t = t.replace(/mailto:[^\s>]+/gi, "");
+
+    // remove <...> if it doesn't contain an email; also handle broken "<Min"
+    t = t.replace(/\s*<\s*[a-z]{2,20}\s*$/i, ""); // broken tail fragment
+    t = t.replace(/<([^>]+)>/g, (m, inner) => {
+      inner = String(inner||"").trim();
+      return (/@/.test(inner) ? `<${inner}>` : "");
+    });
+
+    // strip any remaining angle bracket shells / punctuation
+    t = t.replace(/[<>]/g, "");
+    t = t.replace(/[\[\]\(\)]/g, " ").trim();
     t = t.replace(/\s+/g, " ").trim();
     t = t.replace(/[,;|•]+$/g, "").trim();
+
     if(!t) return "Unknown";
 
-    // If it’s basically a date string (your “Date: November 21, 2012…” contact bug)
+    // date garbage
     if(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b/i.test(t) && /\b\d{1,2}\b/.test(t)){
-      // likely a date line from a bad parse
       if(t.toLowerCase().startsWith("date")) return "Unknown";
     }
     if(t.length > 140) return "Unknown";
     return t;
   }
 
-  // ----------------------------
-  // Age Gate
-  // ----------------------------
-  function hasConsent(){
-    try{ return localStorage.getItem(CONSENT_KEY) === "yes"; }catch(_){ return false; }
+  function fmtDateShort(iso){
+    const d = new Date(iso);
+    if(isNaN(d.getTime())) return safeText(iso);
+    return d.toLocaleDateString(undefined, { year:"numeric", month:"short", day:"2-digit" });
   }
-  function setConsent(){
-    try{ localStorage.setItem(CONSENT_KEY, "yes"); }catch(_){}
-  }
-  function showGate(){
-    if(!el.gate) return;
-    el.gate.style.display = "flex";
-    document.body.style.overflow = "hidden";
-    if(el.gateCheck) el.gateCheck.checked = false;
-    if(el.gateEnter) el.gateEnter.disabled = true;
-  }
-  function hideGate(){
-    if(!el.gate) return;
-    el.gate.style.display = "none";
-    document.body.style.overflow = "";
-  }
-  function wireGate(onEnter){
-    if(!el.gate || !el.gateCheck || !el.gateEnter || !el.gateLeave) return onEnter();
 
-    el.gateCheck.addEventListener("change", () => {
-      el.gateEnter.disabled = !el.gateCheck.checked;
-    });
-
-    el.gateLeave.addEventListener("click", () => { location.href = "/"; });
-
-    el.gateEnter.addEventListener("click", () => {
-      if(!el.gateCheck.checked) return;
-      setConsent();
-      hideGate();
-      onEnter();
-    });
-
-    if(hasConsent()){
-      hideGate();
-      onEnter();
-    }else{
-      showGate();
-    }
+  function otherPartyLabel(mailbox, from, to){
+    const f = cleanName(from);
+    const t = cleanName(to);
+    if(mailbox === "sent") return t;
+    return f;
   }
 
   // ----------------------------
@@ -218,12 +216,9 @@
     try{
       const raw = localStorage.getItem(STAR_KEY);
       const arr = raw ? JSON.parse(raw) : [];
-      if(Array.isArray(arr)){
-        state.starred = new Set(arr.map(String));
-      }
-    }catch(_){
-      state.starred = new Set();
-    }
+      if(Array.isArray(arr)) return new Set(arr.map(String));
+    }catch(_){}
+    return new Set();
   }
   function saveStarred(){
     try{
@@ -231,26 +226,13 @@
     }catch(_){}
   }
 
-  function loadContactFilter(){
-    try{
-      const v = localStorage.getItem(CONTACT_KEY);
-      state.contact = v || "all";
-    }catch(_){
-      state.contact = "all";
-    }
-  }
-  function saveContactFilter(){
-    try{ localStorage.setItem(CONTACT_KEY, state.contact || "all"); }catch(_){}
-  }
-
   function loadSubjects(){
     try{
       const raw = localStorage.getItem(SUBJECTS_KEY);
       const arr = raw ? JSON.parse(raw) : [];
-      state.subjects = Array.isArray(arr) ? arr : [];
-    }catch(_){
-      state.subjects = [];
-    }
+      return Array.isArray(arr) ? arr.filter(Boolean).map(String) : [];
+    }catch(_){}
+    return [];
   }
   function saveSubjects(){
     try{
@@ -259,14 +241,100 @@
   }
 
   // ----------------------------
-  // Fetch
+  // Local Outbox (Compose simulation)
   // ----------------------------
-  async function fetchJsonStrict(url){
-    const bust = Date.now();
-    const u = url + (url.includes("?") ? "&" : "?") + "_=" + bust;
-    const r = await fetch(u, { cache: "no-store" });
-    if(!r.ok) throw new Error(`HTTP ${r.status} for ${url}`);
-    return r.json();
+  function loadOutbox(){
+    try{
+      const raw = localStorage.getItem(OUTBOX_KEY);
+      const obj = raw ? JSON.parse(raw) : { items: [] };
+      const items = Array.isArray(obj?.items) ? obj.items : (Array.isArray(obj) ? obj : []);
+      return { items };
+    }catch(_){
+      return { items: [] };
+    }
+  }
+  function saveOutbox(out){
+    try{ localStorage.setItem(OUTBOX_KEY, JSON.stringify(out)); }catch(_){}
+  }
+
+  function mergeLocalOutbox(){
+    const out = loadOutbox();
+    if(!out.items.length) return;
+
+    for(const oi of out.items){
+      if(!oi || !oi.id) continue;
+      const exists = state.all.some(m => String(m.id) === String(oi.id));
+      if(exists) continue;
+
+      const subject = safeText(oi.subject) || "(No subject)";
+      const from = cleanName(oi.from || "Public Visitor") || "Public Visitor";
+      const to = cleanName(oi.to || "Jeffrey Epstein") || "Jeffrey Epstein";
+      const date = safeText(oi.date) || new Date().toISOString();
+      const dateDisplay = safeText(oi.dateDisplay) || fmtDateShort(date);
+
+      const body = String(oi.body || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
+      const snippet = safeText(oi.snippet) || safeText(body).slice(0, 160);
+
+      state.all.push({
+        id: String(oi.id),
+        mailbox: "inbox",
+        subject,
+        from,
+        to,
+        date,
+        dateDisplay,
+        snippet,
+        body,
+        pdf: "",
+        source: "Local Simulation (Local)",
+        thread: [{
+          from, to, subject, date, dateDisplay, body, snippet
+        }],
+        jeffInvolved: true,
+        starred: state.starred.has(String(oi.id)),
+        contactKey: slugify(from),
+        contactName: from,
+        _local: true,
+        _pdfBlobUrl: safeText(oi._pdfBlobUrl || "")
+      });
+    }
+
+    state.all.sort((a,b) => (Date.parse(b.date||"")||0) - (Date.parse(a.date||"")||0));
+  }
+
+  function exportOutboxDownload(){
+    const out = loadOutbox();
+    const payload = {
+      generatedAt: Date.now(),
+      items: out.items.map(x => ({
+        id: x.id,
+        subject: x.subject,
+        body: x.body,
+        date: x.date,
+        dateDisplay: x.dateDisplay,
+        from: x.from || "Public Visitor",
+        to: x.to || "Jeffrey Epstein",
+        pdf: x.pdf || `pdfs/user__${x.id}.pdf`
+      }))
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "outbox.json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  }
+
+  // ----------------------------
+  // Fetch + normalize
+  // ----------------------------
+  async function fetchIndex(){
+    const res = await fetch(INDEX_URL, { cache: "no-store" });
+    if(!res.ok) throw new Error("Failed to load index.json");
+    return await res.json();
   }
 
   // ----------------------------
@@ -281,26 +349,20 @@
       if(!m || !m.id) continue;
 
       const pdf = safeText(m.pdf);
-      if(!pdf) continue;
-
       const mailboxRaw = safeText(m.mailbox).toLowerCase();
       const mailbox = mailboxRaw === "sent" ? "sent" : "inbox";
 
       const subject = safeText(m.subject) || "(No subject)";
-      const from = cleanName(m.from);
+      const from = cleanName(m.from || m.from_);
       const to = cleanName(m.to);
 
       const date = safeText(m.date);
       const dateDisplay = safeText(m.dateDisplay);
 
-      // Keep body "as-is" (don’t collapse newlines) because we parse threads from it.
       const body = String(m.body || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
-
-      // Snippet fallback
       const snippet = safeText(m.snippet) || safeText(body).slice(0, 160);
 
-      // Stable UI dedupe
-      const sig = [pdf, subject, from, to, date, mailbox].join("|");
+      const sig = [subject, from, to, date, mailbox].join("|");
       if(seen.has(sig)) continue;
       seen.add(sig);
 
@@ -314,12 +376,14 @@
         dateDisplay,
         snippet,
         body,
-        pdf,
-        starred: state.starred.has(String(m.id)),
+        pdf: pdf || "",
+        source: safeText(m.source) || "Released",
+        thread: Array.isArray(m.thread) ? m.thread : [],
+        jeffInvolved: !!m.jeffInvolved,
 
-        // We recompute contactKey/contactName on the client (more reliable)
-        contactKey: "",
-        contactName: "",
+        starred: state.starred.has(String(m.id)),
+        contactKey: safeText(m.contactKey) || "",
+        contactName: safeText(m.contactName) || "",
       });
     }
 
@@ -330,473 +394,311 @@
       return String(b.id).localeCompare(String(a.id));
     });
 
+    for(const m of cleaned){
+      if(!m.contactKey || !m.contactName){
+        const other = otherPartyLabel(m.mailbox, m.from, m.to) || "Unknown";
+        m.contactName = other;
+        m.contactKey = slugify(other);
+      }
+    }
+
     return cleaned;
   }
 
   // ----------------------------
   // Contact logic
   // ----------------------------
-
-  function otherPartyLabel(mailbox, from, to){
-    // What shows in the list left column
-    if(mailbox === "sent"){
-      // Sent by Jeff -> show recipient
-      return cleanName(to) || "Unknown";
-    }
-    // Inbox to Jeff -> show sender
-    return cleanName(from) || "Unknown";
-  }
-
-  function computeContactForItem(m){
-    // Your requirement: If message is to/from Jeffrey, allow “Jeffrey Epstein” as a contact in the contact list.
-    // We do two contact modes:
-    // 1) Standard: other party (normal mail behavior)
-    // 2) Special: “Jeffrey Epstein” contact bucket for any message where Jeff appears in from/to/body headers
-
-    const from = String(m.from||"");
-    const to = String(m.to||"");
-
-    const standardName = otherPartyLabel(m.mailbox, from, to);
-
-    // If standard name is clearly a date garbage, treat as Unknown.
-    const sn = cleanName(standardName);
-
-    const standardKey = slugify(sn);
-
-    // Jeff bucket detection
-    const inText = looksLikeJeff(from) || looksLikeJeff(to) || looksLikeJeff(m.subject) || looksLikeJeff(m.body);
-    const jeffKey = "jeffrey-epstein";
-    const jeffName = "Jeffrey Epstein";
-
-    // Store both: primary for filtering remains standard, but we also mark jeffInvolved
-    return {
-      standardKey,
-      standardName: sn || "Unknown",
-      jeffInvolved: !!inText,
-      jeffKey,
-      jeffName
-    };
-  }
-
   function rebuildContacts(){
-    const map = new Map(); // key -> {name,count}
-    let jeffCount = 0;
+    const map = new Map();
 
     for(const m of state.all){
-      const c = computeContactForItem(m);
-      m.contactKey = c.standardKey;
-      m.contactName = c.standardName;
+      const key = safeText(m.contactKey) || slugify(m.contactName || "Unknown");
+      const name = cleanName(m.contactName || "Unknown");
+      if(!map.has(key)) map.set(key, { key, name, count: 0 });
+      map.get(key).count++;
+    }
 
-      if(c.standardName && c.standardName !== "Unknown"){
-        const cur = map.get(c.standardKey) || { name: c.standardName, count: 0 };
-        cur.count += 1;
-        // keep the first name variant (avoid weird OCR suffixes)
-        if(cur.name.length > c.standardName.length) cur.name = c.standardName;
-        map.set(c.standardKey, cur);
+    // Ensure Jeffrey always exists as a contact grouping
+    const jeffKey = "jeffrey-epstein";
+    if(!map.has(jeffKey)){
+      map.set(jeffKey, { key: jeffKey, name: "Jeffrey Epstein", count: 0 });
+    }
+    // Count items involving Jeff for that contact
+    for(const m of state.all){
+      const involved = !!m.jeffInvolved || looksLikeJeff(m.from) || looksLikeJeff(m.to) || looksLikeJeff(m.subject);
+      if(involved){
+        map.get(jeffKey).count++;
       }
-
-      if(c.jeffInvolved) jeffCount += 1;
     }
 
-    // Add Jeffrey Epstein as an explicit contact
-    if(jeffCount > 0){
-      map.set("jeffrey-epstein", { name: "Jeffrey Epstein", count: jeffCount });
-    }
-
-    const list = Array.from(map.entries()).map(([key, obj]) => ({ key, name: obj.name, count: obj.count }));
-    list.sort((a,b) => {
-      // Put Jeffrey first, then alphabetical
-      if(a.key === "jeffrey-epstein") return -1;
-      if(b.key === "jeffrey-epstein") return 1;
-      return a.name.localeCompare(b.name);
-    });
+    const list = Array.from(map.values())
+      .filter(x => x.count > 0 || x.key === jeffKey)
+      .sort((a,b) => (b.count - a.count) || a.name.localeCompare(b.name));
 
     state.contacts = list;
 
     if(el.contactsCount) el.contactsCount.textContent = String(list.length);
 
-    drawContacts();
+    if(el.contactsList){
+      el.contactsList.innerHTML = list.map(c => `
+        <button class="contact ${state.activeContactKey === c.key ? "active":""}" data-ck="${esc(c.key)}" type="button">
+          ${renderAvatarHTML(c.name)}
+          <div class="cmeta">
+            <div class="cname">${esc(c.name)}</div>
+            <div class="ccount">${esc(String(c.count))}</div>
+          </div>
+        </button>
+      `).join("");
+
+      el.contactsList.querySelectorAll("button.contact").forEach(btn => {
+        btn.addEventListener("click", () => {
+          state.activeContactKey = btn.getAttribute("data-ck") || "";
+          draw();
+        });
+      });
+    }
   }
 
-  function drawContacts(){
-    if(!el.contactsList) return;
-
-    const cur = state.contact || "all";
-    el.contactsList.innerHTML = "";
-
-    // "All"
-    const allBtn = document.createElement("div");
-    allBtn.className = "cbtn ep-box" + (cur === "all" ? " active" : "");
-    allBtn.innerHTML = `<div class="nm">All contacts</div><div class="ct">${state.all.length}</div>`;
-    allBtn.addEventListener("click", () => {
-      state.contact = "all";
-      saveContactFilter();
-      state.activeId = "";
-      state.activeSubjectId = "";
-      draw();
-      drawContacts();
-      closeReaderOverlay();
+  function togglePanel(headerEl, panelEl){
+    if(!headerEl || !panelEl) return;
+    headerEl.addEventListener("click", () => {
+      const open = panelEl.classList.toggle("open");
+      headerEl.classList.toggle("open", open);
     });
-    el.contactsList.appendChild(allBtn);
-
-    for(const c of state.contacts){
-      const btn = document.createElement("div");
-      btn.className = "cbtn ep-box" + (cur === c.key ? " active" : "");
-      btn.setAttribute("data-key", c.key);
-      btn.innerHTML = `<div class="nm">${esc(c.name)}</div><div class="ct">${esc(String(c.count))}</div>`;
-      btn.addEventListener("click", () => {
-        state.contact = c.key;
-        saveContactFilter();
-        state.activeId = "";
-        state.activeSubjectId = "";
-        draw();
-        drawContacts();
-        closeReaderOverlay();
-      });
-      el.contactsList.appendChild(btn);
-    }
   }
 
   // ----------------------------
-  // Subjects (saved searches)
+  // Subjects UI
   // ----------------------------
-  function rebuildSubjectsUI(){
+  function drawSubjects(){
     if(!el.subjectsList) return;
+    el.subjectsList.innerHTML = state.subjects.map(s => `
+      <button class="subjbtn ${state.activeSubject === s ? "active":""}" data-subj="${esc(s)}" type="button">
+        🔎 ${esc(s)}
+      </button>
+    `).join("");
 
-    if(el.subjectsCount) el.subjectsCount.textContent = String(state.subjects.length);
-
-    if(!state.subjects.length){
-      el.subjectsList.innerHTML = `<div style="opacity:.8;font-size:12px;">No subjects saved yet.</div>`;
-      return;
-    }
-
-    el.subjectsList.innerHTML = "";
-    for(const s of state.subjects){
-      const row = document.createElement("div");
-      row.className = "sbtn ep-box" + (state.activeSubjectId === s.id ? " active" : "");
-      row.innerHTML = `<div class="nm">${esc(s.name)}</div><div class="q">${esc(s.query || "")}</div>`;
-      row.addEventListener("click", () => {
-        state.activeSubjectId = s.id;
-        state.q = s.query || "";
-        if(el.search) el.search.value = state.q;
-        state.activeId = "";
-        draw();
-        rebuildSubjectsUI();
-        closeReaderOverlay();
+    el.subjectsList.querySelectorAll("button.subjbtn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const term = btn.getAttribute("data-subj") || "";
+        state.activeSubject = term;
+        if(el.search) el.search.value = term;
+        applySearch();
       });
-      el.subjectsList.appendChild(row);
+    });
+  }
+
+  function saveCurrentSearchAsSubject(){
+    const term = safeText(el.search?.value || "").trim();
+    if(!term) return;
+    if(!state.subjects.includes(term)){
+      state.subjects.unshift(term);
+      state.subjects = state.subjects.slice(0, 50);
+      saveSubjects();
+      drawSubjects();
     }
-  }
-
-  function openSubjectModal(){
-    if(!el.subjectModal || !el.subjectName) return;
-    el.subjectName.value = "";
-    el.subjectModal.classList.add("open");
-    setTimeout(() => el.subjectName && el.subjectName.focus(), 30);
-  }
-  function closeSubjectModal(){
-    if(!el.subjectModal) return;
-    el.subjectModal.classList.remove("open");
-  }
-  function saveCurrentSearchAsSubject(name){
-    const nm = safeText(name);
-    const q = safeText(state.q || "");
-    if(!nm || !q) return;
-
-    const id = "sub_" + Math.random().toString(16).slice(2) + Date.now().toString(16);
-    state.subjects.unshift({ id, name: nm, query: q });
-    // prevent runaway
-    state.subjects = state.subjects.slice(0, 100);
-    saveSubjects();
-    rebuildSubjectsUI();
   }
 
   // ----------------------------
-  // Filters / visibility
+  // Compose (simulation) helpers
   // ----------------------------
-  function matchesQuery(m, q){
-    if(!q) return true;
-    const hay = [
-      m.subject, m.from, m.to, m.snippet, m.body, m.contactName
-    ].join(" ").toLowerCase();
-    return hay.includes(q);
+  function openComposeModal(){
+    if(!el.composeModal) return;
+    if(el.composeFrom) el.composeFrom.value = "Public Visitor";
+    if(el.composeTo) el.composeTo.value = "Jeffrey Epstein";
+    if(el.composeSubject) el.composeSubject.value = "";
+    if(el.composeBody) el.composeBody.value = "";
+    if(el.composeHint) el.composeHint.textContent = "This is a simulation. Nothing is sent to any real inbox.";
+    el.composeModal.classList.add("open");
+    setTimeout(() => el.composeSubject && el.composeSubject.focus(), 30);
+  }
+  function closeComposeModal(){
+    if(!el.composeModal) return;
+    el.composeModal.classList.remove("open");
   }
 
-  function matchesContact(m){
-    const c = state.contact || "all";
-    if(c === "all") return true;
-
-    // Special Jeffrey bucket
-    if(c === "jeffrey-epstein"){
-      return looksLikeJeff(m.from) || looksLikeJeff(m.to) || looksLikeJeff(m.body) || looksLikeJeff(m.subject);
-    }
-
-    return (m.contactKey || "") === c;
-  }
-
-  function getVisible(){
-    const q = (state.q || "").trim().toLowerCase();
-    let list = state.all;
-
-    if(state.folder === "starred"){
-      list = list.filter(x => x.starred);
-    }else{
-      list = list.filter(x => (x.mailbox || "inbox") === state.folder);
-    }
-
-    list = list.filter(matchesContact);
-    if(q) list = list.filter(m => matchesQuery(m, q));
-    return list;
-  }
-
-  function updateCounts(){
-    const all = state.all;
-    const inbox = all.filter(x => (x.mailbox || "inbox") === "inbox").length;
-    const sent = all.filter(x => (x.mailbox || "inbox") === "sent").length;
-    const starred = all.filter(x => !!x.starred).length;
-
-    if(el.countInbox) el.countInbox.textContent = String(inbox);
-    if(el.countSent) el.countSent.textContent = String(sent);
-    if(el.countStarred) el.countStarred.textContent = String(starred);
-  }
-
-  function toggleStar(id){
-    const sid = String(id || "");
-    if(!sid) return;
-
-    if(state.starred.has(sid)) state.starred.delete(sid);
-    else state.starred.add(sid);
-
-    saveStarred();
-
-    for(const m of state.all){
-      if(m.id === sid){
-        m.starred = state.starred.has(sid);
-        break;
+  function wrapTextLines(text, maxLen){
+    const words = String(text||"").replace(/\r\n/g,"\n").replace(/\r/g,"\n").split(/\s+/);
+    const lines = [];
+    let cur = "";
+    for(const w of words){
+      if(!w) continue;
+      if((cur + " " + w).trim().length > maxLen){
+        if(cur) lines.push(cur.trim());
+        cur = w;
+      }else{
+        cur = (cur + " " + w).trim();
       }
     }
+    if(cur) lines.push(cur.trim());
+    return lines;
+  }
+
+  async function sendCompose(){
+    const subj = safeText(el.composeSubject ? el.composeSubject.value : "");
+    const body = String(el.composeBody ? el.composeBody.value : "").trim();
+    if(!subj){ alert("Subject is required."); return; }
+    if(!body){ alert("Body is required."); return; }
+
+    const now = new Date();
+    const iso = now.toISOString();
+    const dateDisplay = fmtDateShort(iso) + " " + now.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+    const id = "user_" + Math.random().toString(16).slice(2) + "_" + now.getTime().toString(16);
+
+    let blobUrl = "";
+    try{
+      const jsPDF = window.jspdf?.jsPDF;
+      if(!jsPDF) throw new Error("jsPDF not loaded");
+      const doc = new jsPDF({ unit: "pt", format: "letter" });
+
+      const margin = 48;
+      let y = 54;
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.text("JEFFS MAIL — SIMULATED PUBLIC VISITOR EMAIL", margin, y);
+      y += 22;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(11);
+      const headerLines = [
+        `From: Public Visitor`,
+        `To: Jeffrey Epstein`,
+        `Date: ${now.toLocaleString()}`,
+        `Subject: ${subj}`,
+        "",
+      ];
+      for(const ln of headerLines){
+        doc.text(ln, margin, y);
+        y += 16;
+      }
+
+      doc.setFontSize(11);
+      const lines = wrapTextLines(body, 95);
+      for(const ln of lines){
+        if(y > 720){
+          doc.addPage();
+          y = 54;
+        }
+        doc.text(ln, margin, y);
+        y += 14;
+      }
+
+      const pdfBlob = doc.output("blob");
+      blobUrl = URL.createObjectURL(pdfBlob);
+
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = `user__${id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      if(el.composeHint){
+        el.composeHint.textContent = `Downloaded PDF: user__${id}.pdf — to include it in the public index on next rebuild, commit the PDF to released/epstein/jeffs-mail/pdfs/ and commit an outbox.json (use “Export Outbox”).`;
+      }
+    }catch(err){
+      console.warn("PDF generation skipped:", err);
+      if(el.composeHint){
+        el.composeHint.textContent = "PDF generation library wasn't available. Your message was saved locally, but no PDF was created.";
+      }
+    }
+
+    const out = loadOutbox();
+    out.items.unshift({
+      id,
+      from: "Public Visitor",
+      to: "Jeffrey Epstein",
+      subject: subj,
+      body,
+      snippet: body.replace(/\s+/g," ").slice(0, 160),
+      date: iso,
+      dateDisplay,
+      pdf: `pdfs/user__${id}.pdf`,
+      _pdfBlobUrl: blobUrl
+    });
+    out.items = out.items.slice(0, 200);
+    saveOutbox(out);
+
+    mergeLocalOutbox();
+    rebuildContacts();
     updateCounts();
     draw();
   }
 
   // ----------------------------
-  // Mobile overlay
+  // Filters / visibility
   // ----------------------------
-  function isNarrow(){
-    return window.matchMedia && window.matchMedia("(max-width: 980px)").matches;
+  function matchesFolder(m){
+    if(state.folder === "starred") return !!m.starred;
+    return m.mailbox === state.folder;
   }
-  function openReaderOverlay(){
-    if(!el.reader) return;
-    if(isNarrow()){
-      el.reader.classList.add("open");
-      document.body.classList.add("jm-lock");
+
+  function matchesSearch(m, q){
+    if(!q) return true;
+    const hay = [
+      m.subject, m.from, m.to, m.snippet, m.body,
+      ...((m.thread||[]).map(p => `${p.from||""} ${p.to||""} ${p.subject||""} ${p.body||""}`))
+    ].join(" ").toLowerCase();
+    return hay.includes(q);
+  }
+
+  function matchesContact(m){
+    if(!state.activeContactKey) return true;
+    if(state.activeContactKey === "jeffrey-epstein"){
+      return !!m.jeffInvolved || looksLikeJeff(m.from) || looksLikeJeff(m.to) || looksLikeJeff(m.subject);
     }
+    return safeText(m.contactKey) === state.activeContactKey;
+  }
+
+  function applySearch(){
+    const q = safeText(el.search?.value || "").trim().toLowerCase();
+    state.view = state.all.filter(m => matchesFolder(m) && matchesContact(m) && matchesSearch(m, q));
+    drawList();
+  }
+
+  // ----------------------------
+  // Mobile overlay behavior
+  // ----------------------------
+  function openReaderOverlay(){
+    if(!el.readerShell) return;
+    el.readerShell.classList.add("open");
+    document.body.classList.add("jm-lock");
   }
   function closeReaderOverlay(){
-    if(!el.reader) return;
-    el.reader.classList.remove("open");
+    if(!el.readerShell) return;
+    el.readerShell.classList.remove("open");
     document.body.classList.remove("jm-lock");
   }
 
   // ----------------------------
-  // Thread parsing (key fix)
-  // ----------------------------
-
-  // Parse a header block like:
-  // From: X
-  // To: Y
-  // Sent: ...
-  // Date: ...
-  // Subject: ...
-  function parseHeaderBlock(lines, startIdx){
-    const out = { from:"", to:"", date:"", sent:"", subject:"" };
-    let i = startIdx;
-
-    // scan up to 30 lines or until blank line
-    for(let n=0; n<30 && i<lines.length; n++, i++){
-      const raw = (lines[i] || "").trim();
-      if(!raw) break;
-
-      const m = raw.match(/^(From|To|Date|Sent|Subject)\s*:\s*(.*)$/i);
-      if(!m) continue;
-      const k = m[1].toLowerCase();
-      const v = (m[2] || "").trim();
-
-      if(k === "from" && !out.from) out.from = v;
-      if(k === "to" && !out.to) out.to = v;
-      if((k === "date") && !out.date) out.date = v;
-      if((k === "sent") && !out.sent) out.sent = v;
-      if((k === "subject") && !out.subject) out.subject = v;
-    }
-    return { hdr: out, next: i };
-  }
-
-  function stripLegalFooter(text){
-    // remove the big confidentiality block that appears in many
-    const t = String(text||"");
-    const cut = t.search(/^\*{5,}|^The information contained in this communication is/i, "m");
-    if(cut >= 0) return t.slice(0, cut).trim();
-    return t.trim();
-  }
-
-  function normalizeToFrom(s){
-    // Keep emails if present, but fix © -> @ etc.
-    let t = String(s||"");
-    t = t.replace(/©/g, "@");
-    t = t.replace(/\s+/g, " ").trim();
-    // Remove trailing weird brackets
-    t = t.replace(/\]+$/g, "").trim();
-    return t;
-  }
-
-  function buildWhoLine(from, to){
-    const f = cleanName(from);
-    const t = cleanName(to);
-    return { from: f || "Unknown", to: t || "Unknown" };
-  }
-
-  function splitThread(bodyText, fallbackMeta){
-    // Returns array of message objects in top-to-bottom order.
-    // fallbackMeta: {from,to,subject,dateDisplay}
-    const raw = String(bodyText||"").replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
-    if(!raw){
-      return [{
-        from: fallbackMeta.from,
-        to: fallbackMeta.to,
-        subject: fallbackMeta.subject,
-        when: fallbackMeta.dateDisplay,
-        body: "Open the source PDF below to view the original record."
-      }];
-    }
-
-    const lines = raw.split("\n");
-    const msgs = [];
-
-    // Identify blocks starting with "Begin forwarded message:"
-    // We also handle "On ... wrote:" blocks by treating them as separators.
-    const begins = [];
-    for(let i=0; i<lines.length; i++){
-      const s = (lines[i]||"").trim();
-      if(/^Begin forwarded message\s*:?\s*$/i.test(s)){
-        begins.push(i);
-      }
-      if(/^-----Original Message-----$/i.test(s)){
-        begins.push(i);
-      }
-    }
-
-    // Also treat "On ... wrote:" as an anchor
-    const wroteIdx = [];
-    for(let i=0; i<lines.length; i++){
-      const s = (lines[i]||"").trim();
-      if(/^On\s.+\bwrote:\s*$/i.test(s)){
-        wroteIdx.push(i);
-      }
-    }
-
-    // If we have no anchors, treat as single message
-    if(!begins.length && !wroteIdx.length){
-      return [{
-        from: fallbackMeta.from,
-        to: fallbackMeta.to,
-        subject: fallbackMeta.subject,
-        when: fallbackMeta.dateDisplay,
-        body: stripLegalFooter(raw)
-      }];
-    }
-
-    // First message: anything before first "Begin forwarded message" is the top message body
-    // BUT we don’t want duplicated header junk like "To: From: Sent Subject..." inside it.
-    const firstAnchor = Math.min(
-      begins.length ? begins[0] : Infinity,
-      wroteIdx.length ? wroteIdx[0] : Infinity
-    );
-
-    const topChunk = lines.slice(0, isFinite(firstAnchor) ? firstAnchor : lines.length).join("\n").trim();
-
-    // If topChunk is meaningful (not just a pasted header list), keep it as message 1.
-    const topLooksLikeHeaderDump = /^((To|From|Sent|Date|Subject)\s*:)/im.test(topChunk) && topChunk.split("\n").length <= 8;
-    if(topChunk && !topLooksLikeHeaderDump){
-      msgs.push({
-        from: fallbackMeta.from,
-        to: fallbackMeta.to,
-        subject: fallbackMeta.subject,
-        when: fallbackMeta.dateDisplay,
-        body: stripLegalFooter(topChunk)
-      });
-    }
-
-    // Now parse each forwarded block
-    // For each begin index, parse header lines after it and take body until next begin/wrote/or footer.
-    const anchors = [...begins, ...wroteIdx].sort((a,b)=>a-b);
-
-    for(let a=0; a<anchors.length; a++){
-      const start = anchors[a];
-      const end = (a+1 < anchors.length) ? anchors[a+1] : lines.length;
-
-      const label = (lines[start]||"").trim();
-
-      // If this anchor is an "On ... wrote:" line, treat the chunk AFTER it as part of previous message
-      // (these often appear inside forwarded blocks too). We’ll just continue; the forwarded blocks already include header blocks.
-      if(/^On\s.+\bwrote:\s*$/i.test(label)){
-        continue;
-      }
-
-      // Skip the anchor line itself ("Begin forwarded message")
-      let i = start + 1;
-
-      // Parse header block
-      const parsed = parseHeaderBlock(lines, i);
-      const hdr = parsed.hdr;
-      i = parsed.next;
-
-      // Some PDFs omit "To:" or "Subject:" in forwarded header; fallback to blanks.
-      const who = buildWhoLine(normalizeToFrom(hdr.from), normalizeToFrom(hdr.to));
-
-      const subj = safeText(hdr.subject) || "(No subject)";
-      const when = safeText(hdr.sent || hdr.date) || "";
-
-      // The remainder until end is body, but remove any leading quoted ">" lines junk
-      let chunk = lines.slice(i, end).join("\n");
-
-      // Remove repeated header list lines that sometimes get embedded again
-      chunk = chunk.replace(/^\s*(To|From|Sent|Date|Subject)\s*:\s*.*$/gmi, "").trim();
-
-      // If chunk is empty, still create a card (this is your “missing second string” bug)
-      const body = stripLegalFooter(chunk) || "Open the source PDF below to view the original record.";
-
-      msgs.push({
-        from: who.from,
-        to: who.to,
-        subject: subj,
-        when: when,
-        body
-      });
-    }
-
-    // Final fallback
-    if(!msgs.length){
-      msgs.push({
-        from: fallbackMeta.from,
-        to: fallbackMeta.to,
-        subject: fallbackMeta.subject,
-        when: fallbackMeta.dateDisplay,
-        body: stripLegalFooter(raw) || "Open the source PDF below to view the original record."
-      });
-    }
-
-    return msgs;
-  }
-
   // Avatar rendering:
   // - Jeffrey -> image
-  // - Unknown -> red “no” sign svg
-  // - Others -> initial letter
+  // - Unknown -> red “no” icon
+  // - Others -> initial letter with deterministic color
+  // ----------------------------
+  function hash32(str){
+    let h = 2166136261;
+    const s = String(str||"");
+    for(let i=0;i<s.length;i++){
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+  function avatarBg(name){
+    const h = hash32(String(name||"").toLowerCase());
+    const hue = h % 360;
+    const sat = 62 + (h % 18);
+    const lum = 34 + (h % 10);
+    return `hsl(${hue} ${sat}% ${lum}%)`;
+  }
+
   function renderAvatarHTML(name){
     const n = cleanName(name);
     if(n === "Unknown"){
       return `
-        <div class="av" title="Unknown">
+        <div class="av" title="Unknown" style="background:rgba(255,0,80,.12);border-color:rgba(255,0,80,.35);">
           <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
             <circle cx="12" cy="12" r="9" fill="none" stroke="rgba(255,0,80,.95)" stroke-width="2"></circle>
             <line x1="7.2" y1="16.8" x2="16.8" y2="7.2" stroke="rgba(255,0,80,.95)" stroke-width="2"></line>
@@ -813,34 +715,58 @@
       `;
     }
     const ch = (n || "?").trim()[0]?.toUpperCase() || "?";
-    return `<div class="av" title="${esc(n)}"><span style="font-weight:1000;">${esc(ch)}</span></div>`;
+    const bg = avatarBg(n);
+    return `<div class="av" title="${esc(n)}" style="background:${esc(bg)};"><span style="font-weight:1000;">${esc(ch)}</span></div>`;
   }
 
   // ----------------------------
   // Reader rendering
   // ----------------------------
+  function formatBodyHTML(text){
+    const t = safeText(text||"");
+    return esc(t).replace(/\n/g, "<br>");
+  }
+
+  function threadFromItem(m){
+    if(Array.isArray(m.thread) && m.thread.length){
+      return m.thread.map((p, idx) => ({
+        idx,
+        from: cleanName(p.from || m.from || "Unknown"),
+        to: cleanName(p.to || m.to || "Unknown"),
+        subject: safeText(p.subject || m.subject || ""),
+        when: safeText(p.dateDisplay || "") || (p.date ? fmtDateShort(p.date) : ""),
+        body: safeText(p.body || "")
+      }));
+    }
+    const dateShort = m.date ? fmtDateShort(m.date) : (m.dateDisplay || "");
+    return [{
+      idx: 0,
+      from: m.from || "Unknown",
+      to: m.to || "Unknown",
+      subject: m.subject || "(No subject)",
+      when: dateShort || (m.dateDisplay || ""),
+      body: m.body || ""
+    }];
+  }
+
   function setReading(m){
     state.activeId = m?.id || "";
     if(!el.readCard || !m) return;
 
     const mailbox = m.mailbox || "inbox";
-    const pdfHref = esc(m.pdf);
-
     const dateShort = m.date ? fmtDateShort(m.date) : (m.dateDisplay || "");
+    const thread = threadFromItem(m);
 
-    // Build thread from the PDF-extracted body
-    const thread = splitThread(m.body, {
-      from: m.from || "Unknown",
-      to: m.to || "Unknown",
-      subject: m.subject || "(No subject)",
-      dateDisplay: dateShort || (m.dateDisplay || "")
-    });
+    const pdfName = ((m.pdf || "").split("/").pop() || "").trim() || "document.pdf";
+
+    const isLocal = !!m._local;
+    const pdfOpenHref = isLocal ? (m._pdfBlobUrl || "") : (m.pdf || "");
 
     el.readCard.innerHTML = `
       <div class="jm-h1">${esc(m.subject || "(No subject)")}</div>
 
       <div class="jm-badges">
-        <span class="jm-badge">Released</span>
+        <span class="jm-badge">${esc(m.source || "Released")}</span>
         <span class="jm-badge">PDF</span>
         <span class="jm-badge">${esc(mailbox)}</span>
         ${m.starred ? `<span class="jm-badge">★ Starred</span>` : ``}
@@ -857,10 +783,10 @@
                   <div class="when">${esc(safeText(msg.when) || "")}</div>
                 </div>
                 <div class="line2">to <span style="font-weight:900">${esc(cleanName(msg.to))}</span></div>
-                <div class="subj">${esc(safeText(msg.subject) || "")}</div>
+                ${msg.subject ? `<div class="subj">${esc(msg.subject)}</div>` : ``}
               </div>
             </div>
-            <div class="msg-body">${esc(String(msg.body||"").trim())}</div>
+            <div class="msg-body">${formatBodyHTML(msg.body)}</div>
           </div>
         `).join("")}
       </div>
@@ -869,10 +795,11 @@
         <strong>Source PDF</strong>
         <div class="jm-attachrow">
           <div style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-            📄 ${esc((m.pdf || "").split("/").pop() || "document.pdf")}
+            📄 ${esc(pdfName)}
           </div>
-          <a class="btn" href="${pdfHref}" target="_blank" rel="noopener">Open</a>
+          ${pdfOpenHref ? `<a class="btn" href="${esc(pdfOpenHref)}" target="_blank" rel="noopener">${isLocal ? "Download" : "Open"}</a>` : `<span class="legal" style="opacity:.85">No PDF attached yet.</span>`}
         </div>
+        ${isLocal ? `<div class="legal" style="margin-top:6px">This is a local simulation message (not real email). Use “Export Outbox” in Compose to create a file you can commit into the repo on the next rebuild.</div>` : ``}
       </div>
     `;
 
@@ -890,232 +817,161 @@
   // ----------------------------
   // List rendering
   // ----------------------------
-  function draw(){
-    if(!el.items) return;
+  function drawList(){
+    if(!el.list) return;
+    state.view = state.all.filter(m => matchesFolder(m) && matchesContact(m) && matchesSearch(m, safeText(el.search?.value||"").trim().toLowerCase()));
 
-    const list = getVisible();
-
-    if(el.found) el.found.textContent = String(list.length);
-    if(el.folderCount) el.folderCount.textContent = String(list.length);
-
-    if(!list.length){
-      el.items.innerHTML = `<div style="padding:12px;opacity:.85;">No messages found.</div>`;
-      if(el.readCard){
-        el.readCard.innerHTML = `
-          <div class="jm-h1">No results</div>
-          <div class="legal">Try clearing filters or changing your search terms.</div>
-        `;
-      }
+    if(!state.view.length){
+      el.list.innerHTML = `<div class="empty">No messages found.</div>`;
       return;
     }
 
-    el.items.innerHTML = "";
-    for(const m of list){
-      const dateShort = m.date ? fmtDateShort(m.date) : (m.dateDisplay || "");
-      const fromLabel = otherPartyLabel(m.mailbox, m.from, m.to) || "Unknown";
-
-      const row = document.createElement("div");
-      row.className = "jm-item";
-      row.setAttribute("data-id", m.id);
-
-      row.innerHTML = `
-        <button class="jm-star ${m.starred ? "on" : ""}" type="button" aria-label="Star">
-          ${m.starred ? "★" : "☆"}
-        </button>
-        <div class="main">
-          <div class="jm-from">${esc(fromLabel)}</div>
-          <div class="jm-subj">${esc(m.subject || "(No subject)")}</div>
-          <div class="jm-snippet">${esc(m.snippet || "")}</div>
+    el.list.innerHTML = state.view.map(m => `
+      <div class="jm-item ${m.id===state.activeId?"active":""}" data-id="${esc(m.id)}">
+        ${renderAvatarHTML(otherPartyLabel(m.mailbox, m.from, m.to))}
+        <div class="jm-item-meta">
+          <div class="jm-item-top">
+            <div class="jm-item-name">${esc(otherPartyLabel(m.mailbox, m.from, m.to))}</div>
+            <div class="jm-item-date">${esc(m.dateDisplay || (m.date ? fmtDateShort(m.date) : ""))}</div>
+          </div>
+          <div class="jm-item-subj">${esc(m.subject || "(No subject)")}</div>
+          <div class="jm-item-snippet">${esc(m.snippet || "")}</div>
         </div>
-        <div class="jm-date">${esc(dateShort)}</div>
-      `;
+      </div>
+    `).join("");
 
-      const starBtn = row.querySelector(".jm-star");
-      if(starBtn){
-        starBtn.addEventListener("click", (ev) => {
-          ev.preventDefault();
-          ev.stopPropagation();
-          toggleStar(m.id);
-        });
-      }
-
-      row.addEventListener("click", () => setReading(m));
-      el.items.appendChild(row);
-    }
-
-    if(!state.activeId){
-      setReading(list[0]);
-    }else{
-      const still = list.find(x => x.id === state.activeId);
-      if(still) setReading(still);
-      else setReading(list[0]);
-    }
+    el.list.querySelectorAll(".jm-item").forEach(row => {
+      row.addEventListener("click", () => {
+        const id = row.getAttribute("data-id") || "";
+        const msg = state.view.find(x => x.id === id) || state.all.find(x => x.id === id);
+        if(msg) setReading(msg);
+      });
+    });
   }
 
+  // ----------------------------
+  // Counts
+  // ----------------------------
+  function updateCounts(){
+    const inbox = state.all.filter(x => x.mailbox === "inbox").length;
+    const sent = state.all.filter(x => x.mailbox === "sent").length;
+    const starred = state.all.filter(x => !!x.starred).length;
+
+    if(el.countInbox) el.countInbox.textContent = String(inbox);
+    if(el.countSent) el.countSent.textContent = String(sent);
+    if(el.countStarred) el.countStarred.textContent = String(starred);
+  }
+
+  // ----------------------------
+  // Folder / UI wiring
+  // ----------------------------
   function setActiveFolder(folder){
     state.folder = folder;
-
-    [el.btnInbox, el.btnSent, el.btnStarred].forEach(b => b && b.classList.remove("active"));
-    const btn =
-      folder === "sent" ? el.btnSent :
-      folder === "starred" ? el.btnStarred :
-      el.btnInbox;
-
-    if(btn) btn.classList.add("active");
-    if(el.folderTitle) el.folderTitle.textContent = folder.toUpperCase();
+    state.activeContactKey = "";
     draw();
   }
 
-  // ----------------------------
-  // UI wiring
-  // ----------------------------
-  function wireAccordions(){
-    const toggle = (accEl) => {
-      if(!accEl) return;
-      accEl.classList.toggle("open");
-    };
-    if(el.contactsToggle && el.contactsAcc){
-      el.contactsToggle.addEventListener("click", () => toggle(el.contactsAcc));
-      el.contactsToggle.addEventListener("keydown", (e) => {
-        if(e.key === "Enter" || e.key === " ") toggle(el.contactsAcc);
-      });
-    }
-    if(el.subjectsToggle && el.subjectsAcc){
-      el.subjectsToggle.addEventListener("click", () => toggle(el.subjectsAcc));
-      el.subjectsToggle.addEventListener("keydown", (e) => {
-        if(e.key === "Enter" || e.key === " ") toggle(el.subjectsAcc);
-      });
-    }
+  function draw(){
+    rebuildContacts();
+    drawSubjects();
+    updateCounts();
+    applySearch();
   }
 
   // ----------------------------
   // Boot
   // ----------------------------
   async function boot(){
-    // Header avatar fallback
-    if(el.jeffAvatar && el.jeffFallback){
-      el.jeffAvatar.src = JEFF_AVATAR_URL;
-      el.jeffAvatar.addEventListener("error", () => {
-        // image missing; keep fallback initials
-      });
-    }
+    state.starred = loadStarred();
+    state.subjects = loadSubjects();
 
-    loadStarred();
-    loadContactFilter();
-    loadSubjects();
+    togglePanel(el.contactsHeader, el.contactsPanel);
+    togglePanel(el.subjectsHeader, el.subjectsPanel);
 
-    const data = await fetchJsonStrict(INDEX_URL);
-    state.data = data;
-    state.all = normalizeItems(data);
-
-    rebuildContacts();
-    updateCounts();
-    rebuildSubjectsUI();
-    wireAccordions();
-
-    // Nav buttons
-    [el.btnInbox, el.btnSent, el.btnStarred].forEach(btn => {
-      if(!btn) return;
-      btn.addEventListener("click", () => {
-        setActiveFolder(btn.getAttribute("data-folder") || "inbox");
-        closeReaderOverlay();
-      });
-    });
-
-    // Search
-    if(el.search){
-      el.search.addEventListener("input", () => {
-        state.q = el.search.value || "";
-        state.activeId = "";
-        state.activeSubjectId = "";
-        draw();
-        rebuildSubjectsUI();
-      });
-    }
-
-    // Back on mobile overlay
-    if(el.btnReaderBack){
-      el.btnReaderBack.addEventListener("click", closeReaderOverlay);
-    }
-    document.addEventListener("keydown", (e) => {
-      if(e.key === "Escape") closeReaderOverlay();
-    });
-    window.addEventListener("resize", () => {
-      if(!isNarrow()) closeReaderOverlay();
-    });
-
-    // Clear button
-    if(el.btnClearFilters){
-      el.btnClearFilters.addEventListener("click", () => {
-        state.q = "";
-        if(el.search) el.search.value = "";
-        state.contact = "all";
-        saveContactFilter();
-        state.activeSubjectId = "";
-        state.activeId = "";
-        draw();
-        drawContacts();
-        rebuildSubjectsUI();
-        closeReaderOverlay();
-      });
-    }
-
-    // Subject modal wiring
     if(el.btnAddSubject){
-      el.btnAddSubject.addEventListener("click", () => {
-        if(!safeText(state.q)){
-          alert("Type a search term first, then press + Add.");
-          return;
-        }
-        openSubjectModal();
-      });
-    }
-    if(el.subjectCancel) el.subjectCancel.addEventListener("click", closeSubjectModal);
-    if(el.subjectSave){
-      el.subjectSave.addEventListener("click", () => {
-        const nm = safeText(el.subjectName ? el.subjectName.value : "");
-        if(!nm){
-          alert("Please enter a short label for this subject.");
-          return;
-        }
-        if(!safeText(state.q)){
-          alert("Search term is empty.");
-          return;
-        }
-        saveCurrentSearchAsSubject(nm);
-        closeSubjectModal();
-      });
-    }
-    if(el.subjectModal){
-      el.subjectModal.addEventListener("click", (e) => {
-        if(e.target === el.subjectModal) closeSubjectModal();
-      });
+      el.btnAddSubject.addEventListener("click", () => saveCurrentSearchAsSubject());
     }
     if(el.btnClearSubjects){
       el.btnClearSubjects.addEventListener("click", () => {
-        if(!confirm("Clear all saved subjects?")) return;
         state.subjects = [];
-        state.activeSubjectId = "";
         saveSubjects();
-        rebuildSubjectsUI();
+        drawSubjects();
       });
     }
 
-    setActiveFolder("inbox");
-    drawContacts();
-  }
+    if(el.folderInbox) el.folderInbox.addEventListener("click", () => setActiveFolder("inbox"));
+    if(el.folderSent) el.folderSent.addEventListener("click", () => setActiveFolder("sent"));
+    if(el.folderStarred) el.folderStarred.addEventListener("click", () => setActiveFolder("starred"));
 
-  function init(){
-    wireGate(() => {
-      boot().catch(err => {
-        console.error(err);
-        if(el.items) el.items.innerHTML =
-          `<div style="padding:12px;opacity:.85;line-height:1.5;">
-            Failed to load <strong>index.json</strong>.<br><br>${esc(err.message || String(err))}
-           </div>`;
+    if(el.search){
+      el.search.addEventListener("input", () => applySearch());
+    }
+    if(el.btnClearSearch){
+      el.btnClearSearch.addEventListener("click", () => {
+        if(el.search) el.search.value = "";
+        state.activeSubject = "";
+        applySearch();
       });
+    }
+
+    if(el.btnClearFilters){
+      el.btnClearFilters.addEventListener("click", () => {
+        state.activeContactKey = "";
+        state.activeSubject = "";
+        if(el.search) el.search.value = "";
+        applySearch();
+      });
+    }
+
+    if(el.readerBack){
+      el.readerBack.addEventListener("click", () => closeReaderOverlay());
+    }
+    if(el.readerShell){
+      el.readerShell.addEventListener("click", (e) => {
+        if(e.target === el.readerShell) closeReaderOverlay();
+      });
+    }
+    window.addEventListener("keydown", (e) => {
+      if(e.key === "Escape") closeReaderOverlay();
     });
+
+    // Compose modal wiring
+    if(el.composeBtn){
+      el.composeBtn.addEventListener("click", () => openComposeModal());
+    }
+    if(el.composeCancel) el.composeCancel.addEventListener("click", closeComposeModal);
+    if(el.composeModal){
+      el.composeModal.addEventListener("click", (e) => {
+        if(e.target === el.composeModal) closeComposeModal();
+      });
+    }
+    if(el.composeExport){
+      el.composeExport.addEventListener("click", () => exportOutboxDownload());
+    }
+    if(el.composeSend){
+      el.composeSend.addEventListener("click", () => {
+        sendCompose().catch(err => {
+          console.error(err);
+          alert(err?.message || String(err));
+        });
+      });
+    }
+
+    const data = await fetchIndex();
+    state.all = normalizeItems(data);
+    mergeLocalOutbox();
+    setActiveFolder("inbox");
+
+    // default select first item (desktop)
+    const first = state.all[0];
+    if(first) setReading(first);
+
+    draw();
   }
 
-  document.addEventListener("DOMContentLoaded", init);
+  boot().catch(err => {
+    console.error(err);
+    if(el.list) el.list.innerHTML = `<div class="empty">Failed to load index.</div>`;
+  });
+
 })();
