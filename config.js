@@ -6,5 +6,5 @@ window.CT_CONFIG = {
   REMOTE_DB: { enabled: true, appsScriptUrl: "...", apiKey: "" },
 
   JEFFS_MAIL_UPLOAD_URL: "https://jeffs-mail-upload.clintondeig.workers.dev/upload",
-  JEFFS_MAIL_UPLOAD_KEY: "fdilbibfbfibfibfibfibsfibfbfhj"
+  JEFFS_MAIL_UPLOAD_KEY: "jksadghsfadhsdf6sdf6fds6787/Gjjdhj"
 };
