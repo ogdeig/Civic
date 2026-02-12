@@ -55,10 +55,11 @@
 
     subjectsAcc: $("#jmSubjectsAcc"),
     subjectsToggle: $("#jmSubjectsToggle"),
-    subjectQuick: $("#jmSubjectQuick"),
+    subjectQuick: $("#jmSubjectQuick"), // (must exist in HTML)
     subjectsList: $("#jmSubjectsList"),
     subjectsCount: $("#jmSubjectsCount"),
     btnAddSubject: $("#jmAddSubject"),
+    btnClearSubjects: $("#jmClearSubjects"),
 
     jeffAvatar: $("#jmJeffAvatar"),
     jeffFallback: $("#jmJeffFallback"),
@@ -74,7 +75,7 @@
     composeTo: $("#jmComposeTo"),
     composeSubject: $("#jmComposeSubject"),
     composeBody: $("#jmComposeBody"),
-    composeAgree: $("#jmComposeAgree"),
+    composeAgree: $("#jmComposeAgree"), // (must exist in HTML)
     composeCancel: $("#jmComposeCancel"),
     composeSend: $("#jmComposeSend"),
     composeStatus: $("#jmComposeStatus"),
@@ -118,7 +119,7 @@
 
   function cleanName(s){
     let t = safeText(s);
-    t = t.replace(/^(from|to|sent|date|subject)\s*:\s*/i, "").trim();
+    t = t.replace(/^(from|to|sent|date|subject|cc|bcc)\s*:\s*/i, "").trim();
     t = t.replace(/[\[\]\(\)]/g, "").trim();
     t = t.replace(/\s+/g, " ").trim();
     t = t.replace(/mailto:/ig, "");
@@ -185,11 +186,162 @@
 
     p = p.replace(/^\.?\/*/,"");     // remove ./ or leading /
     p = p.replace(/^pdfs\//i,"");    // remove any pdfs/ prefix
-    // keep slashes if ever present, but do not double-prefix
     return PDF_BASE + encodeURI(p);
   }
 
+  function makeSnippet(text, maxLen=180){
+    const s = safeText(String(text||"").replace(/\s+/g," "));
+    if(!s) return "";
+    return s.length <= maxLen ? s : (s.slice(0, maxLen-1).trim() + "…");
+  }
+
+  // ----------------------------
+  // THREAD SUPPORT (IMPORTANT)
+  // ----------------------------
+
+  const THREAD_MARKER_RE = /(^\s*(Begin forwarded message:|-----Original Message-----|Original Message|On\s+.+?\b(?:wrote|rote):)\s*$)/gmi;
+  const HEADER_LINE_RE = /^\s*(From|To|Cc|Bcc|Subject|Date|Sent)\s*:?\s*(.*?)\s*$/i;
+
+  function splitThreadChunks(text){
+    const t = String(text||"").replace(/\r\n/g,"\n").replace(/\r/g,"\n");
+    if(!t.trim()) return [];
+
+    const matches = [];
+    let m;
+    while((m = THREAD_MARKER_RE.exec(t)) !== null){
+      matches.push({ idx: m.index });
+    }
+    if(!matches.length) return [t];
+
+    const chunks = [];
+    let start = 0;
+    for(const hit of matches){
+      const pos = hit.idx;
+      if(pos > start){
+        chunks.push(t.slice(start, pos).trim());
+      }
+      start = pos;
+    }
+    if(start < t.length) chunks.push(t.slice(start).trim());
+    return chunks.filter(x => x && x.trim());
+  }
+
+  function parseHeadersFromChunk(chunk){
+    const lines = String(chunk||"").split(/\r?\n/);
+    const hdr = { from:"", to:"", subject:"", date:"" };
+
+    let scanned = 0;
+    for(const ln of lines){
+      if(scanned > 140) break;
+      const s2 = String(ln||"").trim().replace(/^>\s*/,"");
+
+      if(!s2){
+        scanned++;
+        continue;
+      }
+
+      // if we hit a marker after scanning some lines, stop
+      if(/^\s*(Begin forwarded message:|-----Original Message-----|Original Message|On\s+.+?\b(?:wrote|rote):)\s*$/i.test(s2) && scanned > 0){
+        break;
+      }
+
+      const m = s2.match(HEADER_LINE_RE);
+      if(m){
+        const key = String(m[1]||"").toLowerCase();
+        const val = safeText(m[2]||"");
+        if(key === "sent" || key === "date"){
+          if(!hdr.date) hdr.date = val;
+        }else if(key === "from"){
+          if(!hdr.from) hdr.from = val;
+        }else if(key === "to"){
+          if(!hdr.to) hdr.to = val;
+        }else if(key === "subject"){
+          if(!hdr.subject) hdr.subject = val;
+        }
+      }
+      scanned++;
+      if(hdr.from && hdr.to && hdr.subject && hdr.date && scanned >= 10) break;
+    }
+
+    return hdr;
+  }
+
+  function stripLeadingQuotedHeaders(chunk){
+    const lines = String(chunk||"").replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n");
+    const out = [];
+    let skipping = true;
+
+    for(const ln of lines){
+      const raw = String(ln||"");
+      const s2 = raw.trim().replace(/^>\s*/,"");
+
+      if(skipping){
+        if(!s2) continue;
+        if(HEADER_LINE_RE.test(s2)) continue;
+
+        if(/^begin forwarded message:/i.test(s2)) continue;
+        if(/^-----original message-----$/i.test(s2)) continue;
+        if(/^original message$/i.test(s2)) continue;
+        if(/^on\s+.+?\b(?:wrote|rote):\s*$/i.test(s2)) continue;
+
+        skipping = false;
+      }
+
+      out.push(raw);
+    }
+
+    const cleaned = out.join("\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+
+    return cleaned;
+  }
+
+  function ensureThreadForItem(m){
+    // If index.json already provides a thread, keep it.
+    if(Array.isArray(m.thread) && m.thread.length){
+      return m.thread;
+    }
+
+    // Otherwise, try to derive from body.
+    const chunks = splitThreadChunks(m.body || "");
+    if(chunks.length <= 1){
+      return [{
+        from: m.from || "Unknown",
+        to: m.to || "Unknown",
+        subject: m.subject || "(No subject)",
+        date: m.date || "",
+        dateDisplay: m.dateDisplay || "",
+        body: safeText(m.body || ""),
+        snippet: makeSnippet(m.body || "")
+      }];
+    }
+
+    const parts = [];
+    for(const ch of chunks){
+      const hdr = parseHeadersFromChunk(ch);
+      const from = cleanName(hdr.from || m.from || "Unknown");
+      const to = cleanName(hdr.to || m.to || "Unknown");
+      const subject = safeText(hdr.subject || m.subject || "(No subject)");
+      const date = safeText(hdr.date || m.date || "");
+      const body = stripLeadingQuotedHeaders(ch);
+      parts.push({
+        from,
+        to,
+        subject,
+        date,
+        dateDisplay: safeText(m.dateDisplay || ""),
+        body,
+        snippet: makeSnippet(body)
+      });
+    }
+    return parts;
+  }
+
+  // ----------------------------
   // Storage
+  // ----------------------------
+
   function loadStarred(){
     try{
       const raw = sessionStorage.getItem(STAR_KEY);
@@ -224,6 +376,11 @@
   }
   function saveSubjects(){
     try{ localStorage.setItem(SUBJECTS_KEY, JSON.stringify(state.subjects)); }catch(_){}
+  }
+  function clearSubjects(){
+    state.subjects = [];
+    saveSubjects();
+    rebuildSubjectsUI();
   }
 
   async function fetchJsonStrict(url){
@@ -270,13 +427,26 @@
       const dateDisplay = safeText(m.dateDisplay);
 
       const body = String(m.body || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
-      const snippet = safeText(m.snippet) || safeText(body).slice(0, 160);
+      const snippet = safeText(m.snippet) || makeSnippet(body, 180);
 
       const sig = [pdf, subject, from, to, date, mailbox].join("|");
       if(seen.has(sig)) continue;
       seen.add(sig);
 
-      cleaned.push({
+      // ✅ preserve thread from index.json
+      let thread = Array.isArray(m.thread) ? m.thread : [];
+      // normalize thread parts to known shape
+      thread = thread.map((p) => ({
+        from: cleanName(p?.from),
+        to: cleanName(p?.to),
+        subject: safeText(p?.subject) || subject,
+        date: safeText(p?.date) || date,
+        dateDisplay: safeText(p?.dateDisplay) || dateDisplay,
+        body: safeText(p?.body || ""),
+        snippet: safeText(p?.snippet) || makeSnippet(p?.body || "", 180),
+      }));
+
+      const itemObj = {
         id: String(m.id),
         mailbox,
         subject,
@@ -287,9 +457,15 @@
         snippet,
         body,
         pdf,
+        thread, // ✅ keep it
         contactKey: "",
         contactName: "",
-      });
+      };
+
+      // If thread missing, derive from body now (so reader always works)
+      itemObj.thread = ensureThreadForItem(itemObj);
+
+      cleaned.push(itemObj);
     }
 
     cleaned.sort((a,b) => {
@@ -314,7 +490,12 @@
     const sn = cleanName(standardName);
     const standardKey = slugify(sn);
 
-    const inText = looksLikeJeff(from) || looksLikeJeff(to) || looksLikeJeff(m.subject) || looksLikeJeff(m.body);
+    // include thread text for jeff detection
+    const threadText = Array.isArray(m.thread)
+      ? m.thread.map(p => [p.from,p.to,p.subject,p.body].join(" ")).join(" ")
+      : "";
+    const inText = looksLikeJeff(from) || looksLikeJeff(to) || looksLikeJeff(m.subject) || looksLikeJeff(m.body) || looksLikeJeff(threadText);
+
     return {
       standardKey,
       standardName: sn || "Unknown",
@@ -441,7 +622,10 @@
 
     if(q){
       arr = arr.filter(m => {
-        const hay = [m.subject, m.from, m.to, m.dateDisplay, m.body, m.snippet]
+        const threadText = Array.isArray(m.thread)
+          ? m.thread.map(p => [p.from,p.to,p.subject,p.body].join(" ")).join(" ")
+          : "";
+        const hay = [m.subject, m.from, m.to, m.dateDisplay, m.body, m.snippet, threadText]
           .map(x => safeText(x).toLowerCase()).join(" ");
         return hay.includes(q);
       });
@@ -532,51 +716,67 @@
     if(!m || !el.readCard) return;
 
     const when = safeText(m.dateDisplay) || safeText(m.date) || "";
-    const fromName = cleanName(m.from);
-    const toName = cleanName(m.to);
-
-    const fromKey = slugify(fromName);
-    const toKey = slugify(toName);
-
     const href = pdfUrl(m.pdf);
     const hasPdf = !!href;
-
     const isStar = state.starred.has(String(m.id));
 
     if(el.readingMeta){
-      el.readingMeta.textContent = `${m.mailbox.toUpperCase()} • ${when}`;
+      const threadCount = Array.isArray(m.thread) ? m.thread.length : 1;
+      el.readingMeta.textContent = `${m.mailbox.toUpperCase()} • ${when}` + (threadCount > 1 ? ` • THREAD (${threadCount})` : "");
     }
 
-    el.readCard.innerHTML = `
-      <div class="jm-readerTopActions">
-        ${hasPdf ? `
-          <a class="jm-openPdf" href="${escapeHtml(href)}" target="_blank" rel="noopener">📄 Open PDF</a>
-        ` : `
-          <span style="color:rgba(255,255,255,.55);font-size:12px;">PDF link unavailable</span>
-        `}
-        <div class="jm-readerStar" id="jmReaderStar" role="button" aria-pressed="${isStar ? "true" : "false"}" aria-label="${isStar ? "Unstar" : "Star"}">
+    const parts = Array.isArray(m.thread) && m.thread.length ? m.thread : ensureThreadForItem(m);
+
+    const headerTop = `
+      <div class="jm-readerTopActions" style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px;">
+        <div style="display:flex; gap:10px; align-items:center;">
+          ${hasPdf ? `<a class="jm-openPdf" href="${escapeHtml(href)}" target="_blank" rel="noopener">📄 Open PDF</a>`
+                   : `<span style="color:rgba(255,255,255,.55);font-size:12px;">PDF link unavailable</span>`}
+          <span style="color:rgba(255,255,255,.55);font-size:12px;">${parts.length > 1 ? `Thread: ${parts.length} messages` : ""}</span>
+        </div>
+        <div class="jm-readerStar" id="jmReaderStar" role="button" aria-pressed="${isStar ? "true" : "false"}" aria-label="${isStar ? "Unstar" : "Star"}"
+             style="font-size:18px; cursor:pointer; user-select:none;">
           ${isStar ? "★" : "☆"}
         </div>
       </div>
-
-      <div style="font-weight:1100; font-size:16px; margin-bottom:8px;">${escapeHtml(m.subject || "(No subject)")}</div>
-
-      <div style="display:flex; gap:14px; align-items:center; margin-bottom:10px; flex-wrap:wrap; color:rgba(255,255,255,.78); font-size:12px;">
-        <div style="display:flex; align-items:center; gap:8px;">
-          ${avatarHtmlForContact(fromName, fromKey)}
-          <div>From: <strong>${escapeHtml(fromName)}</strong></div>
-        </div>
-        <div style="opacity:.55">→</div>
-        <div style="display:flex; align-items:center; gap:8px;">
-          ${avatarHtmlForContact(toName, toKey)}
-          <div>To: <strong>${escapeHtml(toName)}</strong></div>
-        </div>
-      </div>
-
-      <div style="white-space:pre-wrap; color:rgba(255,255,255,.86); line-height:1.45; font-size:13px;">
-        ${escapeHtml(m.body || "Open the PDF to view the source record.")}
-      </div>
+      <div style="font-weight:1100; font-size:16px; margin-bottom:10px;">${escapeHtml(m.subject || "(No subject)")}</div>
     `;
+
+    const partHtml = parts.map((p, idx) => {
+      const fromName = cleanName(p.from);
+      const toName = cleanName(p.to);
+      const fromKey = slugify(fromName);
+      const toKey = slugify(toName);
+      const partWhen = safeText(p.dateDisplay) || safeText(p.date) || "";
+      const body = safeText(p.body || "");
+
+      return `
+        <div style="border:1px solid rgba(255,255,255,.10); background:rgba(0,0,0,.18); padding:10px; margin-bottom:10px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; color:rgba(255,255,255,.72); font-size:12px;">
+            <div>Message ${idx+1} of ${parts.length}</div>
+            <div>${escapeHtml(partWhen)}</div>
+          </div>
+
+          <div style="display:flex; gap:14px; align-items:center; margin-bottom:10px; flex-wrap:wrap; color:rgba(255,255,255,.82); font-size:12px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              ${avatarHtmlForContact(fromName, fromKey)}
+              <div>From: <strong>${escapeHtml(fromName)}</strong></div>
+            </div>
+            <div style="opacity:.55">→</div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              ${avatarHtmlForContact(toName, toKey)}
+              <div>To: <strong>${escapeHtml(toName)}</strong></div>
+            </div>
+          </div>
+
+          <div style="white-space:pre-wrap; color:rgba(255,255,255,.88); line-height:1.45; font-size:13px;">
+            ${escapeHtml(body || "—")}
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    el.readCard.innerHTML = headerTop + partHtml;
 
     const btn = $("#jmReaderStar");
     if(btn){
@@ -902,6 +1102,9 @@
           addSubjectFromSidebar();
         }
       });
+    }
+    if(el.btnClearSubjects){
+      el.btnClearSubjects.addEventListener("click", () => clearSubjects());
     }
 
     wireAccordions();
