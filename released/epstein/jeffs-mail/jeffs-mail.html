@@ -158,7 +158,7 @@
       min-width: 0;
       display:flex;
       flex-direction: column;
-      overflow: hidden; /* ✅ critical: prevents whole-page scroll growth */
+      overflow: hidden; /* ✅ critical */
     }
 
     .jm-actions{
@@ -257,6 +257,30 @@
       overflow:auto;
       padding-right: 2px;
     }
+
+    /* ✅ Dedicated scroll area for SUBJECTS list (always scrollable when long) */
+    #jmSubjectsList{
+      max-height: 210px;
+      overflow: auto;
+      padding-right: 2px;
+    }
+
+    /* (optional) slightly nicer scrollbar visibility */
+    .jm-contactList::-webkit-scrollbar,
+    #jmSubjectsList::-webkit-scrollbar{
+      width: 10px;
+    }
+    .jm-contactList::-webkit-scrollbar-thumb,
+    #jmSubjectsList::-webkit-scrollbar-thumb{
+      background: rgba(255,255,255,.14);
+      border: 2px solid rgba(0,0,0,.55);
+      border-radius: 999px;
+    }
+    .jm-contactList::-webkit-scrollbar-track,
+    #jmSubjectsList::-webkit-scrollbar-track{
+      background: rgba(0,0,0,.25);
+    }
+
     .jm-contactRow{
       display:flex;
       align-items:center;
@@ -309,6 +333,19 @@
       padding: 9px 10px;
       outline: none;
       font-size: 14px;
+    }
+
+    .jm-subjectActions{
+      display:flex;
+      gap: 8px;
+      margin-top: 8px;
+      align-items:center;
+    }
+    .jm-subjectHint{
+      color: var(--jm-muted2);
+      font-size: 12px;
+      line-height: 1.35;
+      margin-top: 6px;
     }
 
     .jm-listHead{
@@ -372,7 +409,6 @@
       padding-right: 34px;
     }
 
-    /* ✅ sender row with avatar in list */
     .jm-itemWho{
       display:flex;
       align-items:center;
@@ -418,7 +454,6 @@
       opacity:.95;
     }
 
-    /* ✅ reader scroll */
     .jm-reader{
       overflow:auto;
       padding: 10px;
@@ -487,12 +522,12 @@
     .jm-gateRow label{ color: var(--jm-text); font-weight: 800; }
     .jm-gateRow input{ transform: scale(1.15); }
 
-    /* Compose Modal */
+    /* ✅ Compose Modal: FULL BLACK overlay + full black card (not transparent) */
     #jmComposeModal{
       position: fixed;
       inset: 0;
       z-index: 10001;
-      background: rgba(0,0,0,.72);
+      background: #000; /* ✅ solid black */
       display:none;
       align-items:center;
       justify-content:center;
@@ -503,7 +538,7 @@
     .jm-modalCard{
       width: min(600px, 100%);
       border: 1px solid var(--jm-border);
-      background: rgba(0,0,0,.70);
+      background: #000; /* ✅ solid black */
       padding: 14px;
     }
     .jm-modalCard h3{ margin: 0 0 8px; }
@@ -528,12 +563,25 @@
       margin-top: 6px;
       line-height: 1.35;
     }
+
+    /* ✅ persistent bottom note for refresh */
+    .jm-composeBottomNote{
+      margin-top: 10px;
+      padding: 10px;
+      border: 1px solid var(--jm-border2);
+      background: rgba(255,255,255,.04);
+      color: rgba(255,255,255,.72);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
     .jm-composeStatus{
       margin-top: 8px;
       color: rgba(255,255,255,.75);
       font-size: 12px;
       min-height: 18px;
     }
+
     .jm-termsRow{
       margin-top: 10px;
       padding: 10px;
@@ -570,7 +618,7 @@
       <div class="jm-brand">
         <div class="jm-avatar" title="Jeff">
           <img id="jmJeffAvatar" src="./assets/jeff.jpg" alt="Jeff profile" onerror="this.remove()" />
-          <span id="jmJeffFallback">JE</span>
+          <span id="jmJeffFallback" style="display:none;">JE</span>
         </div>
         <div>
           <div class="jm-title">JEFFS MAIL</div>
@@ -636,6 +684,14 @@
               <button class="jm-btn" id="jmAddSubject" type="button">Add</button>
             </div>
 
+            <div class="jm-subjectActions">
+              <button class="jm-btn" id="jmClearSubjects" type="button">Clear saved</button>
+            </div>
+
+            <div class="jm-subjectHint">
+              Saved subjects are stored on this device (localStorage). Use the scrollbar below to browse.
+            </div>
+
             <div style="height:10px"></div>
             <div class="jm-contactList" id="jmSubjectsList"></div>
           </div>
@@ -689,10 +745,6 @@
   <div id="jmComposeModal" aria-hidden="true">
     <div class="jm-modalCard">
       <h3>Leave a Public Visitor message (PDF submission)</h3>
-      <div class="jm-composeNote">
-        This does not send real email. Your message is converted into a PDF submission and will appear after processing.
-        After you click Send, please allow up to two minutes for it to populate on the page.
-      </div>
 
       <div class="jm-field">
         <label for="jmComposeFrom">From</label>
@@ -724,7 +776,13 @@
         </div>
       </div>
 
+      <!-- status line: your JS will write Submitting… then Submitted -->
       <div class="jm-composeStatus" id="jmComposeStatus"></div>
+
+      <!-- ✅ persistent note at bottom, per your request -->
+      <div class="jm-composeBottomNote" id="jmComposeBottomNote">
+        After you click <strong>Send</strong>, refresh this page after <strong>two minutes</strong> to see the email in the inbox.
+      </div>
 
       <div class="jm-modalActions">
         <button class="jm-btn" id="jmComposeCancel" type="button">Cancel</button>
