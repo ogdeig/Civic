@@ -9,10 +9,8 @@
   <meta name="description" content="Jeffs Mail is a simulated email-style inbox for navigating publicly released Epstein-related PDFs. Search by contact, save keyword subjects, star items for this visit, and open source documents. Adults 21+ only." />
   <meta name="robots" content="index,follow" />
 
-  <!-- Use your existing site stylesheet -->
   <link rel="stylesheet" href="/styles.css" />
 
-  <!-- Favicon -->
   <link rel="icon" type="image/png" href="/assets/logo.png" />
   <link rel="shortcut icon" type="image/png" href="/assets/logo.png" />
 
@@ -51,7 +49,7 @@
       align-items:center;
       justify-content: space-between;
       gap: 12px;
-      padding: 10px 12px;
+      padding: 12px 12px;
       border: 1px solid var(--jm-border2);
       background: rgba(0,0,0,.25);
     }
@@ -59,13 +57,13 @@
     .jm-brand{
       display:flex;
       align-items:center;
-      gap: 10px;
-      min-width: 300px;
+      gap: 12px;
+      min-width: 320px;
     }
 
     .jm-avatar{
-      width: 34px;
-      height: 34px;
+      width: 42px;
+      height: 42px;
       border-radius: 999px;
       overflow:hidden;
       border: 1px solid var(--jm-border);
@@ -83,23 +81,23 @@
     .jm-avatar span{
       font-weight: 900;
       letter-spacing: .02em;
-      font-size: 13px;
+      font-size: 14px;
       opacity: .95;
     }
 
     .jm-brand .jm-title{
-      font-weight: 1000;
-      letter-spacing: .04em;
+      font-weight: 1100;
+      letter-spacing: .06em;
       text-transform: uppercase;
-      font-size: 14px;
-      line-height: 1.1;
+      font-size: 18px;
+      line-height: 1.05;
     }
     .jm-brand .jm-sub{
       font-size: 12px;
       color: var(--jm-muted);
-      line-height: 1.25;
-      margin-top: 2px;
-      max-width: 660px;
+      line-height: 1.3;
+      margin-top: 3px;
+      max-width: 760px;
     }
 
     .jm-searchRow{
@@ -116,9 +114,9 @@
       gap: 8px;
       border: 1px solid var(--jm-border2);
       background: rgba(0,0,0,.20);
-      padding: 8px 10px;
+      padding: 9px 10px;
       min-width: 260px;
-      max-width: 620px;
+      max-width: 680px;
       width: 100%;
     }
     .jm-search input{
@@ -138,18 +136,20 @@
       border: 1px solid var(--jm-border2);
       background: rgba(0,0,0,.25);
       color: var(--jm-text);
-      padding: 8px 12px;
+      padding: 9px 12px;
       font-weight: 800;
       cursor: pointer;
     }
     .jm-btn:hover{ background: rgba(255,255,255,.06); }
 
+    /* ✅ Make the whole 3-column area a fixed-height workspace so ONLY the lists scroll */
     .jm-shell{
       display:grid;
       grid-template-columns: 280px 360px 1fr;
       gap: 12px;
       margin-top: 12px;
-      min-height: calc(100vh - 210px);
+      height: calc(100vh - 210px);
+      min-height: 520px;
     }
 
     .jm-col{
@@ -158,11 +158,13 @@
       min-width: 0;
       display:flex;
       flex-direction: column;
+      overflow: hidden; /* ✅ critical: prevents whole-page scroll growth */
     }
 
     .jm-actions{
       padding: 10px;
       border-bottom: 1px solid var(--jm-border2);
+      flex: 0 0 auto;
     }
     .jm-composeBtn{
       width: 100%;
@@ -185,6 +187,7 @@
       display:flex;
       flex-direction: column;
       gap: 8px;
+      flex: 0 0 auto;
     }
     .jm-nav{
       display:flex;
@@ -219,6 +222,7 @@
     .jm-acc{
       padding: 10px;
       border-bottom: 1px solid var(--jm-border2);
+      flex: 0 0 auto;
     }
     .jm-accHead{
       display:flex;
@@ -249,7 +253,7 @@
       display:flex;
       flex-direction: column;
       gap: 6px;
-      max-height: 280px;
+      max-height: 260px;
       overflow:auto;
       padding-right: 2px;
     }
@@ -314,6 +318,7 @@
       align-items:center;
       justify-content: space-between;
       gap: 10px;
+      flex: 0 0 auto;
     }
     .jm-listHead .jm-folder{
       font-weight: 1000;
@@ -322,9 +327,12 @@
       font-size: 12px;
       opacity:.95;
     }
+
+    /* ✅ Scroll area for message list */
     .jm-items{
       overflow:auto;
       min-height: 0;
+      flex: 1 1 auto;
     }
 
     .jm-item{
@@ -361,9 +369,25 @@
       display:flex; align-items:center; justify-content: space-between; gap: 10px;
       font-size: 12px;
       color: var(--jm-muted);
-      padding-right: 34px; /* room for star btn */
+      padding-right: 34px;
     }
-    .jm-itemFrom{ font-weight: 900; color: var(--jm-text); }
+
+    /* ✅ sender row with avatar in list */
+    .jm-itemWho{
+      display:flex;
+      align-items:center;
+      gap: 8px;
+      min-width: 0;
+    }
+    .jm-itemFrom{
+      font-weight: 900;
+      color: var(--jm-text);
+      white-space: nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
+      max-width: 210px;
+    }
+
     .jm-itemSubj{ margin-top: 4px; font-weight: 900; padding-right: 34px; }
     .jm-itemSnip{
       margin-top: 4px;
@@ -384,6 +408,7 @@
       align-items:center;
       justify-content: space-between;
       gap: 10px;
+      flex: 0 0 auto;
     }
     .jm-readHead .jm-h{
       font-weight: 1000;
@@ -392,10 +417,13 @@
       font-size: 12px;
       opacity:.95;
     }
+
+    /* ✅ reader scroll */
     .jm-reader{
       overflow:auto;
       padding: 10px;
       min-height: 0;
+      flex: 1 1 auto;
     }
 
     .jm-readerTopActions{
@@ -435,20 +463,7 @@
       border-color: rgba(255,215,0,.22);
     }
 
-    @media (max-width: 980px){
-      .jm-shell{ grid-template-columns: 1fr; }
-      .jm-col:nth-child(2), .jm-col:nth-child(3){ min-height: 50vh; }
-
-      .jm-colReader{
-        position: fixed;
-        inset: 0;
-        z-index: 9999;
-        display:none;
-        background: rgba(0,0,0,.70);
-      }
-      .jm-colReader.open{ display:block; }
-    }
-
+    /* Age Gate */
     #ageGate{
       position: fixed;
       inset: 0;
@@ -472,6 +487,7 @@
     .jm-gateRow label{ color: var(--jm-text); font-weight: 800; }
     .jm-gateRow input{ transform: scale(1.15); }
 
+    /* Compose Modal */
     #jmComposeModal{
       position: fixed;
       inset: 0;
@@ -532,6 +548,17 @@
     }
     .jm-termsRow input{ transform: scale(1.15); margin-top: 2px; }
     .jm-termsRow a{ color: var(--jm-text); text-decoration: underline; }
+
+    @media (max-width: 980px){
+      .jm-shell{
+        grid-template-columns: 1fr;
+        height: auto;
+        min-height: 0;
+      }
+      .jm-col{ overflow: visible; }
+      .jm-items{ max-height: 55vh; }
+      .jm-reader{ max-height: 55vh; }
+    }
   </style>
 </head>
 
@@ -630,7 +657,7 @@
       </section>
 
       <!-- RIGHT -->
-      <section class="jm-col jm-colReader" aria-label="Reader" id="jmReader">
+      <section class="jm-col" aria-label="Reader" id="jmReader">
         <div class="jm-readHead">
           <div class="jm-h">Message</div>
           <div id="jmReadingMeta" style="color:var(--jm-muted2);font-size:12px;"></div>
@@ -691,9 +718,9 @@
         <input id="jmComposeAgree" type="checkbox" />
         <div>
           I agree to the
-          <a href="/policy/terms" target="_blank" rel="noopener">Terms</a>
+          <a href="https://civicthreat.us/terms" target="_blank" rel="noopener">Terms</a>
           and
-          <a href="/policy/privacy" target="_blank" rel="noopener">Privacy Policy</a>.
+          <a href="https://civicthreat.us/privacy" target="_blank" rel="noopener">Privacy Policy</a>.
         </div>
       </div>
 
@@ -710,6 +737,6 @@
 
   <script src="/config.js?v=14"></script>
   <script src="/app.js?v=14"></script>
-  <script src="./jeffs-mail.js?v=22"></script>
+  <script src="./jeffs-mail.js?v=23"></script>
 </body>
 </html>
