@@ -4,22 +4,20 @@
 
   const INDEX_URL = "./index.json";
 
-  // Local/session storage keys
+  // Storage keys
   const CONSENT_KEY = "ct_jeffs_mail_21_gate_v1";
-  // Stars are PER-VISIT (session only)
-  const STAR_KEY = "ct_jeffs_mail_starred_session_v1";
+  const STAR_KEY = "ct_jeffs_mail_starred_session_v1"; // per-visit
   const CONTACT_KEY = "ct_jeffs_mail_contact_filter_v2";
-  // Subjects: stored locally (browser). Easy to clear anytime.
   const SUBJECTS_KEY = "ct_jeffs_mail_subjects_v2";
 
-  // Jeff avatar
   const JEFF_AVATAR_URL = "./assets/jeff.jpg";
 
-  // Compose constants (locked)
   const COMPOSE_FROM = "Public Visitor";
   const COMPOSE_TO = "Jeffrey Epstein";
 
-  // Upload config from /config.js
+  // ✅ canonical pdf base path (always this)
+  const PDF_BASE = "/released/epstein/jeffs-mail/pdfs/";
+
   function getUploadConfig(){
     const cfg = (window.CT_CONFIG || {});
     return {
@@ -31,12 +29,10 @@
   const $ = (sel) => document.querySelector(sel);
 
   const el = {
-    // header/search
     search: $("#jmSearch"),
     found: $("#jmFound"),
     clear: $("#jmClearFilters"),
 
-    // folders
     btnInbox: $("#btnInbox"),
     btnSent: $("#btnSent"),
     btnStarred: $("#btnStarred"),
@@ -47,21 +43,16 @@
     folderTitle: $("#jmFolderTitle"),
     folderCount: $("#jmCount"),
 
-    // lists
     items: $("#jmItems"),
 
-    // reader
-    reader: $("#jmReader"),
     readCard: $("#jmReadCard"),
     readingMeta: $("#jmReadingMeta"),
 
-    // contacts
     contactsAcc: $("#jmContactsAcc"),
     contactsToggle: $("#jmContactsToggle"),
     contactsList: $("#jmContactsList"),
     contactsCount: $("#jmContactsCount"),
 
-    // subjects
     subjectsAcc: $("#jmSubjectsAcc"),
     subjectsToggle: $("#jmSubjectsToggle"),
     subjectQuick: $("#jmSubjectQuick"),
@@ -69,17 +60,14 @@
     subjectsCount: $("#jmSubjectsCount"),
     btnAddSubject: $("#jmAddSubject"),
 
-    // avatar
     jeffAvatar: $("#jmJeffAvatar"),
     jeffFallback: $("#jmJeffFallback"),
 
-    // gate
     gate: $("#ageGate"),
     gateCheck: $("#gateCheck"),
     gateEnter: $("#gateEnter"),
     gateLeave: $("#gateLeave"),
 
-    // compose
     composeBtn: $("#jmComposeBtn"),
     composeModal: $("#jmComposeModal"),
     composeFrom: $("#jmComposeFrom"),
@@ -97,7 +85,7 @@
     view: [],
     contacts: [],
     q: "",
-    folder: "inbox",   // inbox|sent|starred
+    folder: "inbox",
     selectedId: null,
     starred: new Set(),
     contact: "all",
@@ -142,7 +130,6 @@
     return t;
   }
 
-  // Jeff identity detection
   const JEFF_EMAILS = new Set([
     "jeevacation@gmail.com",
     "jeevacation@gmail.con",
@@ -185,6 +172,23 @@
     return `<div class="jm-miniAvatar" style="background:${bg}" aria-hidden="true"><span>${escapeHtml(letter)}</span></div>`;
   }
 
+  // ✅ PDF URL normalization:
+  // - decode %2F if present
+  // - strip leading "pdfs/" if present
+  // - always return /released/epstein/jeffs-mail/pdfs/<file>
+  function pdfUrl(pdfField){
+    let p = safeText(pdfField);
+    if(!p) return "";
+    if(/^https?:\/\//i.test(p)) return p;
+
+    try { p = decodeURIComponent(p); } catch(_) {}
+
+    p = p.replace(/^\.?\/*/,"");     // remove ./ or leading /
+    p = p.replace(/^pdfs\//i,"");    // remove any pdfs/ prefix
+    // keep slashes if ever present, but do not double-prefix
+    return PDF_BASE + encodeURI(p);
+  }
+
   // Storage
   function loadStarred(){
     try{
@@ -222,7 +226,6 @@
     try{ localStorage.setItem(SUBJECTS_KEY, JSON.stringify(state.subjects)); }catch(_){}
   }
 
-  // Fetch index.json with fallback locations
   async function fetchJsonStrict(url){
     const bust = Date.now();
     const candidates = [
@@ -300,7 +303,6 @@
   }
 
   function otherPartyLabel(mailbox, from, to){
-    // Contact view should include both: if message is inbox, contact is FROM; if sent, contact is TO.
     if(mailbox === "sent") return cleanName(to) || "Unknown";
     return cleanName(from) || "Unknown";
   }
@@ -313,20 +315,15 @@
     const standardKey = slugify(sn);
 
     const inText = looksLikeJeff(from) || looksLikeJeff(to) || looksLikeJeff(m.subject) || looksLikeJeff(m.body);
-    const jeffKey = "jeffrey-epstein";
-    const jeffName = "Jeffrey Epstein";
-
     return {
       standardKey,
       standardName: sn || "Unknown",
-      jeffInvolved: !!inText,
-      jeffKey,
-      jeffName
+      jeffInvolved: !!inText
     };
   }
 
   function rebuildContacts(){
-    const map = new Map(); // key -> {name,count}
+    const map = new Map();
     let jeffCount = 0;
 
     for(const m of state.all){
@@ -337,7 +334,6 @@
       const key = c.standardKey || "unknown";
       const cur = map.get(key) || { name: c.standardName, count: 0 };
       cur.count += 1;
-      // prefer shortest clean name
       if(cur.name && c.standardName && cur.name.length > c.standardName.length) cur.name = c.standardName;
       map.set(key, cur);
 
@@ -367,7 +363,6 @@
     const cur = state.contact || "all";
     el.contactsList.innerHTML = "";
 
-    // "All contacts"
     const allBtn = document.createElement("div");
     allBtn.className = "jm-contactRow" + (cur === "all" ? " active" : "");
     allBtn.innerHTML = `
@@ -493,9 +488,9 @@
       card.className = "jm-item" + (state.selectedId === m.id ? " active" : "");
 
       const who = (m.mailbox === "sent") ? (cleanName(m.to) || "Unknown") : (cleanName(m.from) || "Unknown");
+      const whoKey = slugify(who);
       const when = safeText(m.dateDisplay) || safeText(m.date) || "";
 
-      // star button (does not open the email)
       const isStar = state.starred.has(String(m.id));
       const starBtn = document.createElement("div");
       starBtn.className = "jm-starBtn";
@@ -507,13 +502,15 @@
         e.preventDefault();
         e.stopPropagation();
         toggleStar(m.id);
-        // redraw list only (keep selection)
         draw();
       });
 
       card.innerHTML = `
         <div class="jm-itemTop">
-          <div class="jm-itemFrom">${escapeHtml(who)}</div>
+          <div class="jm-itemWho">
+            ${avatarHtmlForContact(who, whoKey)}
+            <div class="jm-itemFrom">${escapeHtml(who)}</div>
+          </div>
           <div>${escapeHtml(when)}</div>
         </div>
         <div class="jm-itemSubj">${escapeHtml(m.subject)}</div>
@@ -534,29 +531,46 @@
   function renderReader(m){
     if(!m || !el.readCard) return;
 
-    const who = (m.mailbox === "sent") ? (cleanName(m.to) || "Unknown") : (cleanName(m.from) || "Unknown");
     const when = safeText(m.dateDisplay) || safeText(m.date) || "";
-    const pdfHref = m.pdf ? ("./pdfs/" + encodeURIComponent(m.pdf)) : "#";
+    const fromName = cleanName(m.from);
+    const toName = cleanName(m.to);
+
+    const fromKey = slugify(fromName);
+    const toKey = slugify(toName);
+
+    const href = pdfUrl(m.pdf);
+    const hasPdf = !!href;
 
     const isStar = state.starred.has(String(m.id));
 
     if(el.readingMeta){
-      el.readingMeta.textContent = `${m.mailbox.toUpperCase()} • ${who} • ${when}`;
+      el.readingMeta.textContent = `${m.mailbox.toUpperCase()} • ${when}`;
     }
 
     el.readCard.innerHTML = `
       <div class="jm-readerTopActions">
-        <a class="jm-openPdf" href="${escapeHtml(pdfHref)}" target="_blank" rel="noopener">
-          📄 Open PDF
-        </a>
+        ${hasPdf ? `
+          <a class="jm-openPdf" href="${escapeHtml(href)}" target="_blank" rel="noopener">📄 Open PDF</a>
+        ` : `
+          <span style="color:rgba(255,255,255,.55);font-size:12px;">PDF link unavailable</span>
+        `}
         <div class="jm-readerStar" id="jmReaderStar" role="button" aria-pressed="${isStar ? "true" : "false"}" aria-label="${isStar ? "Unstar" : "Star"}">
           ${isStar ? "★" : "☆"}
         </div>
       </div>
 
-      <div style="font-weight:1000; font-size:16px; margin-bottom:6px;">${escapeHtml(m.subject || "(No subject)")}</div>
-      <div style="color:rgba(255,255,255,.70); font-size:12px; margin-bottom:10px;">
-        From: <strong>${escapeHtml(cleanName(m.from))}</strong> &nbsp;•&nbsp; To: <strong>${escapeHtml(cleanName(m.to))}</strong>
+      <div style="font-weight:1100; font-size:16px; margin-bottom:8px;">${escapeHtml(m.subject || "(No subject)")}</div>
+
+      <div style="display:flex; gap:14px; align-items:center; margin-bottom:10px; flex-wrap:wrap; color:rgba(255,255,255,.78); font-size:12px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          ${avatarHtmlForContact(fromName, fromKey)}
+          <div>From: <strong>${escapeHtml(fromName)}</strong></div>
+        </div>
+        <div style="opacity:.55">→</div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          ${avatarHtmlForContact(toName, toKey)}
+          <div>To: <strong>${escapeHtml(toName)}</strong></div>
+        </div>
       </div>
 
       <div style="white-space:pre-wrap; color:rgba(255,255,255,.86); line-height:1.45; font-size:13px;">
@@ -568,7 +582,6 @@
     if(btn){
       btn.addEventListener("click", () => {
         toggleStar(m.id);
-        // update star button + counts + list
         renderReader(m);
         drawList();
         updateCounts();
@@ -604,7 +617,6 @@
     const q = safeText(el.subjectQuick ? el.subjectQuick.value : "");
     if(!q) return;
 
-    // no duplicates
     const low = q.toLowerCase();
     if(state.subjects.some(x => String(x.q||"").toLowerCase() === low)){
       if(el.subjectQuick) el.subjectQuick.value = "";
@@ -757,16 +769,15 @@
 
     const cfg = getUploadConfig();
     if(!cfg.url){
-      alert("Upload URL is not configured. Add CT_CONFIG.JEFFS_MAIL_UPLOAD_URL in /config.js.");
+      alert("Upload URL is not configured.");
       return;
     }
     if(!cfg.key){
-      alert("Upload key is not configured. Add CT_CONFIG.JEFFS_MAIL_UPLOAD_KEY in /config.js.");
+      alert("Upload key is not configured.");
       return;
     }
 
     if(el.composeSend) el.composeSend.disabled = true;
-
     if(el.composeStatus) el.composeStatus.textContent = "Submitting…";
 
     const pdfBase64 = await blobToBase64(pdfBlob);
@@ -783,39 +794,16 @@
 
     if(!r.ok){
       const txt = await r.text().catch(()=> "");
-      if(el.composeStatus) el.composeStatus.textContent = `Submission failed (${r.status}). ${txt}`.slice(0,220);
+      if(el.composeStatus) el.composeStatus.textContent = `Submission failed (${r.status}).`;
       if(el.composeSend) el.composeSend.disabled = false;
       throw new Error(`Upload failed: HTTP ${r.status} ${txt}`);
     }
 
-    // Worker response { ok:true, path, ... } (not required here)
     await r.json().catch(()=> ({}));
 
     if(el.composeStatus){
       el.composeStatus.textContent = "Your email has been submitted. Please give it two minutes to populate in the inbox.";
     }
-
-    // Optimistic local "Sent" item for immediate UX (optional)
-    try{
-      const local = {
-        id: "local-" + Date.now(),
-        mailbox: "sent",
-        subject,
-        from: fromName,
-        to: toName,
-        date: createdAtISO,
-        dateDisplay: new Date(createdAtISO).toDateString(),
-        snippet: body.slice(0,160),
-        body,
-        pdf: "", // actual PDF appears after pipeline
-        contactKey: slugify(toName),
-        contactName: toName
-      };
-      state.all.unshift(local);
-      rebuildContacts();
-      updateCounts();
-      draw();
-    }catch(_){}
 
     setTimeout(() => {
       if(el.composeSend) el.composeSend.disabled = false;
@@ -849,9 +837,7 @@
     }
   }
 
-  // Boot
   async function boot(){
-    // header avatar
     if(el.jeffAvatar && el.jeffFallback){
       el.jeffAvatar.src = JEFF_AVATAR_URL;
       el.jeffAvatar.addEventListener("error", () => {
@@ -859,7 +845,6 @@
       });
     }
 
-    // 21+ gate
     if(!hasConsent()){
       showGate();
       if(el.gateEnter){
@@ -883,7 +868,6 @@
     loadContactFilter();
     loadSubjects();
 
-    // folders
     [el.btnInbox, el.btnSent, el.btnStarred].forEach(btn => {
       if(!btn) return;
       btn.addEventListener("click", () => {
@@ -891,7 +875,6 @@
       });
     });
 
-    // search
     if(el.search){
       el.search.addEventListener("input", () => {
         state.q = el.search.value || "";
@@ -909,7 +892,6 @@
       });
     }
 
-    // subjects
     if(el.btnAddSubject){
       el.btnAddSubject.addEventListener("click", () => addSubjectFromSidebar());
     }
@@ -922,10 +904,8 @@
       });
     }
 
-    // accordions
     wireAccordions();
 
-    // compose
     if(el.composeBtn) el.composeBtn.addEventListener("click", openComposeModal);
     if(el.composeCancel) el.composeCancel.addEventListener("click", closeComposeModal);
     if(el.composeSend){
@@ -944,7 +924,6 @@
       });
     }
 
-    // load index
     const data = await fetchJsonStrict(INDEX_URL);
     state.all = normalizeItems(data);
 
@@ -959,10 +938,10 @@
   boot().catch(err => {
     console.error(err);
     if(el.items){
-      el.items.innerHTML = `<div style="padding:10px; color:rgba(255,255,255,.70)">Index load error. Make sure <code>/released/epstein/jeffs-mail/index.json</code> exists and is accessible.</div>`;
+      el.items.innerHTML = `<div style="padding:10px; color:rgba(255,255,255,.70)">Index load error. Make sure /released/epstein/jeffs-mail/index.json exists and is accessible.</div>`;
     }
     if(el.readCard){
-      el.readCard.innerHTML = `<div style="padding:10px; color:rgba(255,255,255,.70)">Index load error. Make sure <code>/released/epstein/jeffs-mail/index.json</code> exists and is accessible.</div>`;
+      el.readCard.innerHTML = `<div style="padding:10px; color:rgba(255,255,255,.70)">Index load error. Make sure /released/epstein/jeffs-mail/index.json exists and is accessible.</div>`;
     }
   });
 
