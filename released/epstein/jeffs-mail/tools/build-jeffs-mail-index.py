@@ -26,9 +26,12 @@ except Exception:
         raise ModuleNotFoundError("Missing pypdf/PyPDF2 (pip install pypdf)")
 
 # ------------------------------------------------------------
-# Jeffs Mail index builder (v2)
+# Jeffs Mail index builder (v3)
 # - robust header extraction + cleanup for OCR/redactions
 # - thread segmentation inside a single PDF (forward/reply chains)
+# - handles OCR corruption: "On ... wrote:" => "On ... rote:"
+# - handles "Original Message" with/without dashed line
+# - reads first N pages for better chains (default 10)
 # - JSON schema: items[].thread[] parts with per-part headers + body/snippet
 # - contact normalization + de-dupe helpers
 # ------------------------------------------------------------
@@ -68,9 +71,13 @@ HEADER_LINE_RE = re.compile(
 )
 
 # Thread markers
+# IMPORTANT: supports OCR "rote:" (missing 'w') and "Original Message" (no dashes)
 MARKER_RE = re.compile(
-    r"(?im)^\s*(Begin forwarded message:|-----Original Message-----|On\s+.+?\bwrote:)\s*$"
+    r"(?im)^\s*(Begin forwarded message:|-----Original Message-----|Original Message|On\s+.+?\b(?:wrote|rote):)\s*$"
 )
+
+# Specifically for skipping "On ... wrote/rote:" lines in cleanup
+WROTE_RE = re.compile(r"(?i)^\s*On\s+.+?\b(?:wrote|rote):\s*$")
 
 EMAIL_RE = re.compile(r"[\w\.\-+%]+@[\w\.\-]+\.[A-Za-z]{2,}", re.IGNORECASE)
 PLIST_START_RE = re.compile(r"<!DOCTYPE\s+plist|<plist\b|<\?xml\b", re.IGNORECASE)
@@ -281,7 +288,7 @@ def parse_date(date_value: str, fallback_ts: int) -> Tuple[str, str, int]:
 # PDF reading
 # ------------------------------------------------------------
 
-def read_pdf_text(path: Path, max_pages: int = 4) -> str:
+def read_pdf_text(path: Path, max_pages: int = 10) -> str:
     reader = PdfReader(str(path))
     out: List[str] = []
     for i in range(min(max_pages, len(reader.pages))):
@@ -401,9 +408,15 @@ def strip_duplicate_header_lines(body: str) -> str:
                 continue
             if HEADER_LINE_RE.match(s2):
                 continue
-            if s2.lower().startswith("begin forwarded message:") or s2.lower().startswith("-----original message-----"):
+            # forward/original markers (with or without dashes)
+            if s2.lower().startswith("begin forwarded message:"):
                 continue
-            if re.match(r"(?i)^on\s+.+?\bwrote:\s*$", s2):
+            if s2.lower().startswith("-----original message-----"):
+                continue
+            if s2.lower() == "original message":
+                continue
+            # On ... wrote/rote:
+            if WROTE_RE.match(s2):
                 continue
             skipping = False
 
@@ -442,6 +455,7 @@ def parse_headers_in_chunk(chunk: str) -> Dict[str, str]:
             continue
 
         s2 = s.lstrip(">").strip()
+        # If we hit a marker after already scanning some headers, stop
         if MARKER_RE.match(s2) and scanned > 0:
             break
 
@@ -661,7 +675,7 @@ class MailItem:
         return d
 
 def build_item(pdf_path: Path, meta: Dict[str, Any]) -> MailItem:
-    raw = read_pdf_text(pdf_path, max_pages=4)
+    raw = read_pdf_text(pdf_path, max_pages=10)
 
     top_hdr, _ = parse_top_headers(raw)
 
